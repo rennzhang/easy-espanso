@@ -26,4 +26,19 @@ node_modules/
 
 # Task files
 tasks.json
-tasks/ 
+tasks/
+
+# Build outputs
+dist/
+dist_electron/
+*.asar
+
+# Package managers
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+
+# Electron build artifacts
+.electron-builder/
+out/
+releases/ 
