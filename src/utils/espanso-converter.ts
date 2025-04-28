@@ -1,13 +1,13 @@
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  EspansoConfig, 
-  EspansoRule, 
-  EspansoGroup, 
-  GlobalVariable, 
+import {
+  EspansoConfig,
+  EspansoRule,
+  EspansoGroup,
+  GlobalVariable,
   EspansoOptions,
   Variable,
   FormField
-} from '../types/espanzo-config';
+} from '../types/espanso-config';
 
 /**
  * 将Espanso YAML配置转换为内部数据模型
@@ -25,7 +25,7 @@ export function convertToInternalFormat(yamlObject: any): EspansoConfig {
     parentId: 'root',
     children: []
   };
-  
+
   // 处理匹配规则
   if (yamlObject.matches && Array.isArray(yamlObject.matches)) {
     for (const match of yamlObject.matches) {
@@ -33,36 +33,36 @@ export function convertToInternalFormat(yamlObject: any): EspansoConfig {
       rootGroup.children.push(rule);
     }
   }
-  
+
   // 创建配置对象
   const config: EspansoConfig = {
     root: rootGroup
   };
-  
+
   // 处理全局变量
   if (yamlObject.global_vars && Array.isArray(yamlObject.global_vars)) {
     config.global_vars = yamlObject.global_vars;
   }
-  
+
   // 处理配置选项
   if (yamlObject.backend || yamlObject.toggle_key || yamlObject.show_notifications) {
     const options: EspansoOptions = {};
-    
+
     // 复制所有选项
     for (const key in yamlObject) {
       if (key !== 'matches' && key !== 'global_vars' && key !== 'includes') {
         options[key] = yamlObject[key];
       }
     }
-    
+
     config.options = options;
   }
-  
+
   // 处理包含的文件
   if (yamlObject.includes && Array.isArray(yamlObject.includes)) {
     rootGroup.includes = yamlObject.includes;
   }
-  
+
   return config;
 }
 
@@ -73,10 +73,10 @@ export function convertToInternalFormat(yamlObject: any): EspansoConfig {
  */
 export function convertToEspansoFormat(config: EspansoConfig): any {
   const result: any = {};
-  
+
   // 处理匹配规则
   const matches: any[] = [];
-  
+
   // 递归处理所有规则
   const processItems = (items: Array<EspansoRule | EspansoGroup>) => {
     for (const item of items) {
@@ -87,32 +87,32 @@ export function convertToEspansoFormat(config: EspansoConfig): any {
       }
     }
   };
-  
+
   if (config.root && config.root.children) {
     processItems(config.root.children);
   }
-  
+
   if (matches.length > 0) {
     result.matches = matches;
   }
-  
+
   // 处理全局变量
   if (config.global_vars && config.global_vars.length > 0) {
     result.global_vars = config.global_vars;
   }
-  
+
   // 处理配置选项
   if (config.options) {
     for (const key in config.options) {
       result[key] = config.options[key];
     }
   }
-  
+
   // 处理包含的文件
   if (config.root.includes && config.root.includes.length > 0) {
     result.includes = config.root.includes;
   }
-  
+
   return result;
 }
 
@@ -128,14 +128,14 @@ function convertMatchToRule(match: any): EspansoRule {
     createdAt: Date.now(),
     updatedAt: Date.now()
   };
-  
+
   // 处理触发词
   if (match.trigger) {
     rule.trigger = match.trigger;
   } else if (match.triggers && Array.isArray(match.triggers)) {
     rule.triggers = match.triggers;
   }
-  
+
   // 处理替换内容
   if (match.replace !== undefined) {
     rule.replace = match.replace;
@@ -154,19 +154,19 @@ function convertMatchToRule(match: any): EspansoRule {
     rule.contentType = 'image';
     rule.content = match.image_path;
   }
-  
+
   // 处理表单
   if (match.form && Array.isArray(match.form)) {
     rule.form = match.form;
     rule.contentType = 'form';
     rule.content = match.form;
   }
-  
+
   // 处理变量
   if (match.vars && Array.isArray(match.vars)) {
     rule.vars = match.vars;
   }
-  
+
   // 处理其他属性
   if (match.word !== undefined) rule.word = match.word;
   if (match.left_word !== undefined) rule.left_word = match.left_word;
@@ -178,12 +178,12 @@ function convertMatchToRule(match: any): EspansoRule {
   if (match.exclude_apps !== undefined) rule.exclude_apps = match.exclude_apps;
   if (match.priority !== undefined) rule.priority = match.priority;
   if (match.search_terms !== undefined) rule.search_terms = match.search_terms;
-  
+
   // 添加标签（内部使用）
   if (match.tags && Array.isArray(match.tags)) {
     rule.tags = match.tags;
   }
-  
+
   return rule;
 }
 
@@ -194,14 +194,14 @@ function convertMatchToRule(match: any): EspansoRule {
  */
 function convertRuleToMatch(rule: EspansoRule): any {
   const match: any = {};
-  
+
   // 处理触发词
   if (rule.trigger) {
     match.trigger = rule.trigger;
   } else if (rule.triggers && rule.triggers.length > 0) {
     match.triggers = rule.triggers;
   }
-  
+
   // 处理替换内容
   if (rule.contentType === 'plain' && rule.replace) {
     match.replace = rule.replace;
@@ -216,17 +216,17 @@ function convertRuleToMatch(rule: EspansoRule): any {
   } else if (rule.content) {
     match.replace = String(rule.content);
   }
-  
+
   // 处理表单
   if (rule.form && rule.form.length > 0) {
     match.form = rule.form;
   }
-  
+
   // 处理变量
   if (rule.vars && rule.vars.length > 0) {
     match.vars = rule.vars;
   }
-  
+
   // 处理其他属性
   if (rule.word !== undefined) match.word = rule.word;
   if (rule.left_word !== undefined) match.left_word = rule.left_word;
@@ -238,7 +238,7 @@ function convertRuleToMatch(rule: EspansoRule): any {
   if (rule.exclude_apps !== undefined) match.exclude_apps = rule.exclude_apps;
   if (rule.priority !== undefined) match.priority = rule.priority;
   if (rule.search_terms !== undefined) match.search_terms = rule.search_terms;
-  
+
   return match;
 }
 
@@ -326,7 +326,7 @@ export function createFormField(
  */
 export function addIdsAndTimestamps(config: EspansoConfig): EspansoConfig {
   const now = Date.now();
-  
+
   // 递归处理所有项目
   const processItems = (items: Array<EspansoRule | EspansoGroup>) => {
     for (const item of items) {
@@ -334,26 +334,26 @@ export function addIdsAndTimestamps(config: EspansoConfig): EspansoConfig {
       if (!item.id) {
         item.id = uuidv4();
       }
-      
+
       // 如果没有时间戳，添加当前时间
       if (!item.createdAt) {
         item.createdAt = now;
       }
-      
+
       if (!item.updatedAt) {
         item.updatedAt = now;
       }
-      
+
       // 如果是分组，递归处理子项目
       if (item.type === 'group' && item.children) {
         processItems(item.children);
       }
     }
   };
-  
+
   if (config.root && config.root.children) {
     processItems(config.root.children);
   }
-  
+
   return config;
 }

@@ -2,15 +2,15 @@
   <form @submit.prevent="onSubmit" class="rule-form">
     <div class="form-group">
       <label for="trigger">触发词</label>
-      <input 
-        id="trigger" 
-        v-model="formState.trigger" 
-        type="text" 
+      <input
+        id="trigger"
+        v-model="formState.trigger"
+        type="text"
         placeholder="例如: :hello"
         required
       />
     </div>
-    
+
     <div class="form-group">
       <label for="contentType">内容类型</label>
       <select id="contentType" v-model="currentContentType">
@@ -25,36 +25,36 @@
         <option value="key">按键序列</option>
       </select>
     </div>
-    
+
     <div class="form-group">
       <label for="content">内容</label>
-      <textarea 
-        id="content" 
-        v-model="formState.content" 
-        rows="5" 
+      <textarea
+        id="content"
+        v-model="formState.content"
+        rows="5"
         placeholder="替换内容"
         required
       ></textarea>
     </div>
-    
+
     <div class="form-group">
       <label for="caseSensitive">区分大小写</label>
-      <input 
-        id="caseSensitive" 
-        v-model="formState.caseSensitive" 
+      <input
+        id="caseSensitive"
+        v-model="formState.caseSensitive"
         type="checkbox"
       />
     </div>
-    
+
     <div class="form-group">
       <label for="word">整词匹配</label>
-      <input 
-        id="word" 
-        v-model="formState.word" 
+      <input
+        id="word"
+        v-model="formState.word"
         type="checkbox"
       />
     </div>
-    
+
     <div class="form-actions">
       <button type="submit" class="btn-primary">保存</button>
       <button type="button" class="btn-secondary" @click="onCancel">取消</button>
@@ -65,7 +65,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
-import { EspansoRule } from '../../types/espanzo-config';
+import { EspansoRule } from '../../types/espanso-config';
 
 // 定义props
 const props = defineProps<{

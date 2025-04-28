@@ -2,26 +2,26 @@
   <form @submit.prevent="onSubmit" class="group-form">
     <div class="form-group">
       <label for="name">分组名称</label>
-      <input 
-        id="name" 
-        v-model="formState.name" 
-        type="text" 
+      <input
+        id="name"
+        v-model="formState.name"
+        type="text"
         placeholder="例如: 常用短语"
         required
       />
     </div>
-    
+
     <div class="form-group">
       <label for="prefix">公共前缀</label>
-      <input 
-        id="prefix" 
-        v-model="formState.prefix" 
-        type="text" 
+      <input
+        id="prefix"
+        v-model="formState.prefix"
+        type="text"
         placeholder="例如: :common"
       />
       <small>可选，将作为该分组内所有规则的前缀</small>
     </div>
-    
+
     <div class="form-actions">
       <button type="submit" class="btn-primary">保存</button>
       <button type="button" class="btn-secondary" @click="onCancel">取消</button>
@@ -32,7 +32,7 @@
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
-import { EspansoGroup } from '../../types/espanzo-config';
+import { EspansoGroup } from '../../types/espanso-config';
 
 // 定义props
 const props = defineProps<{

@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { EspansoConfig, EspansoRule, EspansoGroup, BaseItem } from '../types/espanzo-config';
+import { EspansoConfig, EspansoRule, EspansoGroup, BaseItem } from '../types/espanso-config';
 
 // 生成唯一ID
 export function generateId(): string {
@@ -42,7 +42,7 @@ export function convertToInternalFormat(espansoData: any): EspansoConfig {
     parentId: 'root',
     children: []
   };
-  
+
   // 如果有matches，转换为规则
   if (espansoData.matches && Array.isArray(espansoData.matches)) {
     for (const match of espansoData.matches) {
@@ -55,11 +55,11 @@ export function convertToInternalFormat(espansoData: any): EspansoConfig {
         createdAt: Date.now(),
         updatedAt: Date.now()
       };
-      
+
       rootGroup.children.push(rule);
     }
   }
-  
+
   return {
     root: rootGroup
   };
@@ -70,7 +70,7 @@ export function convertToEspansoFormat(internalConfig: EspansoConfig): any {
   // 这里将在后续任务中实现
   // 目前返回一个简单的示例对象
   const matches: any[] = [];
-  
+
   // 递归处理所有规则
   const processItems = (items: Array<EspansoRule | EspansoGroup>) => {
     for (const item of items) {
@@ -84,11 +84,11 @@ export function convertToEspansoFormat(internalConfig: EspansoConfig): any {
       }
     }
   };
-  
+
   if (internalConfig.root && internalConfig.root.children) {
     processItems(internalConfig.root.children);
   }
-  
+
   return {
     matches
   };
@@ -110,13 +110,13 @@ export function walkTree(
   if (callback(root)) {
     return;
   }
-  
+
   // 遍历子项
   for (const child of root.children) {
     if (callback(child)) {
       return;
     }
-    
+
     if (child.type === 'group') {
       walkTree(child, callback);
     }
@@ -129,7 +129,7 @@ export function findItemById(
   id: string
 ): EspansoRule | EspansoGroup | null {
   let result: EspansoRule | EspansoGroup | null = null;
-  
+
   walkTree(root, (item) => {
     if (item.id === id) {
       result = item;
@@ -137,7 +137,7 @@ export function findItemById(
     }
     return false; // 继续遍历
   });
-  
+
   return result;
 }
 
@@ -154,7 +154,7 @@ export function removeItemById(
       return true;
     }
   }
-  
+
   return false;
 }
 
@@ -170,14 +170,14 @@ export function insertItemAtIndex(
 // 获取所有分组
 function getAllGroups(root: EspansoGroup): EspansoGroup[] {
   const groups: EspansoGroup[] = [];
-  
+
   walkTree(root, (item) => {
     if (item.type === 'group' && item.id !== root.id) {
       groups.push(item);
     }
     return false; // 继续遍历
   });
-  
+
   return groups;
 }
 

@@ -110,7 +110,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
-import { EspansoRule, EspansoGroup } from '../../types/espanzo-config';
+import { EspansoRule, EspansoGroup } from '../../types/espanso-config';
 
 const store = useEspansoStore();
 const config = computed(() => store.config);

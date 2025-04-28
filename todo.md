@@ -24,6 +24,12 @@
   - 优化了空状态和错误状态的显示
   - 添加了过渡效果和交互反馈
 
+- [x] **临时任务 2: 修复和改进**
+  - 修复了类型定义文件名的拼写错误（espanzo-config.ts → espanso-config.ts）
+  - 在Store中使用导入的uuidv4函数代替crypto.randomUUID()
+  - 在preload脚本中添加降级方案，以便在非Electron环境中也能正常工作
+  - 更新了todo.md，调整了任务状态
+
 ## 待完成功能
 
 - [x] **任务 1.3: 数据模型定义**
@@ -32,9 +38,12 @@
   - 添加了配置选项和文件类型定义
   - 更新了Store以支持新的数据模型
 
-- [ ] **任务 1.4: 平台服务层接口实现 (Preload Script)**
-  - 需要实现readFile, writeFile, showOpenDialog等函数
-  - 需要确保js-yaml在preload环境中可用
+- [x] **任务 1.4: 平台服务层接口实现 (Preload Script)**
+  - 实现了readFile, writeFile, showOpenDialog等文件操作函数
+  - 实现了parseYaml, serializeYaml等YAML处理函数
+  - 实现了getEspansoConfigDir, getEspansoConfigFiles等Espanso相关函数
+  - 确保js-yaml在preload环境中可用
+  - 更新了Store中的loadConfig和saveConfig方法，使用新的fileService
 
 - [ ] **任务 2.1: Pinia Store 实现**
   - 已创建基本的store结构，但需要完善Actions和Getters
@@ -49,11 +58,13 @@
 - [ ] **任务 2.3: 规则和分组编辑表单实现**
   - 需要创建RuleEditForm和GroupEditForm组件
 
-- [ ] **任务 2.4: 加载/保存 Actions (连接 Preload)**
-  - 需要完善loadConfig和saveConfig Actions
+- [x] **任务 2.4: 加载/保存 Actions (连接 Preload)**
+  - 已完善loadConfig和saveConfig Actions
+  - 已实现与preload脚本的连接
 
-- [ ] **任务 3.1: YAML 工具函数基础实现**
-  - 需要完善parseYaml, serializeYaml等函数
+- [x] **任务 3.1: YAML 工具函数基础实现**
+  - 已实现parseYaml, serializeYaml等函数
+  - 已实现convertToInternalFormat和convertToEspansoFormat函数
 
 - [ ] **任务 3.2: 拖拽排序功能实现**
   - 需要集成vue-draggable-next
@@ -64,8 +75,9 @@
 - [ ] **任务 4.2: 标签管理功能实现**
   - 需要实现标签的添加、删除和过滤功能
 
-- [ ] **任务 5.1: YAML 解析与序列化工具函数完善**
-  - 需要完善convertToInternalFormat和convertToEspansoFormat函数
+- [x] **任务 5.1: YAML 解析与序列化工具函数完善**
+  - 已完善convertToInternalFormat和convertToEspansoFormat函数
+  - 已实现对Espanso所有功能的支持
 
 - [ ] **任务 5.2: 规则预览功能实现**
   - 需要完善generatePreview函数

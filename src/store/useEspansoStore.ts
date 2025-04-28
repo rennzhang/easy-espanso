@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { v4 as uuidv4 } from 'uuid';
 import {
   EspansoConfig,
   EspansoRule,
@@ -7,7 +8,7 @@ import {
   EspansoFile,
   EspansoOptions,
   GlobalVariable
-} from '../types/espanzo-config';
+} from '../types/espanso-config';
 
 // 定义Espanso Store
 export const useEspansoStore = defineStore('espanso', {
@@ -153,51 +154,132 @@ export const useEspansoStore = defineStore('espanso', {
   actions: {
     // 加载配置文件
     async loadConfig(filePath?: string) {
-      // 这里将在任务1.4后实现
       this.loading = true;
       this.error = null;
 
       try {
-        // 模拟加载成功
-        setTimeout(() => {
-          // 创建一个简单的示例配置
-          this.config = {
-            root: {
-              id: 'root',
-              type: 'group',
-              name: 'Root',
-              createdAt: Date.now(),
-              updatedAt: Date.now(),
-              parentId: 'root',
-              children: []
+        // 如果提供了文件路径，直接加载该文件
+        if (filePath) {
+          const content = await window.preloadApi?.readFile(filePath);
+          if (content) {
+            const yamlData = window.preloadApi?.parseYaml(content);
+            if (yamlData) {
+              // 使用espanso-converter.ts中的函数将YAML数据转换为内部格式
+              const { convertToInternalFormat } = await import('../utils/espanso-converter');
+              this.config = convertToInternalFormat(yamlData);
+              this.configFilePath = filePath;
             }
-          };
-
-          if (filePath) {
-            this.configFilePath = filePath;
           }
+        } else {
+          // 否则，尝试加载Espanso配置目录中的文件
+          const configFiles = await window.preloadApi?.getEspansoConfigFiles();
+          if (configFiles && configFiles.length > 0) {
+            this.configFiles = configFiles;
 
-          this.loading = false;
-        }, 500);
+            // 查找默认的match文件（通常是base.yml）
+            const defaultMatchFile = configFiles.find(file =>
+              file.type === 'match' && (file.name === 'base.yml' || file.name === 'default.yml')
+            );
+
+            if (defaultMatchFile) {
+              const yamlData = window.preloadApi?.parseYaml(defaultMatchFile.content);
+              if (yamlData) {
+                // 使用espanso-converter.ts中的函数将YAML数据转换为内部格式
+                const { convertToInternalFormat } = await import('../utils/espanso-converter');
+                this.config = convertToInternalFormat(yamlData);
+                this.configFilePath = defaultMatchFile.path;
+              }
+            } else if (configFiles[0]) {
+              // 如果没有找到默认文件，使用第一个文件
+              const yamlData = window.preloadApi?.parseYaml(configFiles[0].content);
+              if (yamlData) {
+                // 使用espanso-converter.ts中的函数将YAML数据转换为内部格式
+                const { convertToInternalFormat } = await import('../utils/espanso-converter');
+                this.config = convertToInternalFormat(yamlData);
+                this.configFilePath = configFiles[0].path;
+              }
+            }
+          } else {
+            // 如果没有找到任何配置文件，创建一个空的配置
+            this.config = {
+              root: {
+                id: 'root',
+                type: 'group',
+                name: 'Root',
+                createdAt: Date.now(),
+                updatedAt: Date.now(),
+                parentId: 'root',
+                children: []
+              }
+            };
+
+            // 尝试获取Espanso配置目录
+            const configDir = window.preloadApi?.getEspansoConfigDir();
+            if (configDir) {
+              this.configFilePath = `${configDir}/match/base.yml`;
+            }
+          }
+        }
+
+        // 显示通知
+        window.preloadApi?.showNotification('配置加载成功');
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
+        window.preloadApi?.showNotification(`配置加载失败: ${this.error}`);
+      } finally {
         this.loading = false;
       }
     },
 
     // 保存配置文件
-    async saveConfig() {
-      // 这里将在任务1.4后实现
+    async saveConfig(filePath?: string) {
       this.loading = true;
       this.error = null;
 
       try {
-        // 模拟保存成功
-        setTimeout(() => {
-          this.loading = false;
-        }, 500);
+        if (!this.config) {
+          throw new Error('没有配置可保存');
+        }
+
+        // 确定保存路径
+        const savePath = filePath || this.configFilePath;
+        if (!savePath) {
+          // 如果没有指定保存路径，显示保存对话框
+          const result = await window.preloadApi?.showSaveDialog({
+            title: '保存Espanso配置',
+            defaultPath: `${window.preloadApi?.getEspansoConfigDir()}/match/base.yml`,
+            filters: [
+              { name: 'YAML Files', extensions: ['yml', 'yaml'] },
+              { name: 'All Files', extensions: ['*'] }
+            ]
+          });
+
+          if (result && !result.canceled && result.filePath) {
+            this.configFilePath = result.filePath;
+          } else {
+            // 用户取消了保存
+            this.loading = false;
+            return;
+          }
+        }
+
+        // 将内部格式转换为YAML数据
+        const { convertToEspansoFormat } = await import('../utils/espanso-converter');
+        const yamlData = convertToEspansoFormat(this.config);
+
+        // 序列化为YAML字符串
+        const yamlContent = window.preloadApi?.serializeYaml(yamlData);
+        if (yamlContent) {
+          // 写入文件
+          await window.preloadApi?.writeFile(this.configFilePath, yamlContent);
+
+          // 显示通知
+          window.preloadApi?.showNotification('配置保存成功');
+        }
       } catch (error) {
         this.error = error instanceof Error ? error.message : String(error);
+        window.preloadApi?.showNotification(`配置保存失败: ${this.error}`);
+      } finally {
         this.loading = false;
       }
     },
@@ -207,7 +289,7 @@ export const useEspansoStore = defineStore('espanso', {
       if (!this.config) return;
 
       const newRule: EspansoRule = {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         type: 'rule',
         trigger: rule.trigger || '',
         replace: rule.replace || '',
@@ -225,7 +307,7 @@ export const useEspansoStore = defineStore('espanso', {
       if (!this.config) return;
 
       const newGroup: EspansoGroup = {
-        id: crypto.randomUUID(),
+        id: uuidv4(),
         type: 'group',
         name: group.name || 'New Group',
         createdAt: Date.now(),
