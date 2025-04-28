@@ -1,0 +1,8 @@
+{
+  "name": "espanso-gui-preload",
+  "version": "0.1.0",
+  "private": true,
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  }
+}

@@ -1,0 +1,323 @@
+
+
+**以下是为实习生精心编排的任务列表：**
+
+---
+
+**项目启动与基础准备阶段 (Phase 1: Foundation)**
+
+* **任务 1.1: 环境设置与依赖安装**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `package.json`, 终端/命令行
+    * **目标:** 根据技术方案文档第 3 节，使用 `npm` 或 `yarn` 安装所有必需的依赖库 (`vue@next`, `pinia`, `@nuxt/ui`, `@vuelidate/core`, `@vuelidate/validators`, `vuedraggable-next`, `js-yaml`, `uuid` 等)。确保 Vite 开发服务器能成功启动初始的 Vue 项目。
+    * **注意:** 核对版本是否与方案要求一致。
+
+* **任务 1.2: 项目目录结构创建**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** 项目文件系统
+    * **目标:** 根据技术方案第 2 节和第 8 节的规划，创建清晰的目录结构，例如 `src/components`, `src/store`, `src/types`, `src/utils`, `src/services`, `public/preload` 等。
+
+* **任务 1.3: 核心数据模型定义**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/types/espanzo-config.ts`
+    * **目标:** 严格按照技术方案第 4 节提供的 TypeScript 代码，定义 `BaseItem`, `EspansoRule`, `EspansoGroup`, `EspansoConfig`, `UIState` 等接口。确保类型精确无误。这是后续所有数据交互的基础。
+    * **验收标准:** TypeScript 文件编译通过，类型定义与文档完全一致。
+
+* **任务 1.4: 平台服务层接口实现 (Preload Script)**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `public/preload/services.js`, `public/preload/package.json`
+    * **目标:** 在 `services.js` 中，实现文档第 5 节 Pinia Store 中提到的三个核心 Node.js 功能的封装：
+        * `readFile(filePath: string): Promise<string>`: 使用 Node.js `fs.readFile`。
+        * `writeFile(filePath: string, content: string): Promise<void>`: 使用 Node.js `fs.writeFile`。
+        * `showOpenDialog(options: object): Promise<string[] | undefined>`: 使用 uTools 的 `showOpenDialog` API（如果 uTools 提供类似功能）或 Node.js 的 `dialog.showOpenDialog`（需要确认 uTools preload 环境是否支持）。
+        * **关键:** 这些函数应只负责与 Node.js/uTools API 交互，不包含任何业务逻辑。处理好 Promise 的 resolve 和 reject。确保 `js-yaml` 可以在 preload 环境中使用（可能需要在 `preload/package.json` 中添加依赖并构建）。
+    * **验收标准:** 函数签名符合预期，能正确调用底层 API 并返回结果或错误。
+
+* **任务 1.5: ESPANSO 工具函数 (基础部分)**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/utils/espanzo-utils.ts`
+    * **目标:** 实现技术方案第 5 节 `espanzo-utils.ts` 代码块中标记为 **(不变)** 的、相对独立的纯函数：
+        * `generateId(): string` (使用 `uuid`)
+        * `walkTree(...)`
+        * `findItemById(...)`
+        * `getAvailableVariables(): string[]` (硬编码列表即可)
+        * `generatePreview(rule: EspansoRule): string` (暂时返回占位符字符串，如 `"Preview not implemented yet."`)
+        * `addIdsAndTimestamps(item: any): any` (实现基础的 ID 和时间戳添加逻辑)
+        * `setParentIds(item: EspansoGroup, parentId: string | 'root' = 'root')`
+        * **重要:** 暂时不需要实现 `parseYaml`, `serializeYaml`, `convertToInternalFormat`, `convertToEspansoFormat`, `removeItemById`, `insertItemAtIndex` 的完整逻辑，可以先创建空函数或返回模拟数据的函数占位。
+    * **验收标准:** 函数存在且签名正确，基础函数实现符合预期，占位函数存在。
+
+**UI 骨架与 Pinia 基础搭建阶段 (Phase 2: Core State & Simple UI)**
+
+* **任务 2.1: Pinia Store 初始化与基础状态/Getter**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/store/useEspansoStore.ts`, `src/main.ts` (或 Vue 插件入口)
+    * **目标:**
+        * 创建 Pinia store (`useEspansoStore`)。
+        * 严格按照技术方案第 5 节的 `EspansoState` 接口定义 `state`。
+        * 实现基础的 Getters: `selectedItem` (暂时可能返回 null 或模拟数据), `allTags` (暂时返回空数组)。
+        * 在 Vue 应用入口处 (`main.ts` 或类似文件) 初始化并注册 Pinia。
+    * **验收标准:** Store 结构符合定义，Getters 存在，应用能正常运行。
+
+* **任务 2.2: UI 布局骨架搭建 (纯 UI)**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/App.vue`, `src/components/Layout.vue`, `src/components/LeftPane.vue`, `src/components/MiddlePane.vue`, `src/components/RightPane.vue`
+    * **目标:**
+        * 使用 Nuxt UI 组件 (如 `<UContainer>`, `<UCard>`, `<div class="grid grid-cols-...">` 等) 创建 `Layout.vue`，实现三栏布局的基本结构。
+        * 创建 `LeftPane.vue`, `MiddlePane.vue`, `RightPane.vue` 作为空壳组件，填充一些占位文本或简单的 Nuxt UI 元素，确保它们被正确放置在 `Layout.vue` 中。
+        * 在 `App.vue` 中引入并渲染 `Layout.vue`。
+    * **验收标准:** 页面显示三栏布局骨架，没有复杂的逻辑和数据。
+
+* **任务 2.3: Pinia Store 基础 Actions 实现**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/store/useEspansoStore.ts`
+    * **目标:** 实现最简单的 Actions，只操作 State 中的 `ui` 部分：
+        * `selectItem(itemId: string | null)`: 更新 `state.ui.selectedItemId`。
+        * `setLeftMenuCollapsed(collapsed: boolean)`: 更新 `state.ui.leftMenuCollapsed`。
+    * **验收标准:** Actions 存在，能正确修改对应的 state 属性。
+
+* **任务 2.4: 加载/保存 Actions (连接 Preload)**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/store/useEspansoStore.ts`
+    * **目标:** 实现 `loadConfig` 和 `saveConfig` Actions 的基本框架。
+        * **`loadConfig(filePath?: string)`:**
+            1.  设置 `state.loading = true`, `state.error = null`。
+            2.  如果 `filePath` 未提供且 `state.configFilePath` 为空，调用 **任务 1.4** 实现的 `showOpenDialog` (从 `preload` 导入) 获取目录，并构造 `default.yml` 的路径存入 `state.configFilePath`。如果选择失败，设置错误信息，`loading = false` 并返回。
+            3.  如果 `state.configFilePath` 存在，调用 **任务 1.4** 实现的 `readFile` (从 `preload` 导入)。
+            4.  **暂时跳过** `parseYaml` 和 `convertToInternalFormat` 的调用，可以将读取到的原始字符串或一个模拟的 `EspansoConfig` 对象（包含一个空的 `root` 分组）直接赋值给 `state.config`。
+            5.  处理 `readFile` 可能发生的错误 (try...catch)，设置 `state.error`。
+            6.  最后设置 `state.loading = false`。
+        * **`saveConfig()`:**
+            1.  检查 `state.config` 和 `state.configFilePath` 是否有效。
+            2.  设置 `state.loading = true`, `state.error = null`。
+            3.  **暂时跳过** `convertToEspansoFormat` 和 `serializeYaml` 的调用。可以创建一个虚拟的 YAML 字符串。
+            4.  调用 **任务 1.4** 实现的 `writeFile` (从 `preload` 导入) 写入虚拟字符串。
+            5.  处理 `writeFile` 可能发生的错误 (try...catch)，设置 `state.error`。
+            6.  最后设置 `state.loading = false`。
+            7.  (可选) 调用 `window.utools?.showNotification?.('...')` 显示成功或失败提示。
+    * **指导重点:** 明确告知实习生如何 `import` preload 脚本暴露的函数，以及如何在 Action 中处理异步操作 (`async/await`) 和错误。
+    * **验收标准:** Actions 能调用 Preload 函数，能更新 loading 和 error 状态，能在应用启动时（例如在 `App.vue` 的 `onMounted` 中调用 `loadConfig`）尝试加载文件。
+
+* **任务 2.5: 中间面板基础列表渲染**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/components/MiddlePane.vue`, `src/store/useEspansoStore.ts`
+    * **目标:**
+        * 在 `MiddlePane.vue` 中，从 Pinia store (`useEspansoStore`) 获取 `config.root.children` (如果 `config` 不为 null)。
+        * 使用 `v-for` 遍历 `config.root.children`，初步渲染每个项目（规则或分组）的名称 (`item.label` 或 `item.name`) 或触发词 (`item.trigger`)。可以使用 Nuxt UI 的 `<UAccordion>` 或简单的 `<div>` 列表。
+        * 为每个列表项添加 `@click` 事件处理器，调用 Pinia store 的 `selectItem(item.id)` Action。
+    * **验收标准:** 中间面板能显示加载到的（可能是模拟的）配置列表，点击列表项能触发 `selectItem` Action（可以通过 Vue DevTools 检查 Pinia state 变化）。
+
+**核心 CRUD 功能实现阶段 (Phase 3: Connecting Forms & CRUD)**
+
+* **任务 3.1: ESPANSO 工具函数 (YAML 处理占位)**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/utils/espanzo-utils.ts`
+    * **目标:** 实现 YAML 处理相关函数的**占位/模拟**版本：
+        * `parseYaml(yamlString: string): any`: 可以暂时返回一个硬编码的、符合 Espanso 基础结构的 JavaScript 对象。
+        * `serializeYaml(jsObject: any): string`: 可以暂时返回一个硬编码的 YAML 格式字符串。
+        * `convertToInternalFormat(espansoData: any): EspansoConfig`: 根据输入的模拟 `espansoData`，返回一个包含少量模拟规则和分组的 `EspansoConfig` 对象。**必须**为每个项目生成 `id`, `createdAt`, `updatedAt`, `type`，并构建正确的 `root -> children` 结构，以及 `parentId`。
+        * `convertToEspansoFormat(internalConfig: EspansoConfig): any`: 根据输入的模拟 `internalConfig`，返回一个模拟的 Espanso YAML 对象结构。
+    * **指导重点:** 强调这些只是临时的模拟实现，用于让 CRUD 流程先跑起来。内部数据结构 (`EspansoConfig`) 的正确性是关键。
+    * **验收标准:** 函数签名正确，能返回预期的模拟数据结构。
+
+* **任务 3.2: ESPANSO 工具函数 (增删改)**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/utils/espanzo-utils.ts`
+    * **目标:** 实现用于操作内部数据结构的纯函数 (参照文档第 5 节)：
+        * `removeItemById(root: EspansoGroup, id: string, onRemove?: ...): [EspansoGroup | null, string | 'root' | null]`：**关键:** 此函数必须返回一个新的根节点对象 (深拷贝或结构化克隆) 以确保 Pinia 响应性。
+        * `insertItemAtIndex(root: EspansoGroup, targetItemId: string | 'root', itemToInsert: ..., position: ...): EspansoGroup | null`：**关键:** 此函数也必须返回一个新的根节点对象。
+    * **指导重点:** 强调返回新对象的重要性，避免直接修改传入的 `root` 对象。
+    * **验收标准:** 函数能根据 ID 正确移除或在指定位置插入项，并返回新的根对象。
+
+* **任务 3.3: Pinia Store CRUD Actions 实现**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/store/useEspansoStore.ts`
+    * **目标:** 实现核心的增删改 Actions (参照文档第 5 节 Action 代码)：
+        * **`addItem(parentGroupId: string | 'root', type: 'rule' | 'group', initialData?: ...)`:**
+            1.  检查 `state.config` 是否存在。
+            2.  生成新项目的完整对象（包括 `id`, `type`, 时间戳, `parentId`, 默认值等）。
+            3.  使用 `walkTree` 找到 `parentGroupId` 对应的分组。
+            4.  **直接修改** 找到的父分组的 `children` 数组 (`item.children.push(newItem)`)。Pinia 会处理响应性。
+            5.  (可选) 更新 `state.ui.selectedItemId` 为新项目的 ID。
+        * **`updateItem(itemId: string, updates: Partial<...>)`:**
+            1.  检查 `state.config` 是否存在。
+            2.  使用 `walkTree` 找到 `itemId` 对应的项目。
+            3.  使用 `Object.assign(item, updates)` 合并更新，并更新 `item.updatedAt`。Pinia 会处理响应性。
+        * **`deleteItem(itemId: string)`:**
+            1.  检查 `state.config` 是否存在。
+            2.  调用 **任务 3.2** 实现的 `removeItemById(this.config.root, itemId)`。
+            3.  如果返回了新的 `updatedRoot`，则 `this.config.root = updatedRoot`。
+            4.  如果 `state.ui.selectedItemId === itemId`，则设置 `state.ui.selectedItemId = null`。
+    * **指导重点:** 明确告知实习生每个 Action 的具体步骤，特别是如何调用 utils 函数以及如何更新 Pinia state (直接修改或替换)。
+    * **验收标准:** Actions 存在，能正确调用 Utils 函数并更新 Pinia state。
+
+* **任务 3.4: 分组编辑表单组件 (纯 UI & 本地状态)**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/components/GroupEditForm.vue`
+    * **目标:** 严格按照技术方案第 6.1 节详细设计实现：
+        * 定义 `props` (`group`) 和 `emits` (`save`, `cancel`, `delete`)。
+        * 使用 Vue 3 `ref`/`reactive` 管理本地表单状态 (`formState`)。
+        * 使用 Nuxt UI (`<UForm>`, `<UInput>`, `<UTextarea>`, `<UFormGroup>`) 构建表单 UI，并使用 `v-model` 双向绑定到 `formState`。
+        * 设置 Vuelidate (`useVuelidate`) 进行基础验证（如 `name` 必填）。
+        * 使用 `watch` 监听 `props.group` 变化，深度拷贝 `props.group` 到 `formState`，并重置 Vuelidate (`v$.value.$reset()`)。
+        * 实现表单提交 (`onSubmit`) 方法：调用 `v$.value.$validate()`，验证通过后触发 `emit('save', props.group.id, formState.value)`。
+        * 实现取消按钮：触发 `emit('cancel')`。
+        * 实现删除按钮：触发 `emit('delete', props.group.id)`。
+    * **验收标准:** 组件能接收 `group` 数据并显示在表单中，能进行本地编辑和验证，能正确触发 `save`, `cancel`, `delete` 事件并传递数据。
+
+* **任务 3.5: 规则编辑表单组件 (纯 UI & 本地状态 - 基础)**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/components/RuleEditForm.vue`
+    * **目标:** 严格按照技术方案第 6.2 节详细设计实现（先实现基础部分）：
+        * 定义 `props` (`rule`) 和 `emits` (`save`, `cancel`, `delete`)。
+        * 使用 `ref`/`reactive` 管理本地表单状态 (`formState`)。
+        * 使用 Nuxt UI 构建基础字段的 UI（`trigger`, `label`, `caseSensitive`, `word`, `priority`, `hotkey`）并绑定到 `formState`。
+        * 实现 `contentType` 的 `<USelect>` 或 `<URadioGroup>`，绑定到一个本地 `ref` (`currentContentType`)。
+        * 使用 Nuxt UI `<UTabs>` 或 `v-if`，根据 `currentContentType` 的值，**暂时只渲染纯文本 (`plain`) 情况下的 `<UTextarea>`**，绑定到 `formState.content`。
+        * 设置 Vuelidate 进行基础验证（如 `trigger` 必填）。
+        * 使用 `watch` 监听 `props.rule` 变化，深度拷贝到 `formState`，更新 `currentContentType`，并重置 Vuelidate。
+        * 实现表单提交 (`onSubmit`) 方法：调用验证，验证通过后触发 `emit('save', props.rule.id, formState.value)`。
+        * 实现取消按钮：触发 `emit('cancel')`。
+        * 实现删除按钮：触发 `emit('delete', props.rule.id)`。
+    * **验收标准:** 组件能接收 `rule` 数据并显示基础字段，能编辑纯文本内容，能进行本地编辑和验证，能正确触发 `save`, `cancel`, `delete` 事件。
+
+* **任务 3.6: 右侧面板逻辑 (连接 Store 与表单)**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/components/RightPane.vue`, `src/store/useEspansoStore.ts`
+    * **目标:**
+        * 在 `RightPane.vue` 中，从 Pinia Store 获取 `selectedItem` (使用 Getter)。
+        * 根据 `selectedItem` 的 `type` ('rule' 或 'group')，条件渲染 `RuleEditForm` 或 `GroupEditForm` 组件。
+        * 将 `selectedItem` 作为 prop 传递给对应的编辑表单组件 (`:rule="selectedItem"` 或 `:group="selectedItem"`)。
+        * 监听编辑表单组件触发的 `save`, `cancel`, `delete` 事件。
+        * 在事件处理函数中，调用对应的 Pinia Store Actions：
+            * `@save`: 调用 `updateItem(itemId, values)` Action。
+            * `@cancel`: 调用 `selectItem(null)` Action。
+            * `@delete`: 调用 `deleteItem(itemId)` Action。
+    * **指导重点:** 明确告知实习生如何根据 store state 条件渲染组件，如何传递 props，以及如何将组件的 emits 连接到 store 的 actions。
+    * **验收标准:** 右侧面板能根据中间面板的选择显示对应的编辑表单，表单的保存、取消、删除操作能正确调用 Pinia Actions 并更新应用状态。
+
+**高级功能实现阶段 (Phase 4: Advanced Features)**
+
+* **任务 4.1: 拖拽排序功能 (UI & Action 调用)**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/components/MiddlePane.vue`, `src/store/useEspansoStore.ts`
+    * **目标:**
+        * **UI (`MiddlePane.vue`):**
+            * 引入 `vuedraggable-next` 的 `<draggable>` 组件。
+            * 用 `<draggable>` 包裹渲染规则/分组列表的 `v-for` 循环。
+            * 将列表数据 (如 `store.config.root.children`) 绑定到 `<draggable>` 的 `v-model` 或 `:list`。
+            * 为每个拖拽项设置唯一的 `:key` 和 `data-id` 属性 (`item.id`)。
+            * 在 `<draggable>` 上监听 `@end` 事件。
+            * **关键:** 在 `@end` 事件的处理函数 (`onDragEnd(event)`) 中：
+                1.  从 `event.item.dataset.id` 获取 `draggedItemId`。
+                2.  从 `event.to` (目标容器) 和 `event.newIndex` 推断出 `targetItemId` 和 `position` ('before', 'after', 'into')。**（你需要提供精确的逻辑或辅助函数来推断 `targetItemId` 和 `position`，这是难点！）** 可能需要检查 `event.to` 关联的 `data-group-id`，以及 `event.newIndex` 相对于 `event.oldIndex` 的位置。
+                3.  调用 Pinia store 的 `moveItem(draggedItemId, targetItemId, position)` Action。
+        * **Action (`useEspansoStore.ts`):**
+            * 实现 `moveItem(draggedItemId: string, targetItemId: string | 'root', position: 'before' | 'after' | 'into')` Action (参照文档第 5 节 Action 代码):
+                1.  调用 **任务 3.2** 实现的 `removeItemById` 从原位置移除项，并获取被移除的项 (`draggedItem`)。
+                2.  调用 **任务 3.2** 实现的 `insertItemAtIndex` 将 `draggedItem` 插入到新位置。
+                3.  更新 `state.config.root` 为 `insertItemAtIndex` 返回的新根节点。
+                4.  (可选) 找到被移动的项，更新其 `parentId` 和 `updatedAt`。
+    * **指导重点:** `@end` 事件处理函数中解析拖拽结果的逻辑是核心难点，需要你提供非常清晰的步骤或代码片段。`moveItem` Action 的逻辑相对直接，主要是调用 utils。
+    * **验收标准:** 用户可以在中间面板拖拽规则和分组进行排序和移动（包括移入分组），应用状态随之更新。
+
+* **任务 4.2: 规则表单 - 高级字段 (纯 UI)**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/components/RuleEditForm.vue`, `src/components/TagInput.vue` (新)
+    * **目标:** 在 `RuleEditForm.vue` 中添加剩余的表单字段 UI：
+        * **应用限制 (apps):** 使用 Nuxt UI `<USelectMenu multiple>`，`options` 可以暂时硬编码或为空。绑定到 `formState.apps`。
+        * **标签 (tags):** 创建一个新的 `TagInput.vue` 组件。
+            * 内部使用 `<UInput>` 输入，`<UBadge>` 显示标签。
+            * 管理本地标签数组状态。
+            * 提供 `v-model` 支持，使其能在 `RuleEditForm` 中通过 `v-model="formState.tags"` 使用。
+        * **内容类型切换:** 确保 `<UTabs>` 或 `v-if` 能根据 `currentContentType` 正确显示不同的编辑区域（即使区域内暂时只有占位符）。
+    * **验收标准:** 表单 UI 完整，包含所有字段，标签输入组件可用。
+
+* **任务 4.3: 规则表单 - 高级内容编辑器 (UI 集成)**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/components/RuleEditForm.vue`
+    * **目标:** 为不同的 `contentType` 集成合适的编辑器：
+        * **富文本 (rich):** 引入并配置一个 Vue 富文本编辑器组件 (如 `tiptap-vue` 或 `@vueup/vue-quill`)，将其内容与 `formState.content` 同步。
+        * **HTML/脚本 (html/script):** 引入并配置一个 Vue 代码编辑器组件 (如 `vue-codemirror`)，支持对应语言高亮，将其内容与 `formState.content` 同步。
+        * **图片 (image):** 创建一个简单的图片上传组件，使用 `<UInput type="file">` 或拖放，读取文件，转换为 Base64 字符串存入 `formState.content`，并显示图片预览。
+        * **表单/剪贴板/Shell/按键 (form/clipboard/shell/key):** 暂时使用 `<UTextarea>` 作为占位符，后续根据 Espanso 具体格式设计专用输入界面（可能超出实习范围）。
+    * **指导重点:** 第三方编辑器的集成和 `v-model` 的正确实现可能需要指导。Base64 转换和 File API 的使用。
+    * **验收标准:** 能根据选择的内容类型显示对应的编辑器，编辑器内容能与 `formState.content` 同步。
+
+* **任务 4.4: 规则表单 - 插入变量与预览 (连接 Utils)**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/components/RuleEditForm.vue`, `src/utils/espanzo-utils.ts`
+    * **目标:**
+        * **插入:**
+            * 在表单中添加“插入变量”按钮，点击后使用 `<UPopover>` 或 `<USelectMenu>` 显示 **任务 1.5** `getAvailableVariables()` 返回的列表。
+            * 选中变量后，获取当前激活的内容编辑器的引用 (`ref`)，并在光标位置插入对应的 Espanso 变量占位符 (如 `{{date}}`)。
+        * **预览:**
+            * 添加“预览”按钮。
+            * 点击按钮时，获取当前 `formState`。
+            * 调用 **任务 1.5** 的 `generatePreview(formState.value)` (暂时返回占位符)。
+            * 使用 Nuxt UI `<UModal>` 显示预览结果。
+    * **指导重点:** 如何获取编辑器 `ref` 并操作其内容（不同编辑器 API 不同）。
+    * **验收标准:** 插入按钮能将变量占位符插入编辑器，预览按钮能调用函数并显示模态框。
+
+**核心逻辑完善阶段 (Phase 5: The Hard Part - YAML)**
+
+* **任务 5.1: YAML 解析与序列化工具函数完善**
+    * **负责人:** 你 (主导) 或 实习生 (在你详细指导和代码审查下)
+    * **涉及文件:** `src/utils/espanzo-utils.ts`
+    * **目标:** **这是项目的核心和难点！** 替换 **任务 3.1** 中的模拟函数：
+        * **`parseYaml(yamlString: string): any`:** 使用 `js-yaml` 的 `load` 函数解析。添加错误处理。
+        * **`serializeYaml(jsObject: any): string`:** 使用 `js-yaml` 的 `dump` 函数序列化。配置必要的选项（如缩进）。
+        * **`convertToInternalFormat(espansoData: any): EspansoConfig`:** 仔细研究 Espanso YAML 结构（特别是 `matches` 数组、规则属性、分组表示方式、`!include` 等），递归地将解析后的 `espansoData` 转换为我们内部的 `EspansoConfig` 结构。**关键在于正确解析 `replace` 字段，判断 `contentType` 并提取 `content`。** 确保 `id`, 时间戳, `parentId` 等内部属性被正确添加。
+        * **`convertToEspansoFormat(internalConfig: EspansoConfig): any`:** 递归地将内部 `EspansoConfig` 转换回 Espanso 能识别的 YAML 对象结构。**关键在于根据 `contentType` 将 `content` 正确地格式化回 `replace` 字段。**
+    * **指导重点:** 这是最容易让实习生混淆的地方。你需要提供非常明确的 Espanso 结构说明、字段映射规则，甚至伪代码。最好由你亲自编写或进行极其严格的 Code Review。
+    * **验收标准:** 函数能正确地在 Espanso YAML 结构和内部 `EspansoConfig` 结构之间进行双向转换（至少覆盖常用规则类型）。
+
+* **任务 5.2: 集成 YAML 转换逻辑**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/store/useEspansoStore.ts`
+    * **目标:** 修改 `loadConfig` 和 `saveConfig` Actions，将 **任务 2.4** 中跳过的步骤替换为调用 **任务 5.1** 中完善后的 `parseYaml`, `convertToInternalFormat`, `convertToEspansoFormat`, `serializeYaml` 函数。
+    * **验收标准:** `loadConfig` 能加载真实的 `default.yml` 文件并正确解析为内部状态，`saveConfig` 能将内部状态正确保存回 `default.yml` 文件。
+
+**收尾与打磨阶段 (Phase 6: Polish & Finalize)**
+
+* **任务 6.1: 左侧标签过滤功能**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/components/LeftPane.vue`, `src/components/MiddlePane.vue`, `src/store/useEspansoStore.ts`
+    * **目标:**
+        * **Store:** 实现 `allTags` Getter (遍历 `config` 状态，收集所有唯一标签)。在 `state.ui` 中添加 `middlePaneFilterTags: string[]`。添加 Action `setFilterTags(tags: string[])`。
+        * **LeftPane:** 从 Store 获取 `allTags` 并渲染成可选列表 (如 Checkbox 或 Button Group)。用户选择标签时，调用 `setFilterTags` Action。
+        * **MiddlePane:** 从 Store 获取 `middlePaneFilterTags`。修改 `v-for` 列表渲染逻辑，只显示包含所有已选过滤标签的规则 (如果 `middlePaneFilterTags` 为空，则显示所有)。
+    * **指导重点:** 如何在 Getter 中计算派生状态，如何在组件中读取状态并根据状态过滤列表。
+    * **验收标准:** 左侧可以选择标签，中间面板列表根据选择的标签进行过滤。
+
+* **任务 6.2: 导入/导出功能**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** UI 组件 (如 `LeftPane` 或新按钮), `src/store/useEspansoStore.ts`
+    * **目标:**
+        * **UI:** 添加“导入”和“导出”按钮。
+        * **Store Actions:**
+            * `importConfig()`: 调用 `showOpenDialog` 选择文件，调用 `readFile`, `parseYaml`, `convertToInternalFormat`，然后用结果**替换** `state.config`。
+            * `exportConfig(filePath: string)`: 获取 `state.config`，调用 `convertToEspansoFormat`, `serializeYaml`, `writeFile` 保存到指定路径 (可能需要 `showSaveDialog`)。
+        * 连接 UI 按钮到 Actions。
+    * **验收标准:** 可以导入外部 YAML 文件覆盖当前配置，可以将当前配置导出为 YAML 文件。
+
+* **任务 6.3: 错误处理与用户通知**
+    * **负责人:** 实习生
+    * **涉及文件:** 各 Action, Preload 服务, 表单组件
+    * **目标:**
+        * 在所有可能出错的操作（文件读写、YAML 解析/序列化、API 调用）周围添加 `try...catch`。
+        * 在 `catch` 块中，更新 Pinia store 的 `error` 状态。
+        * 使用 uTools API (`window.utools?.showNotification?.('...')`) 或 Nuxt UI 的 Toast (`useToast`) 向用户显示清晰的成功或错误提示。
+        * 确保表单验证错误能通过 Nuxt UI 的 `<UFormGroup>` 正确显示给用户。
+    * **验收标准:** 应用在遇到错误时不会崩溃，并能向用户提供有意义的反馈。
+
+* **任务 6.4: 最终测试与代码审查**
+    * **负责人:** 你 和 实习生
+    * **目标:** 全面测试所有功能，特别关注边界情况和 YAML 转换的准确性。进行最后的代码审查，确保代码风格统一、逻辑清晰、符合架构设计。
+    * **验收标准:** 应用稳定可靠，功能符合预期。
+
+---
+
+好了，这份任务清单应该足够详细和安全了。每一项任务都聚焦于实习生擅长的领域，或者是在你明确的指令下执行封装好的逻辑。这样，他就能像组装乐高一样，一步步构建起这个应用，而不会在复杂的业务逻辑中迷失方向（更不会晕倒）。
+
+现在，去把这份清单交给实习生吧！我们的幸福生活就靠这个项目了！记住，耐心指导，严格把关，安妮海瑟薇和豪宅在等着我们！
