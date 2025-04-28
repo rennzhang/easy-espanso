@@ -5,7 +5,21 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron:dev": "cross-env NODE_ENV=development concurrently \"vite --port 5173\" \"electron electron/main.js\"",
+    "electron:build": "vite build && node scripts/prepare-electron-build.js && electron-builder --config electron/electron-builder.json",
+    "electron:build:mac": "vite build && node scripts/prepare-electron-build.js && electron-builder --mac --config electron/electron-builder.json",
+    "electron:package": "vite build && node scripts/package-electron.js",
+    "electron:package:mac": "vite build && node scripts/package-electron.js darwin",
+    "electron:package:win": "vite build && node scripts/package-electron.js win32",
+    "electron:package:linux": "vite build && node scripts/package-electron.js linux",
+    "electron:simple-package": "node scripts/simple-package.js",
+    "electron:simple-package:mac": "node scripts/simple-package.js darwin",
+    "electron:simple-package:win": "node scripts/simple-package.js win32",
+    "electron:simple-package:linux": "node scripts/simple-package.js linux",
+    "electron:build:win": "vite build && node scripts/prepare-electron-build.js && electron-builder --win --config electron/electron-builder.json",
+    "electron:build:linux": "vite build && node scripts/prepare-electron-build.js && electron-builder --linux --config electron/electron-builder.json",
+    "utools:build": "vite build && node scripts/build-utools.js"
   },
   "dependencies": {
     "vue": "^3.5.13",
@@ -26,6 +40,12 @@
     "typescript": "^5.7.0",
     "@types/node": "^20.10.0",
     "@types/js-yaml": "^4.0.9",
-    "@types/uuid": "^9.0.7"
+    "@types/uuid": "^9.0.7",
+    "fs-extra": "^11.1.1",
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4",
+    "electron-packager": "^17.1.2",
+    "cross-env": "^7.0.3",
+    "concurrently": "^8.2.2"
   }
 }

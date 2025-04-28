@@ -1,0 +1,24 @@
+{
+  "appId": "com.espanso.gui",
+  "productName": "Espanso GUI",
+  "electronVersion": "28.0.0",
+  "directories": {
+    "output": "dist_electron"
+  },
+  "files": [
+    "main.js",
+    "preload.js",
+    "../dist/**/*"
+  ],
+  "mac": {
+    "category": "public.app-category.utilities",
+    "target": ["dmg", "zip"]
+  },
+  "win": {
+    "target": ["nsis", "portable"]
+  },
+  "linux": {
+    "target": ["AppImage", "deb", "rpm"],
+    "category": "Utility"
+  }
+}

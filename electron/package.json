@@ -1,0 +1,45 @@
+{
+  "name": "espanso-gui-electron",
+  "version": "0.1.0",
+  "description": "Espanso GUI - Electron App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "cross-env NODE_ENV=development electron .",
+    "build": "electron-builder",
+    "build:mac": "electron-builder --mac",
+    "build:win": "electron-builder --win",
+    "build:linux": "electron-builder --linux"
+  },
+  "dependencies": {
+    "js-yaml": "^4.1.0"
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.6.4",
+    "cross-env": "^7.0.3"
+  },
+  "build": {
+    "appId": "com.espanso.gui",
+    "productName": "Espanso GUI",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "../dist/**/*"
+    ],
+    "mac": {
+      "category": "public.app-category.utilities",
+      "target": ["dmg", "zip"]
+    },
+    "win": {
+      "target": ["nsis", "portable"]
+    },
+    "linux": {
+      "target": ["AppImage", "deb", "rpm"],
+      "category": "Utility"
+    }
+  }
+}
