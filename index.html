@@ -5,9 +5,105 @@
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Espanso GUI</title>
+    <style>
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f5f5f5;
+        color: #333;
+      }
+      .container {
+        text-align: center;
+        padding: 2rem;
+        background-color: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        max-width: 80%;
+      }
+      h1 {
+        margin-top: 0;
+        color: #0066cc;
+      }
+      .spinner {
+        border: 4px solid rgba(0, 0, 0, 0.1);
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        border-left-color: #0066cc;
+        animation: spin 1s linear infinite;
+        margin: 20px auto;
+      }
+      @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+      }
+      .redirect-message {
+        margin-top: 1rem;
+        color: #666;
+      }
+    </style>
+    <script>
+      // 添加延迟，确保页面加载完成
+      window.onload = function() {
+        // 尝试多个可能的入口点
+        const possibleEntryPoints = [
+          'app/index.html',
+          './app/index.html',
+          './assets/index.html',
+          './dist/index.html'
+        ];
+        
+        function tryLoad(index) {
+          if (index >= possibleEntryPoints.length) {
+            // 如果所有尝试都失败，显示错误消息
+            document.getElementById('loading-message').textContent = '无法加载应用。请重新启动或重新安装应用程序。';
+            document.getElementById('redirect-message').textContent = '出现了一些问题...';
+            return;
+          }
+          
+          const iframe = document.createElement('iframe');
+          iframe.style.display = 'none';
+          document.body.appendChild(iframe);
+          
+          try {
+            iframe.src = possibleEntryPoints[index];
+            
+            iframe.onload = function() {
+              // 成功加载，跳转到入口点
+              window.location.href = possibleEntryPoints[index];
+            };
+            
+            iframe.onerror = function() {
+              // 尝试下一个入口点
+              document.body.removeChild(iframe);
+              tryLoad(index + 1);
+            };
+          } catch (e) {
+            // 出错了，尝试下一个入口点
+            document.body.removeChild(iframe);
+            tryLoad(index + 1);
+          }
+        }
+        
+        // 开始尝试加载第一个入口点
+        setTimeout(function() {
+          tryLoad(0);
+        }, 500);
+      };
+    </script>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <div class="container">
+      <h1>Espanso GUI</h1>
+      <div class="spinner"></div>
+      <p id="loading-message">正在加载应用程序...</p>
+      <p id="redirect-message" class="redirect-message">即将跳转至主界面</p>
+    </div>
   </body>
 </html>

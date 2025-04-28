@@ -18,12 +18,24 @@ let mainWindow;
 function createWindow() {
   // 输出关键路径信息
   const preloadPath = path.join(__dirname, 'preload.js');
-  const indexPath = path.join(__dirname, './app/index.html');
+  // 修改 index.html 的路径，不再使用相对路径
+  const indexPath = path.join(app.getAppPath(), 'index.html');
   
   console.log('预加载脚本路径:', preloadPath);
   console.log('预加载脚本存在:', fs.existsSync(preloadPath));
   console.log('主页面路径:', indexPath);
   console.log('主页面存在:', fs.existsSync(indexPath));
+  
+  // 列出应用目录的内容，以便调试
+  try {
+    console.log('应用目录内容:');
+    const appDirContents = fs.readdirSync(app.getAppPath());
+    appDirContents.forEach(item => {
+      console.log(`- ${item}`);
+    });
+  } catch (err) {
+    console.error('无法列出应用目录内容:', err);
+  }
   
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
@@ -43,7 +55,33 @@ function createWindow() {
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('页面加载失败:', errorCode, errorDescription);
     
-    // 显示错误页面
+    // 尝试加载备用路径
+    const alternativePaths = [
+      path.join(__dirname, 'index.html'),
+      path.join(__dirname, '../index.html'),
+      path.join(app.getAppPath(), '../index.html'),
+      path.join(app.getAppPath(), 'app/index.html')
+    ];
+    
+    console.log('尝试备用路径:');
+    for (const altPath of alternativePaths) {
+      console.log(`- ${altPath} (存在: ${fs.existsSync(altPath)})`);
+    }
+    
+    // 尝试每个备用路径
+    for (const altPath of alternativePaths) {
+      if (fs.existsSync(altPath)) {
+        console.log(`尝试加载备用路径: ${altPath}`);
+        try {
+          mainWindow.loadFile(altPath);
+          return; // 如果成功，不再继续
+        } catch (err) {
+          console.error(`加载备用路径失败: ${altPath}`, err);
+        }
+      }
+    }
+    
+    // 如果所有备用路径都失败，显示错误页面
     mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,
       <html>
         <head>
@@ -105,6 +143,29 @@ function createWindow() {
         console.log('HTML文件内容预览:', fileContent);
       } catch (err) {
         console.error('无法读取HTML文件:', err);
+        // 尝试备用路径
+        const alternativePaths = [
+          path.join(__dirname, 'index.html'),
+          path.join(__dirname, '../index.html'),
+          path.join(app.getAppPath(), '../index.html'),
+          path.join(app.getAppPath(), 'app/index.html')
+        ];
+        
+        for (const altPath of alternativePaths) {
+          if (fs.existsSync(altPath)) {
+            console.log(`尝试读取备用文件: ${altPath}`);
+            try {
+              fileContent = fs.readFileSync(altPath, 'utf8').slice(0, 100) + '...';
+              console.log('备用HTML文件内容预览:', fileContent);
+              console.log('使用备用路径:', altPath);
+              mainWindow.loadFile(altPath);
+              mainWindow.webContents.openDevTools();
+              return; // 如果成功，不再继续
+            } catch (altErr) {
+              console.error(`读取备用文件失败: ${altPath}`, altErr);
+            }
+          }
+        }
       }
       
       mainWindow.loadFile(indexPath);
@@ -112,7 +173,29 @@ function createWindow() {
       mainWindow.webContents.openDevTools();
     } catch (err) {
       console.error('加载HTML文件时出错:', err);
-      // 如果加载失败，显示错误信息
+      
+      // 尝试备用路径
+      const alternativePaths = [
+        path.join(__dirname, 'index.html'),
+        path.join(__dirname, '../index.html'),
+        path.join(app.getAppPath(), '../index.html'),
+        path.join(app.getAppPath(), 'app/index.html')
+      ];
+      
+      for (const altPath of alternativePaths) {
+        if (fs.existsSync(altPath)) {
+          console.log(`尝试加载备用路径: ${altPath}`);
+          try {
+            mainWindow.loadFile(altPath);
+            mainWindow.webContents.openDevTools();
+            return; // 如果成功，不再继续
+          } catch (altErr) {
+            console.error(`加载备用路径失败: ${altPath}`, altErr);
+          }
+        }
+      }
+      
+      // 如果所有备用路径都失败，显示错误信息
       mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,
         <html>
           <head>
@@ -130,6 +213,11 @@ function createWindow() {
               <p>应用程序无法加载主页面。</p>
               <h2>错误详情：</h2>
               <pre>${err.message}</pre>
+              <h2>尝试过的路径：</h2>
+              <ul>
+                <li>${indexPath} (主路径)</li>
+                ${alternativePaths.map(p => `<li>${p} (备用路径, 存在: ${fs.existsSync(p)})</li>`).join('')}
+              </ul>
               <p><button onclick="window.reload()">重新加载</button></p>
             </div>
           </body>
