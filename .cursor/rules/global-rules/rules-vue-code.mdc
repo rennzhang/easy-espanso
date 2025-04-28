@@ -1,0 +1,76 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+---
+description: "Vue3 项目规范和开发指南"
+globs: ["**/*.{vue,ts,scss,js,jsx,tsx}"]
+alwaysApply: true
+---
+
+# 项目规范
+
+## 技术栈规范
+- 前端框架：Vue 3 (v3.5.13, 组合式API)
+- UI框架：Element Plus (v2.7.4)
+- 状态管理：Pinia (v2.1.7)
+- 样式：SASS (v1.75.0)
+- 构建工具：Vite (v5.2.6)
+- TypeScript (v5.7.x)
+- Node.js (≥v18.0.0)
+
+## 代码规范
+
+### 组件开发规范
+- 使用 PascalCase 命名Vue组件文件（如：`TemplateBase.vue`）
+- 功能相似的组件放在同一目录下
+- 组件必须使用 `<script setup>` 语法
+- Props 定义必须指定类型和默认值
+- 禁止直接修改 props，使用 emit 通知父组件更新
+
+### 样式编写规范
+- 使用 kebab-case 命名 CSS 类（如：`todo-list`）
+- 必须遵循 BEM 命名规范：
+  - 块：`block`
+  - 元素：`block__element`
+  - 修饰符：`block--modifier`
+- 组件样式必须使用 `scoped` 属性
+- 禁止使用行内样式
+- 禁止直接使用 Element Plus 的类名作为选择器（如：`.el-input`）
+
+### 状态管理规范
+- 全局状态必须使用 Pinia store 管理
+- 使用 computed 属性获取派生状态，避免方法调用
+- Store 中的 action 必须使用 async/await 处理异步
+- 组件中优先使用 props/emit，避免滥用全局状态
+
+### TypeScript 规范
+- 必须显式声明类型
+- 禁止使用 any 类型
+- 接口和类型定义使用 PascalCase
+- 优先使用 interface 而非 type
+
+## 项目结构规范
+```
+src/
+├── api/ # API请求
+├── assets/ # 静态资源
+├── components/ # 组件
+├── router/ # 路由
+├── stores/ # Pinia存储
+├── utils/ # 工具函数
+└── views/ # 页面
+```
+
+## 禁止事项
+- 禁止使用 jQuery 或直接操作 DOM
+- 禁止在模板中使用复杂表达式
+- 禁止直接修改 props 中的对象属性
+- 禁止在组件中使用全局变量
+- 禁止使用特定框架的类名作为选择器
+
+## 特殊注意事项
+1. 保留 CSS 中原有的 !important 关键字
+2. 保留原有的代码注释和 console.log
+3. 请勿将文案和注释中的全角引号（“”）改为半角引号（""）
