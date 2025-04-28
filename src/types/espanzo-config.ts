@@ -7,46 +7,142 @@ export interface BaseItem {
   updatedAt: number; // 最后修改时间戳，用于排序和优先级判断
   // 内部使用属性，方便UI层展示，不一定直接映射到Espanso配置
   isExpanded?: boolean; // 用于分组折叠状态
+  tags?: string[]; // 标签数组，用于分类和过滤
+}
+
+// 定义变量类型
+export type VariableType = 'date' | 'choice' | 'random' | 'clipboard' | 'echo' | 'script' | 'shell' | 'form' | 'match';
+
+// 定义变量参数
+export interface VariableParams {
+  // 日期变量参数
+  format?: string;
+  offset?: number;
+  locale?: string;
+
+  // 选择变量参数
+  values?: Array<string | { label: string; id: string }>;
+
+  // 随机变量参数
+  choices?: string[];
+
+  // Echo变量参数
+  echo?: string;
+
+  // 脚本变量参数
+  args?: string[];
+
+  // Shell变量参数
+  cmd?: string;
+  shell?: string;
+  trim?: boolean;
+  debug?: boolean;
+
+  // 表单变量参数
+  fields?: FormField[];
+
+  // Match变量参数
+  trigger?: string;
+}
+
+// 定义变量
+export interface Variable {
+  name: string;
+  type: VariableType;
+  params: VariableParams;
+}
+
+// 定义表单字段
+export interface FormField {
+  name: string;
+  type: 'text' | 'multiline' | 'list' | 'choice';
+  default?: string;
+  label?: string;
+  values?: string[];
 }
 
 // 定义规则的属性
 export interface EspansoRule extends BaseItem {
   type: 'rule';
-  trigger: string; // 触发词，如 ":date"
-  // 在应用内部，我们将Espanso的'replace'字段拆解为contentType和content
-  contentType: 'plain' | 'rich' | 'html' | 'script' | 'image' | 'form' | 'clipboard' | 'shell' | 'key'; // Espanso支持的内容类型
-  content: string | any; // 实际内容，根据contentType可以是字符串、脚本代码、base64图片等，form等复杂类型可能需要更详细的结构
-  caseSensitive?: boolean; // 是否区分大小写
+  // 触发方式，可以是单个触发词或多个触发词
+  trigger?: string;
+  triggers?: string[];
+  // 替换内容，可以是纯文本、Markdown、HTML或图片路径
+  replace?: string;
+  markdown?: string;
+  html?: string;
+  image_path?: string;
+  // 搜索标签，用于在搜索栏中查找
+  search_terms?: string[];
+  // 表单定义
+  form?: FormField[];
+  // 变量定义
+  vars?: Variable[];
+  // 行为控制
   word?: boolean; // 是否整词匹配
-  apps?: string[]; // 生效的应用列表，空数组或undefined表示所有应用
+  left_word?: boolean; // 是否左侧整词匹配
+  right_word?: boolean; // 是否右侧整词匹配
+  propagate_case?: boolean; // 是否传播大小写
+  uppercase_style?: 'capitalize_words' | 'uppercase_first'; // 大写样式
+  force_mode?: 'clipboard' | 'keys'; // 强制使用的输入模式
+  // 应用限制
+  apps?: string[]; // 生效的应用列表
+  exclude_apps?: string[]; // 排除的应用列表
+  // 优先级
   priority?: number; // 规则优先级 (数字越大优先级越高)
-  hotkey?: string; // 快捷键触发 (如果Espanso支持)
-  tags?: string[]; // 标签数组
-  // Espanso还支持其他一些高级属性，如vars, form, key, shell等，需要根据文档补充到content或独立字段中
-  // 例如，如果contentType是'form'，content可能是一个表示表单结构的JSON对象
+  // 内部使用属性，不直接映射到Espanso配置
+  contentType?: 'plain' | 'markdown' | 'html' | 'image' | 'form'; // 内部使用的内容类型
+  content?: string | any; // 内部使用的内容，统一管理不同类型的内容
 }
 
 // 定义分组的属性
 export interface EspansoGroup extends BaseItem {
   type: 'group';
   name: string; // 分组名称，用户可读
-  prefix?: string; // 分组公共前缀，应用于组内所有规则 (如果Espanso支持组级前缀)
-  children: Array<EspansoRule | EspansoGroup>; // 嵌套的规则和分组
+  matches?: Array<EspansoRule>; // 分组中的规则
+  includes?: string[]; // 包含的其他配置文件
   // 内部使用属性，方便UI层展示，不一定直接映射到Espanso配置
+  children: Array<EspansoRule | EspansoGroup>; // 嵌套的规则和分组
   parentId: string | 'root'; // 父分组的ID，'root'表示顶层
+}
+
+// 定义全局变量
+export interface GlobalVariable {
+  name: string;
+  type: VariableType;
+  params: VariableParams;
+}
+
+// 定义Espanso配置选项
+export interface EspansoOptions {
+  toggle_key?: string;
+  backspace_limit?: number;
+  keyboard_layout?: string;
+  enable_passive?: boolean;
+  passive_key?: string;
+  passive_timeout?: number;
+  show_notifications?: boolean;
+  show_icon?: boolean;
+  word_separators?: string[];
+  undo_backspace?: boolean;
+  preserve_clipboard?: boolean;
+  restore_clipboard_delay?: number;
+  backend?: 'Auto' | 'Clipboard' | 'Inject';
+  paste_shortcut?: string;
+  auto_restart?: boolean;
+  [key: string]: any; // 其他可能的选项
 }
 
 // 定义整个ESPANSO配置的结构
 export interface EspansoConfig {
-  // Espanso配置的顶层结构可能是一个包含rules和includes的数组
-  // 在我们的应用内部，我们将其映射为一个虚拟的根分组，方便树状结构管理
-  root: EspansoGroup; // 虚拟的根分组，其children包含顶层所有规则和分组
-  // 其他全局设置，如backend, listen_clipboard等，如果需要管理，也可以添加到这里
-  globalSettings?: {
-      backend?: string;
-      listen_clipboard?: boolean;
-      // ... other global settings
-  };
+  // 虚拟的根分组，其children包含顶层所有规则和分组
+  root: EspansoGroup;
+  // 全局变量
+  global_vars?: GlobalVariable[];
+  // 配置选项
+  options?: EspansoOptions;
+  // 其他可能的顶层属性
+  [key: string]: any;
 }
 
 // 定义UI状态
@@ -54,5 +150,23 @@ export interface UIState {
   leftMenuCollapsed: boolean;
   selectedItemId: string | null;
   middlePaneFilterTags: string[];
+  searchQuery: string;
+  activeSection: 'dashboard' | 'rules' | 'settings';
   // ... 其他UI状态
+}
+
+// 定义Espanso配置文件类型
+export interface EspansoFile {
+  path: string;
+  content: string;
+  type: 'match' | 'config';
+  name: string;
+}
+
+// 定义导入/导出格式
+export interface EspansoExport {
+  matches?: EspansoRule[];
+  global_vars?: GlobalVariable[];
+  options?: EspansoOptions;
+  includes?: string[];
 }
