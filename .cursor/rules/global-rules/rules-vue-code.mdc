@@ -19,7 +19,7 @@ alwaysApply: true
 ## 技术栈规范
 - 前端框架：Vue 3 (v3.5.13, 组合式API)
 - 状态管理：Pinia (v2.1.7)
-- 样式：tailwindcss
+- 样式：tailwindcss nuxtui
 - 构建工具：Vite (v5.2.6)
 - TypeScript (v5.7.x)
 - Node.js (≥v18.0.0)

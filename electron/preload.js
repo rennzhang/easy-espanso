@@ -6,7 +6,7 @@ try {
   fs = require('fs');
   path = require('path');
   os = require('os');
-  
+
   try {
     yaml = require('js-yaml');
     console.log('js-yaml模块加载成功');
@@ -142,11 +142,11 @@ async function showOpenFileDialog(options) {
       ...options,
       properties: ['openFile']
     });
-    
+
     if (result.canceled) {
       return undefined;
     }
-    
+
     return result.filePaths;
   } catch (error) {
     console.error('打开文件对话框失败:', error);
@@ -161,11 +161,11 @@ async function showOpenDirectoryDialog(options) {
       ...options,
       properties: ['openDirectory']
     });
-    
+
     if (result.canceled) {
       return undefined;
     }
-    
+
     return result.filePaths;
   } catch (error) {
     console.error('打开目录对话框失败:', error);
@@ -340,6 +340,9 @@ function showNotification(message) {
 try {
   // 暴露API给渲染进程
   contextBridge.exposeInMainWorld('preloadApi', {
+    // 环境标志
+    isElectron: true,
+
     // 文件操作
     readFile,
     writeFile,
@@ -362,7 +365,7 @@ try {
     // 通知
     showNotification
   });
-  
+
   console.log('预加载脚本成功初始化');
 } catch (error) {
   console.error('暴露API失败:', error);

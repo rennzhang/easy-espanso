@@ -1,33 +1,42 @@
 <template>
-  <form @submit.prevent="onSubmit" class="group-form">
-    <div class="form-group">
-      <label for="name">分组名称</label>
-      <input
-        id="name"
-        v-model="formState.name"
-        type="text"
+  <UForm :state="formState" @submit="onSubmit" class="group-form">
+    <UFormGroup label="分组名称" name="name">
+      <UInput 
+        v-model="formState.name" 
         placeholder="例如: 常用短语"
         required
       />
-    </div>
+      <template #hint>
+        输入分组名称，用于标识和组织规则
+      </template>
+    </UFormGroup>
 
-    <div class="form-group">
-      <label for="prefix">公共前缀</label>
-      <input
-        id="prefix"
-        v-model="formState.prefix"
-        type="text"
+    <UFormGroup label="描述" name="label">
+      <UInput 
+        v-model="formState.label" 
+        placeholder="可选的分组描述"
+      />
+      <template #hint>
+        为分组添加简短描述，方便识别和管理
+      </template>
+    </UFormGroup>
+
+    <UFormGroup label="公共前缀" name="prefix">
+      <UInput 
+        v-model="formState.prefix" 
         placeholder="例如: :common"
       />
-      <small>可选，将作为该分组内所有规则的前缀</small>
-    </div>
+      <template #hint>
+        可选，将作为该分组内所有规则的前缀
+      </template>
+    </UFormGroup>
 
-    <div class="form-actions">
-      <button type="submit" class="btn-primary">保存</button>
-      <button type="button" class="btn-secondary" @click="onCancel">取消</button>
-      <button type="button" class="btn-danger" @click="onDelete">删除</button>
+    <div class="flex gap-2 mt-6">
+      <UButton type="submit" color="primary">保存</UButton>
+      <UButton type="button" color="gray" @click="onCancel">取消</UButton>
+      <UButton type="button" color="red" variant="soft" @click="onDelete" class="ml-auto">删除</UButton>
     </div>
-  </form>
+  </UForm>
 </template>
 
 <script setup lang="ts">
@@ -46,22 +55,44 @@ const emit = defineEmits<{
   delete: [id: string]
 }>();
 
+// 表单状态类型，使其与EspansoGroup兼容
+interface GroupFormState {
+  name: string;
+  label?: string;
+  prefix?: string;
+}
+
 // 表单状态
-const formState = ref<Partial<EspansoGroup>>({});
+const formState = ref<GroupFormState>({
+  name: '',
+  label: '',
+  prefix: ''
+});
 
 // 初始化表单
 onMounted(() => {
   // 深拷贝props.group到formState
-  formState.value = JSON.parse(JSON.stringify(props.group));
+  const groupData = JSON.parse(JSON.stringify(props.group));
+  formState.value = {
+    name: groupData.name || '',
+    label: groupData.label || '',
+    prefix: groupData.prefix || ''
+  };
 });
 
 // 监听props变化
 watch(() => props.group, (newGroup) => {
-  formState.value = JSON.parse(JSON.stringify(newGroup));
+  const groupData = JSON.parse(JSON.stringify(newGroup));
+  formState.value = {
+    name: groupData.name || '',
+    label: groupData.label || '',
+    prefix: groupData.prefix || ''
+  };
 }, { deep: true });
 
 // 提交表单
 const onSubmit = () => {
+  // 表单验证由Nuxt UI处理
   emit('save', props.group.id, formState.value);
 };
 
@@ -78,64 +109,10 @@ const onDelete = () => {
 };
 </script>
 
-<style>
+<style scoped>
 .group-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-weight: 600;
-}
-
-.form-group small {
-  color: #6b7280;
-  font-size: 0.875rem;
-}
-
-.form-group input[type="text"] {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.btn-primary {
-  background-color: #3b82f6;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-
-.btn-secondary {
-  background-color: #9ca3af;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
 }
 </style>

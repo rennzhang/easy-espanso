@@ -2,7 +2,8 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <base href="./" />
+    <link rel="icon" type="image/svg+xml" href="./vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Espanso GUI</title>
     <style>
@@ -48,62 +49,16 @@
         color: #666;
       }
     </style>
-    <script>
-      // 添加延迟，确保页面加载完成
-      window.onload = function() {
-        // 尝试多个可能的入口点
-        const possibleEntryPoints = [
-          'app/index.html',
-          './app/index.html',
-          './assets/index.html',
-          './dist/index.html'
-        ];
-        
-        function tryLoad(index) {
-          if (index >= possibleEntryPoints.length) {
-            // 如果所有尝试都失败，显示错误消息
-            document.getElementById('loading-message').textContent = '无法加载应用。请重新启动或重新安装应用程序。';
-            document.getElementById('redirect-message').textContent = '出现了一些问题...';
-            return;
-          }
-          
-          const iframe = document.createElement('iframe');
-          iframe.style.display = 'none';
-          document.body.appendChild(iframe);
-          
-          try {
-            iframe.src = possibleEntryPoints[index];
-            
-            iframe.onload = function() {
-              // 成功加载，跳转到入口点
-              window.location.href = possibleEntryPoints[index];
-            };
-            
-            iframe.onerror = function() {
-              // 尝试下一个入口点
-              document.body.removeChild(iframe);
-              tryLoad(index + 1);
-            };
-          } catch (e) {
-            // 出错了，尝试下一个入口点
-            document.body.removeChild(iframe);
-            tryLoad(index + 1);
-          }
-        }
-        
-        // 开始尝试加载第一个入口点
-        setTimeout(function() {
-          tryLoad(0);
-        }, 500);
-      };
-    </script>
+    <script type="module" src="./src/main.ts"></script>
   </head>
   <body>
-    <div class="container">
+    <div id="app"></div>
+    <script type="module" src="./src/main.ts"></script>
+    <!-- <div class="container">
       <h1>Espanso GUI</h1>
       <div class="spinner"></div>
       <p id="loading-message">正在加载应用程序...</p>
       <p id="redirect-message" class="redirect-message">即将跳转至主界面</p>
-    </div>
+    </div> -->
   </body>
 </html>

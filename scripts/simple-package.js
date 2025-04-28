@@ -36,6 +36,20 @@ fs.copyFileSync(
   path.resolve(appDir, 'preload.js')
 );
 
+// 复制额外的 HTML 文件
+const extraHtmlFiles = [
+  'loader.html',
+  'direct-load.html'
+];
+
+for (const htmlFile of extraHtmlFiles) {
+  const sourcePath = path.resolve(distDir, htmlFile);
+  if (fs.existsSync(sourcePath)) {
+    console.log(`Copying ${htmlFile} to app directory...`);
+    fs.copyFileSync(sourcePath, path.resolve(appDir, htmlFile));
+  }
+}
+
 // 如果electron目录有更多文件夹需要复制
 try {
   const preloadDir = path.resolve(electronDir, 'preload');
@@ -53,14 +67,29 @@ try {
   if (fs.existsSync(indexHtmlPath)) {
     console.log('Checking index.html for resource paths...');
     let htmlContent = fs.readFileSync(indexHtmlPath, 'utf8');
-    
+
     // 检查并修复可能的路径问题
+    console.log('Fixing paths in index.html...');
+    // 修复绝对路径
     if (htmlContent.includes('src="/assets/') || htmlContent.includes('href="/assets/')) {
       console.log('Fixed absolute paths in index.html');
       htmlContent = htmlContent.replace(/src="\/assets\//g, 'src="./assets/');
       htmlContent = htmlContent.replace(/href="\/assets\//g, 'href="./assets/');
-      fs.writeFileSync(indexHtmlPath, htmlContent);
     }
+
+    // 修复基础路径问题
+    if (htmlContent.includes('<base href="/"') || htmlContent.includes('<base href="/app/"')) {
+      console.log('Fixed base href in index.html');
+      htmlContent = htmlContent.replace(/<base href="\/.*?"/, '<base href="./"');
+    }
+
+    // 添加基础路径（如果不存在）
+    if (!htmlContent.includes('<base href')) {
+      console.log('Added base href to index.html');
+      htmlContent = htmlContent.replace('<head>', '<head>\n    <base href="./">');
+    }
+
+    fs.writeFileSync(indexHtmlPath, htmlContent);
   }
 } catch (err) {
   console.error('修复HTML资源路径时出错:', err);
@@ -118,15 +147,15 @@ try {
   if (fs.existsSync(assetsDir)) {
     const assetFiles = fs.readdirSync(assetsDir);
     console.log('资源文件:', assetFiles);
-    
+
     // 检查重要资源文件
     const jsFiles = assetFiles.filter(file => file.endsWith('.js'));
     const cssFiles = assetFiles.filter(file => file.endsWith('.css'));
-    
+
     if (jsFiles.length === 0) {
       console.warn('警告: 未找到JavaScript资源文件');
     }
-    
+
     if (cssFiles.length === 0) {
       console.warn('警告: 未找到CSS资源文件');
     }
@@ -156,7 +185,7 @@ console.log('Files prepared for Electron packaging');
 console.log('Packaging with electron-packager...');
 try {
   const platform = process.argv[2] || 'darwin';
-  execSync(`npx electron-packager ${appDir} "Espanso GUI" --platform=${platform} --arch=x64 --out=${electronDistDir}/packaged --overwrite --asar=false`, 
+  execSync(`npx electron-packager ${appDir} "Espanso GUI" --platform=${platform} --arch=x64 --out=${electronDistDir}/packaged --overwrite --asar=false --electron-version=28.0.0`,
     { stdio: 'inherit' });
   console.log('Application packaged successfully!');
 } catch (error) {
@@ -171,7 +200,7 @@ try {
     if (items.length > 0) {
       const appDir = path.join(packedDir, items[0]);
       console.log(`\n打包后的应用目录: ${appDir}`);
-      
+
       if (process.platform === 'darwin') {
         // macOS 应用
         const contentsDir = path.join(appDir, 'Contents');

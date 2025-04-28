@@ -17,6 +17,7 @@
     "electron:simple-package:mac": "node scripts/simple-package.js darwin",
     "electron:simple-package:win": "node scripts/simple-package.js win32",
     "electron:simple-package:linux": "node scripts/simple-package.js linux",
+    "electron:fix": "node scripts/fix-electron-app.js",
     "electron:build:win": "vite build && node scripts/prepare-electron-build.js && electron-builder --win --config electron/electron-builder.json",
     "electron:build:linux": "vite build && node scripts/prepare-electron-build.js && electron-builder --linux --config electron/electron-builder.json",
     "utools:build": "vite build && node scripts/build-utools.js"

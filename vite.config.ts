@@ -5,7 +5,7 @@ import path from 'path'
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
-  base: './', // 确保在Electron和uTools环境中正确加载资源
+  base: '', // 使用根路径，避免路径嵌套问题
   build: {
     outDir: 'dist',
     emptyOutDir: true,

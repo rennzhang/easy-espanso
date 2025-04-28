@@ -1,66 +1,92 @@
 <template>
-  <form @submit.prevent="onSubmit" class="rule-form">
-    <div class="form-group">
-      <label for="trigger">触发词</label>
-      <input
-        id="trigger"
-        v-model="formState.trigger"
-        type="text"
+  <UForm :state="formState" @submit="onSubmit" class="rule-form">
+    <UFormGroup label="触发词" name="trigger">
+      <UInput 
+        v-model="formState.trigger" 
         placeholder="例如: :hello"
         required
       />
-    </div>
+      <template #hint>
+        输入规则的触发词，按下空格后将被替换为指定内容
+      </template>
+    </UFormGroup>
 
-    <div class="form-group">
-      <label for="contentType">内容类型</label>
-      <select id="contentType" v-model="currentContentType">
-        <option value="plain">纯文本</option>
-        <option value="rich">富文本</option>
-        <option value="html">HTML</option>
-        <option value="script">脚本</option>
-        <option value="image">图片</option>
-        <option value="form">表单</option>
-        <option value="clipboard">剪贴板</option>
-        <option value="shell">Shell命令</option>
-        <option value="key">按键序列</option>
-      </select>
-    </div>
+    <UFormGroup label="描述" name="label">
+      <UInput 
+        v-model="formState.label" 
+        placeholder="可选的规则描述"
+      />
+      <template #hint>
+        为规则添加简短描述，方便识别和管理
+      </template>
+    </UFormGroup>
 
-    <div class="form-group">
-      <label for="content">内容</label>
-      <textarea
-        id="content"
+    <UFormGroup label="内容类型" name="contentType">
+      <USelect
+        v-model="currentContentType"
+        :options="contentTypeOptions"
+      />
+    </UFormGroup>
+
+    <UFormGroup label="内容" name="content">
+      <UTextarea 
+        v-if="currentContentType === 'plain'" 
         v-model="formState.content"
         rows="5"
         placeholder="替换内容"
         required
-      ></textarea>
-    </div>
-
-    <div class="form-group">
-      <label for="caseSensitive">区分大小写</label>
-      <input
-        id="caseSensitive"
-        v-model="formState.caseSensitive"
-        type="checkbox"
       />
+      <template #hint>
+        输入触发词将被替换的内容
+      </template>
+    </UFormGroup>
+
+    <div class="rule-options my-4">
+      <h3 class="text-sm font-medium mb-2">选项</h3>
+      <div class="grid grid-cols-2 gap-4">
+        <UFormGroup name="caseSensitive">
+          <UCheckbox
+            v-model="formState.caseSensitive"
+            label="区分大小写"
+          />
+        </UFormGroup>
+
+        <UFormGroup name="word">
+          <UCheckbox
+            v-model="formState.word"
+            label="整词匹配"
+          />
+        </UFormGroup>
+      </div>
     </div>
 
-    <div class="form-group">
-      <label for="word">整词匹配</label>
-      <input
-        id="word"
-        v-model="formState.word"
-        type="checkbox"
+    <UFormGroup label="优先级" name="priority">
+      <UInput 
+        v-model.number="formState.priority" 
+        type="number"
+        placeholder="0"
       />
-    </div>
+      <template #hint>
+        值越高，优先级越高（可选）
+      </template>
+    </UFormGroup>
 
-    <div class="form-actions">
-      <button type="submit" class="btn-primary">保存</button>
-      <button type="button" class="btn-secondary" @click="onCancel">取消</button>
-      <button type="button" class="btn-danger" @click="onDelete">删除</button>
+    <UFormGroup label="快捷键" name="hotkey">
+      <UInput 
+        v-model="formState.hotkey" 
+        placeholder="例如: alt+h"
+      />
+      <template #hint>
+        可选的快捷键触发方式
+      </template>
+    </UFormGroup>
+
+    <div class="flex gap-2 mt-6">
+      <UButton type="submit" color="primary">保存</UButton>
+      <UButton type="button" color="gray" @click="onCancel">取消</UButton>
+      <UButton type="button" color="red" variant="soft" @click="onDelete" class="ml-auto">删除</UButton>
     </div>
-  </form>
+  </UForm>
 </template>
 
 <script setup lang="ts">
@@ -79,21 +105,72 @@ const emit = defineEmits<{
   delete: [id: string]
 }>();
 
+// 表单状态类型，使其与EspansoRule兼容
+interface RuleFormState {
+  trigger?: string;
+  label?: string;
+  content?: string;
+  contentType?: 'plain' | 'markdown' | 'html' | 'image' | 'form';
+  caseSensitive?: boolean;
+  word?: boolean;
+  priority?: number;
+  hotkey?: string;
+}
+
 // 表单状态
-const formState = ref<Partial<EspansoRule>>({});
-const currentContentType = ref<string>('plain');
+const formState = ref<RuleFormState>({
+  trigger: '',
+  label: '',
+  content: '',
+  contentType: 'plain',
+  caseSensitive: false,
+  word: false,
+  priority: 0,
+  hotkey: ''
+});
+
+// 内容类型选项
+const contentTypeOptions = [
+  { label: '纯文本', value: 'plain' },
+  { label: '富文本', value: 'markdown' },
+  { label: 'HTML', value: 'html' },
+  { label: '图片', value: 'image' },
+  { label: '表单', value: 'form' }
+];
+
+const currentContentType = ref<'plain' | 'markdown' | 'html' | 'image' | 'form'>('plain');
 
 // 初始化表单
 onMounted(() => {
   // 深拷贝props.rule到formState
-  formState.value = JSON.parse(JSON.stringify(props.rule));
-  currentContentType.value = props.rule.contentType;
+  const ruleData = JSON.parse(JSON.stringify(props.rule));
+  formState.value = {
+    trigger: ruleData.trigger || '',
+    label: ruleData.label || '',
+    content: ruleData.content || '',
+    contentType: ruleData.contentType || 'plain',
+    caseSensitive: ruleData.caseSensitive || false,
+    word: ruleData.word || false,
+    priority: ruleData.priority || 0,
+    hotkey: ruleData.hotkey || ''
+  };
+  currentContentType.value = (ruleData.contentType as 'plain' | 'markdown' | 'html' | 'image' | 'form') || 'plain';
 });
 
 // 监听props变化
 watch(() => props.rule, (newRule) => {
-  formState.value = JSON.parse(JSON.stringify(newRule));
-  currentContentType.value = newRule.contentType;
+  const ruleData = JSON.parse(JSON.stringify(newRule));
+  formState.value = {
+    trigger: ruleData.trigger || '',
+    label: ruleData.label || '',
+    content: ruleData.content || '',
+    contentType: ruleData.contentType || 'plain',
+    caseSensitive: ruleData.caseSensitive || false,
+    word: ruleData.word || false,
+    priority: ruleData.priority || 0,
+    hotkey: ruleData.hotkey || ''
+  };
+  currentContentType.value = (ruleData.contentType as 'plain' | 'markdown' | 'html' | 'image' | 'form') || 'plain';
 }, { deep: true });
 
 // 监听内容类型变化
@@ -103,6 +180,7 @@ watch(currentContentType, (newType) => {
 
 // 提交表单
 const onSubmit = () => {
+  // 表单验证由Nuxt UI处理
   emit('save', props.rule.id, formState.value);
 };
 
@@ -119,66 +197,10 @@ const onDelete = () => {
 };
 </script>
 
-<style>
+<style scoped>
 .rule-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-weight: 600;
-}
-
-.form-group input[type="text"],
-.form-group select,
-.form-group textarea {
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-}
-
-.form-group input[type="checkbox"] {
-  width: 1rem;
-  height: 1rem;
-}
-
-.form-actions {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 1rem;
-}
-
-.btn-primary {
-  background-color: #3b82f6;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-
-.btn-secondary {
-  background-color: #9ca3af;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-
-.btn-danger {
-  background-color: #ef4444;
-  color: white;
-  padding: 0.5rem 1rem;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
 }
 </style>
