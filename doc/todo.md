@@ -16,6 +16,43 @@
   - 创建了服务层接口（fileService）
   - 创建了全局样式
 
+- [x] **任务 1.3: 核心数据模型定义**
+  - 完善了数据模型，添加了对Espanso所有功能的支持
+  - 添加了变量、表单、全局变量等类型定义
+  - 添加了配置选项和文件类型定义
+  - 更新了Store以支持新的数据模型
+
+- [x] **任务 1.4: 平台服务层接口实现 (Preload Script)**
+  - 实现了readFile, writeFile, showOpenDialog等文件操作函数
+  - 实现了parseYaml, serializeYaml等YAML处理函数
+  - 实现了getEspansoConfigDir, getEspansoConfigFiles等Espanso相关函数
+  - 确保js-yaml在preload环境中可用
+  - 更新了Store中的loadConfig和saveConfig方法，使用新的fileService
+
+- [x] **任务 2.1: Pinia Store 初始化与基础状态/Getter**
+  - 完善了Store的状态管理、Getters和Actions
+  - 实现了状态历史记录管理，支持撤销/重做功能
+  - 添加了统一的addItem和updateItem方法
+  - 实现了批量操作功能（批量添加、删除和更新）
+  - 添加了导入/导出配置功能
+  - 增强了搜索和过滤能力
+  - 添加了更丰富的错误处理和恢复机制
+
+- [x] **任务 2.2: UI 布局骨架搭建**
+  - 已创建并美化了LeftPane, MiddlePane, RightPane组件
+  - 实现了左侧菜单折叠功能
+  - 实现了标签过滤功能
+  - 添加了搜索功能
+  - 优化了项目列表和详情页的显示
+
+- [x] **任务 2.4: 加载/保存 Actions (连接 Preload)**
+  - 已完善loadConfig和saveConfig Actions
+  - 已实现与preload脚本的连接
+
+- [x] **任务 3.1: ESPANSO 工具函数 (YAML 处理占位)**
+  - 已实现parseYaml, serializeYaml等函数
+  - 已实现convertToInternalFormat和convertToEspansoFormat函数
+
 - [x] **临时任务 1: UI美化与现代化**
   - 更新了全局样式，使用现代化的设计变量（颜色、间距、阴影等）
   - 改进了三栏式布局组件的样式，添加了卡片式设计
@@ -30,14 +67,6 @@
   - 在preload脚本中添加降级方案，以便在非Electron环境中也能正常工作
   - 更新了todo.md，调整了任务状态
 
-- [x] **任务 7.1: 跨平台打包支持 (Electron)**
-  - 创建了Electron主进程和预加载脚本
-  - 实现了Electron打包和构建配置
-  - 解决了打包时的路径问题和入口文件配置
-  - 实现了基于fs模块的文件操作函数
-  - 添加了开发环境和生产环境的切换逻辑
-  - 解决了白屏问题和资源加载错误
-
 - [x] **临时任务 3: 解决Electron应用的标题和白屏问题**
   - 优化了main.js主进程代码，增加多重错误处理和日志输出
   - 修复了index.html加载路径问题，通过动态路径查找确保正确加载
@@ -47,81 +76,109 @@
   - 禁用了asar打包，避免了资源访问问题
   - 增加了备用路径加载机制，确保在不同环境下都能找到正确的入口文件
 
+- [x] **任务 5.1: YAML 解析与序列化工具函数完善**
+  - 已完善convertToInternalFormat和convertToEspansoFormat函数
+  - 已实现对Espanso所有功能的支持
+
+- [x] **任务 6.1: 导入/导出功能实现**
+  - 已实现配置文件的导入和导出功能
+  - 添加了importConfig和exportConfig方法
+  - 实现了文件选择对话框集成
+  - 添加了导入/导出过程中的错误处理
+  - 支持多种文件格式（YAML）
+
+- [x] **任务 7.1: 跨平台打包支持 (Electron)**
+  - 创建了Electron主进程和预加载脚本
+  - 实现了Electron打包和构建配置
+  - 解决了打包时的路径问题和入口文件配置
+  - 实现了基于fs模块的文件操作函数
+  - 添加了开发环境和生产环境的切换逻辑
+  - 解决了白屏问题和资源加载错误
+
 - [x] **任务 7.2: uTools插件支持**
   - 创建了uTools插件配置文件
   - 实现了uTools预加载脚本
   - 添加了uTools插件打包脚本
   - 确保在uTools环境中正常加载应用
 
-- [x] **任务 2.1: Pinia Store 实现**
-  - 完善了Store的状态管理、Getters和Actions
-  - 实现了状态历史记录管理，支持撤销/重做功能
-  - 添加了统一的addItem和updateItem方法
-  - 实现了批量操作功能（批量添加、删除和更新）
-  - 添加了导入/导出配置功能
-  - 增强了搜索和过滤能力
-  - 添加了更丰富的错误处理和恢复机制
-
 ## 待完成功能
 
-- [x] **任务 1.3: 数据模型定义**
-  - 完善了数据模型，添加了对Espanso所有功能的支持
-  - 添加了变量、表单、全局变量等类型定义
-  - 添加了配置选项和文件类型定义
-  - 更新了Store以支持新的数据模型
-
-- [x] **任务 1.4: 平台服务层接口实现 (Preload Script)**
-  - 实现了readFile, writeFile, showOpenDialog等文件操作函数
-  - 实现了parseYaml, serializeYaml等YAML处理函数
-  - 实现了getEspansoConfigDir, getEspansoConfigFiles等Espanso相关函数
-  - 确保js-yaml在preload环境中可用
-  - 更新了Store中的loadConfig和saveConfig方法，使用新的fileService
-
-- [x] **任务 2.2: 三栏式布局组件实现**
-  - 已创建并美化了LeftPane, MiddlePane, RightPane组件
-  - 实现了左侧菜单折叠功能
-  - 实现了标签过滤功能
-  - 添加了搜索功能
-  - 优化了项目列表和详情页的显示
-
-- [ ] **任务 2.3: 规则和分组编辑表单实现**
+- [ ] **任务 2.3: 规则和分组编辑表单组件**
   - 需要创建RuleEditForm和GroupEditForm组件
+  - 需要实现表单验证和数据绑定
+  - 需要支持不同类型的输入字段
 
-- [x] **任务 2.4: 加载/保存 Actions (连接 Preload)**
-  - 已完善loadConfig和saveConfig Actions
-  - 已实现与preload脚本的连接
+- [ ] **任务 3.2: ESPANSO 工具函数 (增删改)**
+  - 需要实现removeItemById等工具函数
+  - 需要实现insertItemAtIndex等工具函数
+  - 确保函数返回新的根节点对象以维持响应性
 
-- [x] **任务 3.1: YAML 工具函数基础实现**
-  - 已实现parseYaml, serializeYaml等函数
-  - 已实现convertToInternalFormat和convertToEspansoFormat函数
+- [ ] **任务 3.3: Pinia Store CRUD Actions 实现**
+  - 需要完善addItem、updateItem、deleteItem等Actions
+  - 需要确保Actions能正确调用工具函数
+  - 需要更新Store状态并保持响应性
 
-- [ ] **任务 3.2: 拖拽排序功能实现**
+- [ ] **任务 3.4: 分组编辑表单组件 (纯 UI & 本地状态)**
+  - 需要实现分组编辑表单的UI组件
+  - 需要处理表单验证和数据绑定
+  - 需要支持保存、取消、删除操作
+
+- [ ] **任务 3.5: 规则编辑表单组件 (纯 UI & 本地状态 - 基础)**
+  - 需要实现规则编辑表单的基础UI组件
+  - 需要处理表单验证和数据绑定
+  - 需要支持保存、取消、删除操作
+
+- [ ] **任务 3.6: 右侧面板逻辑 (连接 Store 与表单)**
+  - 需要在RightPane中连接Store和表单组件
+  - 需要根据选中项类型渲染不同的表单
+  - 需要处理表单操作并调用Store Actions
+
+- [ ] **任务 4.1: 拖拽排序功能 (UI & Action 调用)**
   - 需要集成vue-draggable-next
+  - 需要实现拖拽事件处理
+  - 需要实现moveItem Action并更新Store状态
 
-- [ ] **任务 4.1: 规则内容编辑器增强**
+- [ ] **任务 4.2: 规则表单 - 高级字段 (纯 UI)**
+  - 需要实现应用限制、标签等高级字段
+  - 需要创建TagInput组件
+  - 需要实现内容类型切换功能
+
+- [ ] **任务 4.3: 规则表单 - 高级内容编辑器 (UI 集成)**
   - 需要实现不同contentType的编辑器
+  - 需要集成富文本、代码、图片等编辑组件
+  - 需要实现内容与表单状态同步
 
-- [ ] **任务 4.2: 标签管理功能实现**
-  - 需要实现标签的添加、删除和过滤功能
-
-- [x] **任务 5.1: YAML 解析与序列化工具函数完善**
-  - 已完善convertToInternalFormat和convertToEspansoFormat函数
-  - 已实现对Espanso所有功能的支持
-
-- [ ] **任务 5.2: 规则预览功能实现**
+- [ ] **任务 4.4: 规则表单 - 插入变量与预览**
   - 需要完善generatePreview函数
+  - 需要实现变量插入功能
+  - 需要显示规则预览效果
 
-- [ ] **任务 6.1: 导入/导出功能实现**
-  - 需要实现配置文件的导入和导出功能
+- [ ] **任务 4.5: 规则列表树状分组展示**
+  - 需要实现分组的折叠/展开功能
+  - 需要使用树形结构显示规则，清晰展示父子关系
+  - 需要支持分组内规则的嵌套显示
+  - 需要添加视觉提示，识别规则和分组的层次关系
+  - 需要实现分组的计数统计（显示每个分组内的规则数量）
+
+- [ ] **任务 4.6: 标签管理功能实现**
+  - 需要实现标签的添加、删除和过滤功能
+  - 需要实现标签云组件
+  - 需要支持通过标签筛选规则
 
 - [ ] **任务 6.2: 应用限制功能实现**
   - 需要实现应用限制（apps）功能
+  - 需要支持应用列表管理
+  - 需要支持排除应用列表
 
 - [ ] **任务 6.3: 错误处理与用户通知**
   - 需要完善错误处理和用户通知功能
+  - 需要实现全局错误捕获
+  - 需要提供友好的错误提示
 
 - [ ] **任务 6.4: 最终测试与代码审查**
   - 需要进行全面测试和代码审查
+  - 需要修复潜在问题和改进用户体验
+  - 需要优化性能和稳定性
 
 - [ ] **任务 7.3: 应用图标和品牌设计**
   - 需要设计应用图标和品牌元素
