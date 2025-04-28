@@ -53,6 +53,15 @@
   - 添加了uTools插件打包脚本
   - 确保在uTools环境中正常加载应用
 
+- [x] **任务 2.1: Pinia Store 实现**
+  - 完善了Store的状态管理、Getters和Actions
+  - 实现了状态历史记录管理，支持撤销/重做功能
+  - 添加了统一的addItem和updateItem方法
+  - 实现了批量操作功能（批量添加、删除和更新）
+  - 添加了导入/导出配置功能
+  - 增强了搜索和过滤能力
+  - 添加了更丰富的错误处理和恢复机制
+
 ## 待完成功能
 
 - [x] **任务 1.3: 数据模型定义**
@@ -67,9 +76,6 @@
   - 实现了getEspansoConfigDir, getEspansoConfigFiles等Espanso相关函数
   - 确保js-yaml在preload环境中可用
   - 更新了Store中的loadConfig和saveConfig方法，使用新的fileService
-
-- [ ] **任务 2.1: Pinia Store 实现**
-  - 已创建基本的store结构，但需要完善Actions和Getters
 
 - [x] **任务 2.2: 三栏式布局组件实现**
   - 已创建并美化了LeftPane, MiddlePane, RightPane组件
