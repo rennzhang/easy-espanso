@@ -248,8 +248,8 @@ function serializeYaml(data) {
   try {
     return yaml.dump(data, {
       indent: 2,
-      lineWidth: -1, // 不限制行宽
-      noRefs: true // 避免使用引用标记
+      lineWidth: -1, // 禁用行宽限制
+      noRefs: true // 避免YAML别名/锚点
     });
   } catch (error) {
     console.error('序列化YAML失败', error);
@@ -261,112 +261,91 @@ function serializeYaml(data) {
 async function getEspansoConfigFiles() {
   try {
     const configDir = getEspansoConfigDir();
-    const matchDir = path.join(configDir, 'match');
+    if (!configDir) {
+      return {
+        status: 'error',
+        message: '无法确定Espanso配置目录'
+      };
+    }
+
+    // 检查配置目录是否存在
+    const configDirExists = await fileExists(configDir);
+    if (!configDirExists) {
+      return {
+        status: 'not_found',
+        message: 'Espanso配置目录不存在',
+        configDir
+      };
+    }
+
+    // 获取配置文件
     const configPath = path.join(configDir, 'config');
+    const configFileExists = await fileExists(configPath);
 
-    // 检查目录是否存在
-    const matchDirExists = await fileExists(matchDir);
-    const configPathExists = await fileExists(configPath);
-
-    const files = [];
-
-    // 获取match目录中的文件
+    // 获取匹配文件
+    const matchDirPath = path.join(configDir, 'match');
+    const matchDirExists = await fileExists(matchDirPath);
+    
+    let matchFiles = [];
     if (matchDirExists) {
-      try {
-        const matchFiles = await listFiles(matchDir);
-        for (const file of matchFiles) {
-          if (file.extension === '.yml' || file.extension === '.yaml') {
-            try {
-              const content = await readFile(file.path);
-              files.push({
-                path: file.path,
-                name: file.name,
-                content,
-                type: 'match'
-              });
-            } catch (error) {
-              console.error(`读取匹配文件失败: ${file.path}`, error);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('获取match文件失败', error);
-      }
+      const files = await listFiles(matchDirPath);
+      matchFiles = files.filter(file => 
+        file.extension === '.yml' || file.extension === '.yaml'
+      );
     }
 
-    // 获取config目录中的文件
-    if (configPathExists) {
-      try {
-        const configFiles = await listFiles(configPath);
-        for (const file of configFiles) {
-          if (file.extension === '.yml' || file.extension === '.yaml') {
-            try {
-              const content = await readFile(file.path);
-              files.push({
-                path: file.path,
-                name: file.name,
-                content,
-                type: 'config'
-              });
-            } catch (error) {
-              console.error(`读取配置文件失败: ${file.path}`, error);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('获取config文件失败', error);
-      }
-    }
-
-    return files;
+    return {
+      status: 'success',
+      configDir,
+      configExists: configFileExists,
+      configPath: configFileExists ? configPath : null,
+      matchDirExists,
+      matchDirPath: matchDirExists ? matchDirPath : null,
+      matchFiles
+    };
   } catch (error) {
     console.error('获取Espanso配置文件失败', error);
-    return [];
+    return {
+      status: 'error',
+      message: `获取配置文件时出错: ${error.message}`
+    };
   }
 }
 
 // 显示通知
 function showNotification(message) {
-  try {
-    // 在Electron中可以使用Notification API
-    new Notification('Espanso GUI', { body: message });
-  } catch (error) {
-    console.error('显示通知失败:', error);
-    // 降级到控制台输出
-    console.log('通知:', message);
-  }
-}
-
-try {
-  // 暴露API给渲染进程
-  contextBridge.exposeInMainWorld('preloadApi', {
-    // 环境标志
-    isElectron: true,
-
-    // 文件操作
-    readFile,
-    writeFile,
-    fileExists,
-    listFiles,
-
-    // 对话框
-    showOpenDialog: showOpenFileDialog,
-    showOpenDirectoryDialog,
-    showSaveDialog,
-
-    // YAML处理
-    parseYaml,
-    serializeYaml,
-
-    // Espanso相关
-    getEspansoConfigDir,
-    getEspansoConfigFiles,
-
-    // 通知
-    showNotification
+  ipcRenderer.send('show-notification', {
+    title: 'Espanso GUI',
+    body: message
   });
-
-  console.log('预加载脚本成功初始化');
-} catch (error) {
-  console.error('暴露API失败:', error);
 }
+
+// 导出API到渲染进程
+contextBridge.exposeInMainWorld('electronAPI', {
+  // 文件操作
+  readFile,
+  writeFile,
+  fileExists,
+  listFiles,
+  showOpenFileDialog,
+  showOpenDirectoryDialog,
+  showSaveDialog,
+  
+  // Espanso配置
+  getEspansoConfigDir,
+  getEspansoConfigFiles,
+  
+  // YAML处理
+  parseYaml,
+  serializeYaml,
+  
+  // 系统操作
+  getHomedir: () => homeDir,
+  getPlatform: () => process.platform,
+  showNotification,
+
+  // 应用控制
+  quitApp: () => ipcRenderer.send('quit-app'),
+  minimizeApp: () => ipcRenderer.send('minimize-app'),
+  maximizeApp: () => ipcRenderer.send('maximize-app')
+}); 

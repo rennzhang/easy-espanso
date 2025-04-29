@@ -11,10 +11,6 @@
         font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         margin: 0;
         padding: 0;
-        display: flex;
-        flex-direction: column;
-        justify-content: center;
-        align-items: center;
         height: 100vh;
         background-color: #f5f5f5;
         color: #333;
@@ -22,6 +18,7 @@
       .container {
         text-align: center;
         padding: 2rem;
+        margin: 2rem auto;
         background-color: white;
         border-radius: 8px;
         box-shadow: 0 4px 6px rgba(0,0,0,0.1);
@@ -31,34 +28,18 @@
         margin-top: 0;
         color: #0066cc;
       }
-      .spinner {
-        border: 4px solid rgba(0, 0, 0, 0.1);
-        width: 36px;
-        height: 36px;
-        border-radius: 50%;
-        border-left-color: #0066cc;
-        animation: spin 1s linear infinite;
-        margin: 20px auto;
-      }
-      @keyframes spin {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-      }
-      .redirect-message {
-        margin-top: 1rem;
-        color: #666;
+      p {
+        margin-bottom: 1rem;
       }
     </style>
-    <script type="module" src="./src/main.ts"></script>
   </head>
   <body>
     <div id="app"></div>
-    <script type="module" src="./src/main.ts"></script>
-    <!-- <div class="container">
+    <div class="container">
       <h1>Espanso GUI</h1>
-      <div class="spinner"></div>
-      <p id="loading-message">正在加载应用程序...</p>
-      <p id="redirect-message" class="redirect-message">即将跳转至主界面</p>
-    </div> -->
+      <p>应用程序正在加载中...</p>
+      <p>如果您看到这个页面，说明index.html已经成功加载，但Vue应用可能尚未初始化。</p>
+    </div>
+    <script type="module" src="./src/main.ts"></script>
   </body>
-</html>
+</html> 

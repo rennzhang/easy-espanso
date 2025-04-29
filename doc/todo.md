@@ -100,6 +100,24 @@
   - 补充了特性说明和各环境下的使用差异
   - 改进了文档格式和排版，提高可读性
 
+- [x] **临时任务 8: 使用electron-vite代替现有的构建系统**
+  - 更新了package.json中的脚本命令，替换vite为electron-vite
+  - 创建了electron/main/index.js和electron/preload/index.js文件，适应electron-vite的目录结构
+  - 优化了electron-builder.json配置文件，以适应新的构建系统
+  - 简化了构建流程，统一使用electron-vite进行开发和构建
+  - 保留了原有的IPC事件处理和预加载脚本功能
+  - 改进了开发和生产环境的切换逻辑
+
+- [x] **临时任务 9: 清理项目，移除非electron-vite相关的脚本和命令**
+  - 删除了package.json中的所有非electron-vite相关命令
+  - 移除了不再需要的依赖项（如concurrently、cross-env、electron-packager、fs-extra）
+  - 删除了scripts目录及其所有脚本文件
+  - 移除了uTools相关功能和文件
+  - 删除了直接加载相关的HTML文件（direct-load.html）
+  - 删除了不再需要的vite.config.ts文件，统一使用electron.vite.config.js
+  - 删除了旧的electron/main.js和electron/preload.js文件
+  - 清理了项目结构，使其更加简洁和专注
+
 - [x] **任务 5.1: YAML 解析与序列化工具函数完善**
   - 已完善convertToInternalFormat和convertToEspansoFormat函数
   - 已实现对Espanso所有功能的支持

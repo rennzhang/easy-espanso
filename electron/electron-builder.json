@@ -6,9 +6,7 @@
     "output": "dist_electron"
   },
   "files": [
-    "main.js",
-    "preload.js",
-    "../dist/**/*"
+    "dist/**/*"
   ],
   "mac": {
     "category": "public.app-category.utilities",
