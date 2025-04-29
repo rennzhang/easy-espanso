@@ -1,27 +1,43 @@
 <template>
-  <div class="tag-input-container">
-    <div class="tags-display">
-      <div v-for="(tag, index) in modelValue" :key="index" class="tag">
+  <div class="flex flex-col gap-2">
+    <div class="flex flex-wrap gap-2">
+      <Badge
+        v-for="(tag, index) in modelValue"
+        :key="index"
+        variant="secondary"
+        class="flex items-center gap-1"
+      >
         {{ tag }}
-        <button type="button" class="remove-tag" @click="removeTag(index)">&times;</button>
-      </div>
+        <button
+          type="button"
+          class="inline-flex items-center justify-center rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-4 w-4"
+          @click="removeTag(index)"
+        >
+          <span class="sr-only">Remove</span>
+          <XIcon class="h-3 w-3" />
+        </button>
+      </Badge>
     </div>
-    
-    <div class="input-container">
-      <input 
-        type="text" 
-        v-model="newTag" 
+
+    <div class="flex gap-2">
+      <Input
+        v-model="newTag"
         @keydown.enter.prevent="addTag"
         :placeholder="placeholder"
-        class="tag-input"
+        class="flex-1"
       />
-      <button type="button" class="add-tag" @click="addTag">添加</button>
+      <Button @click="addTag" size="sm">添加</Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { XIcon } from 'lucide-vue-next';
+import Button from '../ui/button.vue';
+import Input from '../ui/input.vue';
+import Badge from '../ui/badge.vue';
+import { cn } from '@/lib/utils';
 
 // 定义props
 const props = defineProps<{
@@ -41,13 +57,13 @@ const newTag = ref('');
 const addTag = () => {
   if (newTag.value.trim()) {
     const updatedTags = [...props.modelValue];
-    
+
     // 检查标签是否已存在
     if (!updatedTags.includes(newTag.value.trim())) {
       updatedTags.push(newTag.value.trim());
       emit('update:modelValue', updatedTags);
     }
-    
+
     newTag.value = '';
   }
 };
@@ -59,58 +75,3 @@ const removeTag = (index: number) => {
   emit('update:modelValue', updatedTags);
 };
 </script>
-
-<style>
-.tag-input-container {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.tags-display {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-}
-
-.tag {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  background-color: #e5e7eb;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-size: 0.875rem;
-}
-
-.remove-tag {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  padding: 0;
-  color: #6b7280;
-}
-
-.input-container {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.tag-input {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #d1d5db;
-  border-radius: 0.375rem;
-}
-
-.add-tag {
-  background-color: #3b82f6;
-  color: white;
-  padding: 0.5rem;
-  border: none;
-  border-radius: 0.375rem;
-  cursor: pointer;
-}
-</style>

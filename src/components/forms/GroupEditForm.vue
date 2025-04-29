@@ -1,47 +1,61 @@
 <template>
-  <UForm :state="formState" @submit="onSubmit" class="group-form">
-    <UFormGroup label="分组名称" name="name">
-      <UInput 
-        v-model="formState.name" 
+  <form @submit.prevent="onSubmit" class="space-y-6">
+    <div class="space-y-2">
+      <label for="name" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        分组名称
+      </label>
+      <Input
+        id="name"
+        v-model="formState.name"
         placeholder="例如: 常用短语"
         required
       />
-      <template #hint>
+      <p class="text-sm text-muted-foreground">
         输入分组名称，用于标识和组织规则
-      </template>
-    </UFormGroup>
+      </p>
+    </div>
 
-    <UFormGroup label="描述" name="label">
-      <UInput 
-        v-model="formState.label" 
+    <div class="space-y-2">
+      <label for="label" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        描述
+      </label>
+      <Input
+        id="label"
+        v-model="formState.label"
         placeholder="可选的分组描述"
       />
-      <template #hint>
+      <p class="text-sm text-muted-foreground">
         为分组添加简短描述，方便识别和管理
-      </template>
-    </UFormGroup>
+      </p>
+    </div>
 
-    <UFormGroup label="公共前缀" name="prefix">
-      <UInput 
-        v-model="formState.prefix" 
+    <div class="space-y-2">
+      <label for="prefix" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        公共前缀
+      </label>
+      <Input
+        id="prefix"
+        v-model="formState.prefix"
         placeholder="例如: :common"
       />
-      <template #hint>
+      <p class="text-sm text-muted-foreground">
         可选，将作为该分组内所有规则的前缀
-      </template>
-    </UFormGroup>
+      </p>
+    </div>
 
     <div class="flex gap-2 mt-6">
-      <UButton type="submit" color="primary">保存</UButton>
-      <UButton type="button" color="gray" @click="onCancel">取消</UButton>
-      <UButton type="button" color="red" variant="soft" @click="onDelete" class="ml-auto">删除</UButton>
+      <Button type="submit">保存</Button>
+      <Button type="button" variant="outline" @click="onCancel">取消</Button>
+      <Button type="button" variant="destructive" @click="onDelete" class="ml-auto">删除</Button>
     </div>
-  </UForm>
+  </form>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
 import { EspansoGroup } from '../../types/espanso-config';
+import Button from '../ui/button.vue';
+import Input from '../ui/input.vue';
 
 // 定义props
 const props = defineProps<{
@@ -92,7 +106,9 @@ watch(() => props.group, (newGroup) => {
 
 // 提交表单
 const onSubmit = () => {
-  // 表单验证由Nuxt UI处理
+  if (!formState.value.name) {
+    return; // 简单验证
+  }
   emit('save', props.group.id, formState.value);
 };
 
@@ -108,11 +124,3 @@ const onDelete = () => {
   }
 };
 </script>
-
-<style scoped>
-.group-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-</style>

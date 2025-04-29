@@ -1,27 +1,38 @@
 <template>
   <div class="app-container">
     <template v-if="isLoading">
-      <div class="loading-overlay">
-        <div class="loading-spinner"></div>
-        <div class="loading-text">加载中...</div>
+      <div class="fixed inset-0 flex items-center justify-center bg-background/80 z-50">
+        <div class="flex flex-col items-center">
+          <div class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+          <div class="mt-4 text-primary font-medium">加载中...</div>
+        </div>
       </div>
     </template>
     <template v-else-if="needsConfigSelection">
       <div class="config-selector">
-        <div class="config-selector-content">
-          <h1 class="config-selector-title">欢迎使用 Espanso GUI</h1>
-          <p class="config-selector-description">
-            请选择 Espanso 配置文件夹以开始使用
-          </p>
-          <div class="config-selector-buttons">
-            <button class="btn-primary" @click="selectConfigFolder">
-              选择配置文件夹
-            </button>
-          </div>
-        </div>
+        <Card class="max-w-md mx-auto">
+          <CardHeader>
+            <CardTitle class="text-center">欢迎使用 Espanso GUI</CardTitle>
+            <CardDescription class="text-center">
+              请选择 Espanso 配置文件夹以开始使用
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div class="flex justify-center">
+              <Button @click="selectConfigFolder">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-2" viewBox="0 0 20 20" fill="currentColor">
+                  <path fill-rule="evenodd" d="M2 6a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1H8a3 3 0 00-3 3v1.5a1.5 1.5 0 01-3 0V6z" clip-rule="evenodd" />
+                  <path d="M6 12a2 2 0 012-2h8a2 2 0 012 2v2a2 2 0 01-2 2H2h2a2 2 0 002-2v-2z" />
+                </svg>
+                选择配置文件夹
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </template>
     <template v-else>
+      <!-- 主布局 -->
       <MainLayout />
     </template>
   </div>
@@ -32,6 +43,15 @@ import { ref, onMounted } from 'vue';
 import { useEspansoStore } from './store/useEspansoStore';
 import { detectEnvironment, getEspansoConfigDir, showOpenDirectoryDialog, saveConfigDirPath } from './services/fileService';
 import MainLayout from './components/layout/MainLayout.vue';
+
+// 导入 shadcn/vue 组件
+import Button from './components/ui/button.vue';
+import Card from './components/ui/card.vue';
+import CardHeader from './components/ui/card-header.vue';
+import CardTitle from './components/ui/card-title.vue';
+import CardDescription from './components/ui/card-description.vue';
+import CardContent from './components/ui/card-content.vue';
+import CardFooter from './components/ui/card-footer.vue';
 
 const store = useEspansoStore();
 const isLoading = ref(true);
@@ -122,100 +142,12 @@ const selectConfigFolder = async () => {
 };
 </script>
 
-<style>
-body {
-  margin: 0;
-  padding: 0;
-  font-family: Arial, sans-serif;
-}
-
+<style lang="postcss">
 .app-container {
-  height: 100vh;
-  width: 100vw;
-  overflow: hidden;
-}
-
-.loading-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(255, 255, 255, 0.9);
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  z-index: 1000;
-}
-
-.loading-spinner {
-  width: 50px;
-  height: 50px;
-  border: 5px solid #f3f3f3;
-  border-top: 5px solid #3498db;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-}
-
-@keyframes spin {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-.loading-text {
-  margin-top: 20px;
-  font-size: 18px;
-  color: #333;
+  @apply h-screen w-screen overflow-hidden;
 }
 
 .config-selector {
-  height: 100%;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 20px;
-}
-
-.config-selector-content {
-  max-width: 600px;
-  text-align: center;
-  padding: 40px;
-  background-color: white;
-  border-radius: 10px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.config-selector-title {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 20px;
-  color: #333;
-}
-
-.config-selector-description {
-  font-size: 16px;
-  margin-bottom: 30px;
-  color: #666;
-}
-
-.config-selector-buttons {
-  display: flex;
-  justify-content: center;
-}
-
-.btn-primary {
-  background-color: #3b82f6;
-  color: white;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 5px;
-  font-size: 16px;
-  cursor: pointer;
-  transition: background-color 0.3s;
-}
-
-.btn-primary:hover {
-  background-color: #2563eb;
+  @apply h-full flex justify-center items-center p-5;
 }
 </style>

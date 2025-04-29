@@ -2,6 +2,9 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 
+// 导入 shadcn 样式
+import './assets/styles/shadcn.css'
+
 // 导入全局样式
 import './assets/styles/main.css'
 

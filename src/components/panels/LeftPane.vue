@@ -1,72 +1,123 @@
 <template>
-  <div class="left-pane-container">
-    <div class="left-pane-header">
-      <button @click="toggleLeftMenu" class="btn-icon collapse-button" :title="leftMenuCollapsed ? '展开菜单' : '收起菜单'">
-        <span v-if="leftMenuCollapsed">&#10095;</span>
-        <span v-else>&#10094;</span>
-      </button>
+  <div class="flex flex-col h-full">
+    <div class="flex justify-end items-center p-2 border-b border-border">
+      <Button
+        variant="ghost"
+        size="icon"
+        @click="toggleLeftMenu"
+        :title="leftMenuCollapsed ? '展开菜单' : '收起菜单'"
+        class="h-6 w-6"
+      >
+        <ChevronLeftIcon v-if="!leftMenuCollapsed" class="h-4 w-4" />
+        <ChevronRightIcon v-else class="h-4 w-4" />
+      </Button>
     </div>
 
-    <div class="left-pane-content" :class="{ 'collapsed': leftMenuCollapsed }">
-      <div class="section" v-if="!leftMenuCollapsed">
-        <div class="section-header">
-          <h4 class="section-title">导航</h4>
+    <div class="flex-1 overflow-y-auto p-3" :class="{ 'p-2': leftMenuCollapsed }">
+      <div class="mb-6" v-if="!leftMenuCollapsed">
+        <div class="flex justify-between items-center mb-2">
+          <h4 class="text-xs font-semibold uppercase text-muted-foreground tracking-wider m-0">导航</h4>
         </div>
-        <div class="nav-items">
-          <div class="nav-item" :class="{ 'active': activeSection === 'dashboard' }" @click="setActiveSection('dashboard')">
-            <span class="nav-icon">📊</span>
-            <span class="nav-text">仪表盘</span>
-          </div>
-          <div class="nav-item" :class="{ 'active': activeSection === 'rules' }" @click="setActiveSection('rules')">
-            <span class="nav-icon">📝</span>
-            <span class="nav-text">规则管理</span>
-          </div>
-          <div class="nav-item" :class="{ 'active': activeSection === 'settings' }" @click="setActiveSection('settings')">
-            <span class="nav-icon">⚙️</span>
-            <span class="nav-text">设置</span>
-          </div>
+        <div class="flex flex-col gap-1">
+          <Button
+            variant="ghost"
+            :class="{ 'bg-primary/10 text-primary font-medium': activeSection === 'dashboard' }"
+            @click="setActiveSection('dashboard')"
+            class="justify-start"
+          >
+            <LayoutDashboardIcon class="mr-2 h-4 w-4" />
+            仪表盘
+          </Button>
+          <Button
+            variant="ghost"
+            :class="{ 'bg-primary/10 text-primary font-medium': activeSection === 'rules' }"
+            @click="setActiveSection('rules')"
+            class="justify-start"
+          >
+            <FileTextIcon class="mr-2 h-4 w-4" />
+            规则管理
+          </Button>
+          <Button
+            variant="ghost"
+            :class="{ 'bg-primary/10 text-primary font-medium': activeSection === 'settings' }"
+            @click="setActiveSection('settings')"
+            class="justify-start"
+          >
+            <SettingsIcon class="mr-2 h-4 w-4" />
+            设置
+          </Button>
         </div>
       </div>
 
-      <div class="divider" v-if="!leftMenuCollapsed"></div>
+      <div class="h-px bg-border my-4" v-if="!leftMenuCollapsed"></div>
 
-      <div class="section" v-if="!leftMenuCollapsed">
-        <div class="section-header">
-          <h4 class="section-title">标签过滤</h4>
-          <button class="btn-text btn-sm" @click="clearTagFilters" v-if="activeTagFilters.length > 0">
+      <div class="mb-6" v-if="!leftMenuCollapsed">
+        <div class="flex justify-between items-center mb-2">
+          <h4 class="text-xs font-semibold uppercase text-muted-foreground tracking-wider m-0">标签过滤</h4>
+          <Button
+            variant="ghost"
+            size="sm"
+            @click="clearTagFilters"
+            v-if="activeTagFilters.length > 0"
+            class="h-6 text-xs"
+          >
             清除
-          </button>
+          </Button>
         </div>
 
-        <div class="tags-container">
+        <div class="flex flex-col gap-1 mt-2">
           <div
             v-for="tag in allTags"
             :key="tag"
-            class="tag-item"
-            :class="{ 'active': isTagActive(tag) }"
+            class="flex items-center px-2 py-1 rounded-md cursor-pointer text-sm transition-colors"
+            :class="{ 'bg-primary/10 text-primary': isTagActive(tag), 'text-muted-foreground hover:bg-muted': !isTagActive(tag) }"
             @click="toggleTagFilter(tag)"
           >
-            <span class="tag-icon" v-if="isTagActive(tag)">✓</span>
-            <span class="tag-text">{{ tag }}</span>
-            <span class="tag-count">{{ getTagCount(tag) }}</span>
+            <CheckIcon v-if="isTagActive(tag)" class="mr-1 h-3 w-3" />
+            <span class="flex-1">{{ tag }}</span>
+            <Badge
+              variant="outline"
+              :class="{ 'bg-primary text-primary-foreground': isTagActive(tag) }"
+              class="text-xs min-w-6 h-6 flex items-center justify-center"
+            >
+              {{ getTagCount(tag) }}
+            </Badge>
           </div>
 
-          <div class="empty-state" v-if="allTags.length === 0">
+          <div class="py-4 text-center text-muted-foreground text-sm" v-if="allTags.length === 0">
             <p>没有可用的标签</p>
           </div>
         </div>
       </div>
 
-      <div class="section collapsed-icons" v-if="leftMenuCollapsed">
-        <div class="nav-item" :class="{ 'active': activeSection === 'dashboard' }" @click="setActiveSection('dashboard')" title="仪表盘">
-          <span class="nav-icon">📊</span>
-        </div>
-        <div class="nav-item" :class="{ 'active': activeSection === 'rules' }" @click="setActiveSection('rules')" title="规则管理">
-          <span class="nav-icon">📝</span>
-        </div>
-        <div class="nav-item" :class="{ 'active': activeSection === 'settings' }" @click="setActiveSection('settings')" title="设置">
-          <span class="nav-icon">⚙️</span>
-        </div>
+      <div class="flex flex-col items-center gap-3" v-if="leftMenuCollapsed">
+        <Button
+          variant="ghost"
+          size="icon"
+          :class="{ 'bg-primary/10 text-primary': activeSection === 'dashboard' }"
+          @click="setActiveSection('dashboard')"
+          title="仪表盘"
+        >
+          <LayoutDashboardIcon class="h-5 w-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          :class="{ 'bg-primary/10 text-primary': activeSection === 'rules' }"
+          @click="setActiveSection('rules')"
+          title="规则管理"
+        >
+          <FileTextIcon class="h-5 w-5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          :class="{ 'bg-primary/10 text-primary': activeSection === 'settings' }"
+          @click="setActiveSection('settings')"
+          title="设置"
+        >
+          <SettingsIcon class="h-5 w-5" />
+        </Button>
       </div>
     </div>
   </div>
@@ -75,6 +126,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  LayoutDashboardIcon,
+  FileTextIcon,
+  SettingsIcon,
+  CheckIcon
+} from 'lucide-vue-next';
+import Button from '../ui/button.vue';
+import Badge from '../ui/badge.vue';
 
 const store = useEspansoStore();
 const leftMenuCollapsed = computed(() => store.leftMenuCollapsed);
@@ -140,186 +201,3 @@ const getTagCount = (tag: string) => {
   return count;
 };
 </script>
-
-<style>
-.left-pane-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-}
-
-.left-pane-header {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  padding: var(--spacing-2);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.collapse-button {
-  background: none;
-  border: none;
-  cursor: pointer;
-  font-size: 1rem;
-  color: var(--text-secondary);
-  padding: var(--spacing-1);
-  border-radius: var(--radius-full);
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background-color var(--transition);
-}
-
-.collapse-button:hover {
-  background-color: var(--background-hover);
-  color: var(--text-color);
-}
-
-.left-pane-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--spacing-3);
-}
-
-.left-pane-content.collapsed {
-  padding: var(--spacing-2);
-}
-
-.section {
-  margin-bottom: var(--spacing-6);
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: var(--spacing-2);
-}
-
-.section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--text-muted);
-  letter-spacing: 0.05em;
-  margin: 0;
-}
-
-.nav-items {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1);
-}
-
-.nav-item {
-  display: flex;
-  align-items: center;
-  padding: var(--spacing-2) var(--spacing-3);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background-color var(--transition);
-  color: var(--text-secondary);
-}
-
-.nav-item:hover {
-  background-color: var(--background-hover);
-  color: var(--text-color);
-}
-
-.nav-item.active {
-  background-color: var(--primary-light);
-  color: var(--primary-color);
-  font-weight: 500;
-}
-
-.nav-icon {
-  margin-right: var(--spacing-2);
-  font-size: 1.25rem;
-}
-
-.collapsed-icons {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--spacing-3);
-}
-
-.collapsed-icons .nav-item {
-  padding: var(--spacing-2);
-  margin-right: 0;
-}
-
-.collapsed-icons .nav-icon {
-  margin-right: 0;
-}
-
-.divider {
-  height: 1px;
-  background-color: var(--divider-color);
-  margin: var(--spacing-4) 0;
-}
-
-.tags-container {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-1);
-  margin-top: var(--spacing-2);
-}
-
-.tag-item {
-  display: flex;
-  align-items: center;
-  padding: var(--spacing-1) var(--spacing-2);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: background-color var(--transition);
-  color: var(--text-secondary);
-  font-size: 0.875rem;
-}
-
-.tag-item:hover {
-  background-color: var(--background-hover);
-  color: var(--text-color);
-}
-
-.tag-item.active {
-  background-color: var(--primary-light);
-  color: var(--primary-color);
-}
-
-.tag-icon {
-  margin-right: var(--spacing-1);
-  font-size: 0.75rem;
-}
-
-.tag-text {
-  flex: 1;
-}
-
-.tag-count {
-  background-color: var(--background-dark-color);
-  color: var(--text-muted);
-  padding: 0 var(--spacing-1);
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  min-width: 1.5rem;
-  height: 1.5rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tag-item.active .tag-count {
-  background-color: var(--primary-color);
-  color: white;
-}
-
-.empty-state {
-  padding: var(--spacing-4);
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 0.875rem;
-}
-</style>

@@ -1,97 +1,129 @@
 <template>
-  <UForm :state="formState" @submit="onSubmit" class="rule-form">
-    <UFormGroup label="触发词" name="trigger">
-      <UInput 
-        v-model="formState.trigger" 
+  <form @submit.prevent="onSubmit" class="space-y-6">
+    <div class="space-y-2">
+      <label for="trigger" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        触发词
+      </label>
+      <Input
+        id="trigger"
+        v-model="formState.trigger"
         placeholder="例如: :hello"
         required
       />
-      <template #hint>
+      <p class="text-sm text-muted-foreground">
         输入规则的触发词，按下空格后将被替换为指定内容
-      </template>
-    </UFormGroup>
+      </p>
+    </div>
 
-    <UFormGroup label="描述" name="label">
-      <UInput 
-        v-model="formState.label" 
+    <div class="space-y-2">
+      <label for="label" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        描述
+      </label>
+      <Input
+        id="label"
+        v-model="formState.label"
         placeholder="可选的规则描述"
       />
-      <template #hint>
+      <p class="text-sm text-muted-foreground">
         为规则添加简短描述，方便识别和管理
-      </template>
-    </UFormGroup>
+      </p>
+    </div>
 
-    <UFormGroup label="内容类型" name="contentType">
-      <USelect
+    <div class="space-y-2">
+      <label for="contentType" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        内容类型
+      </label>
+      <select
+        id="contentType"
         v-model="currentContentType"
-        :options="contentTypeOptions"
-      />
-    </UFormGroup>
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        <option v-for="option in contentTypeOptions" :key="option.value" :value="option.value">
+          {{ option.label }}
+        </option>
+      </select>
+    </div>
 
-    <UFormGroup label="内容" name="content">
-      <UTextarea 
-        v-if="currentContentType === 'plain'" 
+    <div class="space-y-2">
+      <label for="content" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        内容
+      </label>
+      <textarea
+        id="content"
+        v-if="currentContentType === 'plain'"
         v-model="formState.content"
         rows="5"
         placeholder="替换内容"
         required
-      />
-      <template #hint>
+        class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+      ></textarea>
+      <p class="text-sm text-muted-foreground">
         输入触发词将被替换的内容
-      </template>
-    </UFormGroup>
+      </p>
+    </div>
 
-    <div class="rule-options my-4">
-      <h3 class="text-sm font-medium mb-2">选项</h3>
+    <div class="space-y-4">
+      <h3 class="text-sm font-medium">选项</h3>
       <div class="grid grid-cols-2 gap-4">
-        <UFormGroup name="caseSensitive">
-          <UCheckbox
-            v-model="formState.caseSensitive"
-            label="区分大小写"
-          />
-        </UFormGroup>
+        <div class="flex items-center space-x-2">
+          <Checkbox id="caseSensitive" v-model="formState.caseSensitive" />
+          <label for="caseSensitive" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            区分大小写
+          </label>
+        </div>
 
-        <UFormGroup name="word">
-          <UCheckbox
-            v-model="formState.word"
-            label="整词匹配"
-          />
-        </UFormGroup>
+        <div class="flex items-center space-x-2">
+          <Checkbox id="word" v-model="formState.word" />
+          <label for="word" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+            整词匹配
+          </label>
+        </div>
       </div>
     </div>
 
-    <UFormGroup label="优先级" name="priority">
-      <UInput 
-        v-model.number="formState.priority" 
+    <div class="space-y-2">
+      <label for="priority" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        优先级
+      </label>
+      <Input
+        id="priority"
+        v-model.number="formState.priority"
         type="number"
         placeholder="0"
       />
-      <template #hint>
+      <p class="text-sm text-muted-foreground">
         值越高，优先级越高（可选）
-      </template>
-    </UFormGroup>
+      </p>
+    </div>
 
-    <UFormGroup label="快捷键" name="hotkey">
-      <UInput 
-        v-model="formState.hotkey" 
+    <div class="space-y-2">
+      <label for="hotkey" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+        快捷键
+      </label>
+      <Input
+        id="hotkey"
+        v-model="formState.hotkey"
         placeholder="例如: alt+h"
       />
-      <template #hint>
+      <p class="text-sm text-muted-foreground">
         可选的快捷键触发方式
-      </template>
-    </UFormGroup>
+      </p>
+    </div>
 
     <div class="flex gap-2 mt-6">
-      <UButton type="submit" color="primary">保存</UButton>
-      <UButton type="button" color="gray" @click="onCancel">取消</UButton>
-      <UButton type="button" color="red" variant="soft" @click="onDelete" class="ml-auto">删除</UButton>
+      <Button type="submit">保存</Button>
+      <Button type="button" variant="outline" @click="onCancel">取消</Button>
+      <Button type="button" variant="destructive" @click="onDelete" class="ml-auto">删除</Button>
     </div>
-  </UForm>
+  </form>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted } from 'vue';
 import { EspansoRule } from '../../types/espanso-config';
+import Button from '../ui/button.vue';
+import Input from '../ui/input.vue';
+import Checkbox from '../ui/checkbox.vue';
 
 // 定义props
 const props = defineProps<{
@@ -180,7 +212,9 @@ watch(currentContentType, (newType) => {
 
 // 提交表单
 const onSubmit = () => {
-  // 表单验证由Nuxt UI处理
+  if (!formState.value.trigger || !formState.value.content) {
+    return; // 简单验证
+  }
   emit('save', props.rule.id, formState.value);
 };
 
@@ -196,11 +230,3 @@ const onDelete = () => {
   }
 };
 </script>
-
-<style scoped>
-.rule-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-</style>

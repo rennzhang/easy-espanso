@@ -1,107 +1,120 @@
 <template>
-  <div class="middle-pane-container">
-    <div class="middle-pane-header">
-      <div class="header-title">
-        <h3 class="title">规则列表</h3>
-        <span class="item-count" v-if="config && config.root">{{ filteredItems.length }} 项</span>
+  <div class="flex flex-col h-full bg-card">
+    <div class="flex flex-col p-4 border-b border-border gap-3">
+      <div class="flex items-center">
+        <h3 class="text-xl font-semibold text-foreground m-0">规则列表</h3>
+        <Badge variant="outline" class="ml-2" v-if="config && config.root">
+          {{ filteredItems.length }} 项
+        </Badge>
       </div>
-      <div class="search-box">
-        <input
-          type="text"
+      <div>
+        <Input
           v-model="searchQuery"
           placeholder="搜索规则..."
-          class="search-input"
+          class="w-full"
         />
       </div>
-      <div class="actions">
-        <button class="btn-primary btn-sm" @click="addNewRule">
-          <span class="btn-icon">+</span>
-          <span class="btn-text">添加规则</span>
-        </button>
-        <button class="btn-secondary btn-sm" @click="addNewGroup">
-          <span class="btn-icon">+</span>
-          <span class="btn-text">添加分组</span>
-        </button>
+      <div class="flex justify-end gap-2">
+        <Button @click="addNewRule" size="sm">
+          <PlusIcon class="h-4 w-4 mr-1" />
+          添加规则
+        </Button>
+        <Button variant="outline" @click="addNewGroup" size="sm">
+          <PlusIcon class="h-4 w-4 mr-1" />
+          添加分组
+        </Button>
       </div>
     </div>
 
-    <div class="filter-bar" v-if="filterTags.length > 0">
-      <div class="active-filters">
-        <div class="filter-label">已筛选:</div>
-        <div class="filter-tags">
-          <div v-for="tag in filterTags" :key="tag" class="filter-tag">
-            <span class="tag-text">{{ tag }}</span>
-            <button class="remove-tag" @click="removeTagFilter(tag)">×</button>
-          </div>
+    <div class="p-3 bg-muted" v-if="filterTags.length > 0">
+      <div class="flex items-center flex-wrap gap-2">
+        <div class="text-xs font-medium text-muted-foreground">已筛选:</div>
+        <div class="flex flex-wrap gap-1">
+          <Badge
+            v-for="tag in filterTags"
+            :key="tag"
+            variant="secondary"
+            class="flex items-center gap-1"
+          >
+            {{ tag }}
+            <button
+              class="inline-flex items-center justify-center rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-4 w-4"
+              @click="removeTagFilter(tag)"
+            >
+              <span class="sr-only">Remove</span>
+              <XIcon class="h-3 w-3" />
+            </button>
+          </Badge>
         </div>
-        <button class="clear-filters" @click="clearFilters">清除全部</button>
+        <Button variant="ghost" size="sm" class="h-6 text-xs" @click="clearFilters">
+          清除全部
+        </Button>
       </div>
     </div>
 
-    <div class="middle-pane-content">
-      <div v-if="loading" class="loading-container">
-        <div class="loading"></div>
-        <div class="loading-text">加载中...</div>
+    <div class="flex-1 overflow-y-auto p-4">
+      <div v-if="loading" class="flex flex-col justify-center items-center h-full gap-4">
+        <div class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+        <div class="text-primary font-medium">加载中...</div>
       </div>
-      <div v-else-if="!config" class="empty-state">
-        <div class="empty-icon">📁</div>
-        <h4 class="empty-title">未加载配置</h4>
-        <p class="empty-description">请点击顶部的"打开配置"按钮加载Espanso配置文件</p>
+      <div v-else-if="!config" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+        <FolderIcon class="h-12 w-12 mb-4" />
+        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未加载配置</h4>
+        <p class="mb-6 text-muted-foreground max-w-md">请点击顶部的"打开配置"按钮加载Espanso配置文件</p>
       </div>
-      <div v-else-if="config.root.children.length === 0" class="empty-state">
-        <div class="empty-icon">📝</div>
-        <h4 class="empty-title">没有规则</h4>
-        <p class="empty-description">点击"添加规则"按钮创建第一条规则</p>
-        <button class="btn-primary" @click="addNewRule">添加规则</button>
+      <div v-else-if="config.root.children.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+        <FileTextIcon class="h-12 w-12 mb-4" />
+        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
+        <p class="mb-6 text-muted-foreground max-w-md">点击"添加规则"按钮创建第一条规则</p>
+        <Button @click="addNewRule">添加规则</Button>
       </div>
-      <div v-else-if="filteredItems.length === 0" class="empty-state">
-        <div class="empty-icon">🔍</div>
-        <h4 class="empty-title">未找到匹配项</h4>
-        <p class="empty-description">尝试使用不同的搜索词或标签过滤器</p>
-        <button class="btn-secondary" @click="clearFilters">清除过滤器</button>
+      <div v-else-if="filteredItems.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+        <SearchIcon class="h-12 w-12 mb-4" />
+        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未找到匹配项</h4>
+        <p class="mb-6 text-muted-foreground max-w-md">尝试使用不同的搜索词或标签过滤器</p>
+        <Button variant="outline" @click="clearFilters">清除过滤器</Button>
       </div>
-      <div v-else class="items-list">
+      <div v-else class="flex flex-col gap-3">
         <!-- 这里将来会使用vue-draggable-next实现拖拽排序 -->
-        <div
+        <Card
           v-for="item in filteredItems"
           :key="item.id"
-          class="item card"
-          :class="{ 'selected': selectedItemId === item.id }"
+          :class="{ 'border-primary shadow-[0_0_0_1px] shadow-primary': selectedItemId === item.id }"
+          class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md"
           @click="selectItem(item.id)"
         >
-          <div class="item-content">
-            <div v-if="item.type === 'rule'" class="rule-item">
-              <div class="item-header">
-                <span class="trigger">{{ item.trigger }}</span>
-                <div class="item-tags" v-if="item.tags && item.tags.length > 0">
-                  <span
+          <CardContent class="p-4">
+            <div v-if="item.type === 'rule'">
+              <div class="flex justify-between items-start">
+                <span class="font-semibold text-foreground">{{ item.trigger }}</span>
+                <div class="flex flex-wrap gap-1" v-if="item.tags && item.tags.length > 0">
+                  <Badge
                     v-for="tag in item.tags"
                     :key="tag"
-                    class="badge badge-primary"
                     @click.stop="addTagFilter(tag)"
                   >
                     {{ tag }}
-                  </span>
+                  </Badge>
                 </div>
               </div>
-              <div class="content-preview">{{ getContentPreview(item) }}</div>
-              <div class="item-meta">
-                <span class="item-type">{{ getContentTypeLabel(item.contentType) }}</span>
-                <span class="item-date">{{ formatDate(item.updatedAt) }}</span>
+              <div class="text-sm text-muted-foreground my-1 whitespace-pre-line">{{ getContentPreview(item) }}</div>
+              <div class="flex justify-between text-xs text-muted-foreground mt-1">
+                <Badge variant="outline" class="bg-muted">{{ getContentTypeLabel(item.contentType) }}</Badge>
+                <span>{{ formatDate(item.updatedAt) }}</span>
               </div>
             </div>
-            <div v-else-if="item.type === 'group'" class="group-item">
-              <div class="item-header">
-                <span class="group-name">{{ item.name }}</span>
-                <span class="badge badge-secondary children-count">{{ item.children.length }} 项</span>
+            <div v-else-if="item.type === 'group'">
+              <div class="flex justify-between items-start">
+                <span class="font-semibold text-foreground">{{ item.name }}</span>
+                <Badge variant="secondary">{{ item.children.length }} 项</Badge>
               </div>
-              <div class="item-meta">
-                <span class="item-type">分组</span>
-                <span class="item-date">{{ formatDate(item.updatedAt) }}</span>
+              <div class="flex justify-between text-xs text-muted-foreground mt-1">
+                <Badge variant="outline" class="bg-muted">分组</Badge>
+                <span>{{ formatDate(item.updatedAt) }}</span>
               </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   </div>
@@ -111,6 +124,18 @@
 import { computed, ref } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
 import { EspansoRule, EspansoGroup } from '../../types/espanso-config';
+import {
+  PlusIcon,
+  XIcon,
+  FolderIcon,
+  FileTextIcon,
+  SearchIcon
+} from 'lucide-vue-next';
+import Button from '../ui/button.vue';
+import Input from '../ui/input.vue';
+import Badge from '../ui/badge.vue';
+import Card from '../ui/card.vue';
+import CardContent from '../ui/card-content.vue';
 
 const store = useEspansoStore();
 const config = computed(() => store.config);
@@ -247,252 +272,4 @@ const addNewGroup = () => {
 };
 </script>
 
-<style>
-.middle-pane-container {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  background-color: white;
-}
 
-.middle-pane-header {
-  display: flex;
-  flex-direction: column;
-  padding: var(--spacing-4);
-  border-bottom: 1px solid var(--border-color);
-  gap: var(--spacing-3);
-}
-
-.header-title {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-}
-
-.title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0;
-  color: var(--text-color);
-}
-
-.item-count {
-  font-size: 0.875rem;
-  color: var(--text-muted);
-  background-color: var(--background-dark-color);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-full);
-}
-
-.search-box {
-  width: 100%;
-}
-
-.search-input {
-  width: 100%;
-  padding: var(--spacing-2) var(--spacing-3);
-  border: 1px solid var(--border-color);
-  border-radius: var(--radius);
-  background-color: var(--background-light-color);
-  font-size: 0.875rem;
-  transition: all var(--transition) ease;
-}
-
-.search-input:focus {
-  border-color: var(--primary-color);
-  background-color: white;
-  box-shadow: 0 0 0 3px var(--primary-light);
-}
-
-.actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--spacing-2);
-}
-
-.filter-bar {
-  padding: var(--spacing-3) var(--spacing-4);
-  background-color: var(--background-light-color);
-  border-bottom: 1px solid var(--border-color);
-}
-
-.active-filters {
-  display: flex;
-  align-items: center;
-  gap: var(--spacing-2);
-  flex-wrap: wrap;
-}
-
-.filter-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--text-muted);
-}
-
-.filter-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-1);
-}
-
-.filter-tag {
-  display: flex;
-  align-items: center;
-  background-color: var(--primary-light);
-  color: var(--primary-color);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-full);
-  font-size: 0.75rem;
-  gap: var(--spacing-1);
-}
-
-.remove-tag {
-  background: none;
-  border: none;
-  color: var(--primary-color);
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.clear-filters {
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  font-size: 0.75rem;
-  cursor: pointer;
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius);
-  transition: all var(--transition) ease;
-}
-
-.clear-filters:hover {
-  background-color: var(--background-dark-color);
-  color: var(--text-color);
-}
-
-.middle-pane-content {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--spacing-4);
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  gap: var(--spacing-4);
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  height: 100%;
-  color: var(--text-muted);
-  text-align: center;
-  padding: var(--spacing-8);
-}
-
-.empty-icon {
-  font-size: 3rem;
-  margin-bottom: var(--spacing-4);
-}
-
-.empty-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin: 0 0 var(--spacing-2) 0;
-  color: var(--text-color);
-}
-
-.empty-description {
-  margin: 0 0 var(--spacing-6) 0;
-  color: var(--text-muted);
-  max-width: 24rem;
-}
-
-.items-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-3);
-}
-
-.item {
-  padding: var(--spacing-4);
-  border-radius: var(--radius);
-  cursor: pointer;
-  transition: all var(--transition) ease;
-}
-
-.item:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
-}
-
-.item.selected {
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 1px var(--primary-color), var(--shadow);
-}
-
-.item-content {
-  display: flex;
-  flex-direction: column;
-  gap: var(--spacing-2);
-}
-
-.item-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-}
-
-.trigger, .group-name {
-  font-weight: 600;
-  color: var(--text-color);
-  font-size: 1rem;
-}
-
-.item-tags {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--spacing-1);
-}
-
-.content-preview {
-  font-size: 0.875rem;
-  color: var(--text-secondary);
-  line-height: 1.5;
-  margin: var(--spacing-1) 0;
-  white-space: pre-line;
-}
-
-.item-meta {
-  display: flex;
-  justify-content: space-between;
-  font-size: 0.75rem;
-  color: var(--text-muted);
-  margin-top: var(--spacing-1);
-}
-
-.item-type {
-  background-color: var(--background-dark-color);
-  padding: 0.125rem 0.5rem;
-  border-radius: var(--radius-full);
-}
-
-.item-date {
-  color: var(--text-muted);
-}
-
-.children-count {
-  font-size: 0.75rem;
-}
-</style>
