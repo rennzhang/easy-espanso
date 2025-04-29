@@ -1,15 +1,72 @@
 // 从preload脚本导入文件服务函数
-import { EspansoFile } from '../types/espanso-config';
+import type { EspansoFile } from '@/types/espanso-config';
+import type { 
+  PreloadApi, 
+  OpenDialogOptions, 
+  OpenDialogResult, 
+  FileInfo, 
+  SaveDialogOptions, 
+  SaveDialogResult,
+  FileFilter,
+  MessageBoxOptions,
+  MessageBoxResult,
+  YamlData
+} from '@/types/preload';
 
-// 检测当前运行环境
-export function detectEnvironment(): 'electron' | 'utools' | 'web' {
-  if (window.preloadApi?.isElectron) {
+// 检测运行环境
+export async function detectEnvironment(): Promise<'electron' | 'web'> {
+  // 检查是否在 Electron 环境
+  if (window.preloadApi) {
     return 'electron';
-  } else if (window.preloadApi?.isUTools) {
-    return 'utools';
-  } else {
-    return 'web';
   }
+  return 'web';
+}
+
+// 显示打开目录对话框
+export async function showOpenDirectoryDialog(): Promise<string | null> {
+  const env = await detectEnvironment();
+  
+  if (env === 'web') {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.setAttribute('webkitdirectory', '');
+
+      input.onchange = (event) => {
+        const files = (event.target as HTMLInputElement).files;
+        if (files && files.length > 0) {
+          // 获取选择的文件夹路径
+          const file = files[0];
+          const path = file.webkitRelativePath.split('/')[0];
+          resolve(path);
+        } else {
+          resolve(null);
+        }
+      };
+
+      input.click();
+    });
+  }
+  
+  // Electron 环境
+  if (window.preloadApi?.showOpenDialog) {
+    const options: OpenDialogOptions = {
+      properties: ['openDirectory']
+    };
+
+    try {
+      const result = await window.preloadApi.showOpenDialog(options);
+      if (!result || result.canceled || !result.filePaths || result.filePaths.length === 0) {
+        return null;
+      }
+      return result.filePaths[0];
+    } catch (error) {
+      console.error('Failed to show open directory dialog:', error);
+      return null;
+    }
+  }
+
+  return null;
 }
 
 // 保存配置目录路径
@@ -18,7 +75,7 @@ export function saveConfigDirPath(path: string): void {
 }
 
 // 读取文件内容
-export function readFile(filePath: string): Promise<string> {
+export async function readFile(filePath: string): Promise<string> {
   if (window.preloadApi?.readFile) {
     return window.preloadApi.readFile(filePath);
   }
@@ -29,7 +86,7 @@ export function readFile(filePath: string): Promise<string> {
 }
 
 // 写入文件内容
-export function writeFile(filePath: string, content: string): Promise<void> {
+export async function writeFile(filePath: string, content: string): Promise<void> {
   if (window.preloadApi?.writeFile) {
     return window.preloadApi.writeFile(filePath, content);
   }
@@ -41,7 +98,7 @@ export function writeFile(filePath: string, content: string): Promise<void> {
 }
 
 // 检查文件是否存在
-export function fileExists(filePath: string): Promise<boolean> {
+export async function fileExists(filePath: string): Promise<boolean> {
   if (window.preloadApi?.fileExists) {
     return window.preloadApi.fileExists(filePath);
   }
@@ -52,37 +109,37 @@ export function fileExists(filePath: string): Promise<boolean> {
 }
 
 // 列出目录中的文件
-export function listFiles(dirPath: string): Promise<any[]> {
+export async function listFiles(dirPath: string): Promise<FileInfo[]> {
   if (window.preloadApi?.listFiles) {
-    return window.preloadApi.listFiles(dirPath);
+    return await window.preloadApi.listFiles(dirPath);
   }
-
-  // 如果preloadApi不可用，返回一个模拟的Promise
-  console.warn('preloadApi.listFiles不可用，使用模拟数据');
-  return Promise.resolve([
-    { name: 'base.yml', path: '/path/to/base.yml', extension: '.yml' },
-    { name: 'default.yml', path: '/path/to/default.yml', extension: '.yml' }
-  ]);
+  console.warn('preloadApi.listFiles is not available, using simulated data');
+  return [
+    {
+      name: 'example.yml',
+      path: '/path/to/example.yml',
+      extension: '.yml'
+    }
+  ];
 }
 
 // 显示打开文件对话框
-export function showOpenFileDialog(options: any = {}): Promise<string | null> {
+export async function showOpenFileDialog(options: OpenDialogOptions = {}): Promise<OpenDialogResult> {
   if (window.preloadApi?.showOpenDialog) {
-    return window.preloadApi.showOpenDialog(options).then((paths: string[] | undefined) => {
-      return paths && paths.length > 0 ? paths[0] : null;
-    });
+    return window.preloadApi.showOpenDialog(options);
   }
 
   // Web环境模拟
-  if (detectEnvironment() === 'web') {
+  const env = await detectEnvironment();
+  if (env === 'web') {
     return new Promise((resolve) => {
       const input = document.createElement('input');
       input.type = 'file';
-      input.accept = options.filters ? options.filters.map((f: any) => f.extensions.map((e: string) => `.${e}`).join(',')).join(',') : '';
+      input.accept = options.filters ? options.filters.map(f => f.extensions.map(e => `.${e}`).join(',')).join(',') : '';
 
       input.onchange = (event) => {
         const file = (event.target as HTMLInputElement).files?.[0];
-        resolve(file ? URL.createObjectURL(file) : null);
+        resolve(file ? { canceled: false, filePaths: [URL.createObjectURL(file)] } : { canceled: true, filePaths: [] });
       };
 
       input.click();
@@ -91,80 +148,11 @@ export function showOpenFileDialog(options: any = {}): Promise<string | null> {
 
   // 如果preloadApi不可用，返回一个模拟的Promise
   console.warn('preloadApi.showOpenDialog不可用，使用模拟数据');
-  return Promise.resolve('/path/to/selected/file.yml');
-}
-
-// 显示打开目录对话框
-export function showOpenDirectoryDialog(options: any = {}): Promise<string | null> {
-  if (window.preloadApi?.showOpenDialog) {
-    const dirOptions = { ...options, properties: ['openDirectory'] };
-    return window.preloadApi.showOpenDialog(dirOptions).then((paths: string[] | undefined) => {
-      return paths && paths.length > 0 ? paths[0] : null;
-    });
-  }
-
-  // Web环境模拟
-  if (detectEnvironment() === 'web') {
-    return new Promise((resolve) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.webkitdirectory = true;
-
-      input.onchange = (event) => {
-        const files = (event.target as HTMLInputElement).files;
-        if (files && files.length > 0) {
-          // 尝试提取父目录
-          const file = files[0];
-          const path = file.webkitRelativePath.split('/')[0];
-
-          // 检查是否选择了espanso文件夹
-          let isEspansoFolder = false;
-          let hasMatchDir = false;
-          let hasConfigDir = false;
-
-          // 检查选择的文件夹结构
-          for (let i = 0; i < files.length; i++) {
-            const filePath = files[i].webkitRelativePath;
-            if (filePath.includes('/match/')) {
-              hasMatchDir = true;
-            }
-            if (filePath.includes('/config/')) {
-              hasConfigDir = true;
-            }
-
-            // 如果同时包含match和config目录，认为是espanso文件夹
-            if (hasMatchDir && hasConfigDir) {
-              isEspansoFolder = true;
-              break;
-            }
-          }
-
-          if (isEspansoFolder) {
-            console.log('检测到完整的espanso文件夹结构');
-            // 保存配置目录路径
-            saveConfigDirPath(path);
-            resolve(path);
-          } else {
-            // 显示提示，要求选择完整的espanso文件夹
-            alert('请选择完整的espanso文件夹，该文件夹应包含match和config子目录');
-            resolve(null);
-          }
-        } else {
-          resolve(null);
-        }
-      };
-
-      input.click();
-    });
-  }
-
-  // 如果preloadApi不可用，返回一个模拟的Promise
-  console.warn('preloadApi.showOpenDialog不可用，使用模拟数据');
-  return Promise.resolve('/path/to/selected/directory');
+  return Promise.resolve({ canceled: false, filePaths: ['/path/to/selected/file.yml'] });
 }
 
 // 显示保存文件对话框
-export function showSaveDialog(options: any = {}): Promise<{ canceled: boolean, filePath?: string }> {
+export async function showSaveDialog(options: SaveDialogOptions = {}): Promise<SaveDialogResult> {
   if (window.preloadApi?.showSaveDialog) {
     return window.preloadApi.showSaveDialog(options);
   }
@@ -175,7 +163,7 @@ export function showSaveDialog(options: any = {}): Promise<{ canceled: boolean, 
 }
 
 // 解析YAML
-export function parseYaml(yamlString: string): any {
+export async function parseYaml(yamlString: string): Promise<YamlData> {
   if (window.preloadApi?.parseYaml) {
     return window.preloadApi.parseYaml(yamlString);
   }
@@ -186,31 +174,43 @@ export function parseYaml(yamlString: string): any {
 }
 
 // 序列化YAML
-export function serializeYaml(data: any): string {
+export async function serializeYaml(data: YamlData): Promise<string> {
   if (window.preloadApi?.serializeYaml) {
     return window.preloadApi.serializeYaml(data);
   }
 
   // 如果preloadApi不可用，返回一个模拟的Promise
   console.warn('preloadApi.serializeYaml不可用，使用模拟数据');
-  return '# 示例YAML内容\nmatches:\n  - trigger: ":hello"\n    replace: "Hello, World!"';
+  return Promise.resolve('# 示例YAML内容\nmatches:\n  - trigger: ":hello"\n    replace: "Hello, World!"');
 }
 
 // 获取Espanso配置目录
-export function getEspansoConfigDir(): string {
-  if (window.preloadApi?.getEspansoConfigDir) {
-    return window.preloadApi.getEspansoConfigDir();
+export async function getEspansoConfigDir(): Promise<string | null> {
+  const env = await detectEnvironment();
+  
+  if (env === 'web') {
+    return localStorage.getItem('espansoConfigDir');
   }
-
-  // 如果preloadApi不可用，尝试从localStorage读取
-  const savedConfigDir = localStorage.getItem('espansoConfigDir');
-  if (savedConfigDir) {
-    return savedConfigDir;
+  
+  if (window.preloadApi?.platform) {
+    try {
+      const platform = await window.preloadApi.platform();
+      
+      switch (platform) {
+        case 'win32':
+          return `${process.env.APPDATA || ''}\\espanso`;
+        case 'darwin':
+          return `${process.env.HOME || ''}\\Library\\Application Support\\espanso`;
+        default:
+          return `${process.env.HOME || ''}\\.config\\espanso`;
+      }
+    } catch (error) {
+      console.error('获取配置目录失败:', error);
+      return null;
+    }
   }
-
-  // 如果还是没有，返回一个模拟的路径
-  console.warn('preloadApi.getEspansoConfigDir不可用，使用模拟数据');
-  return '/path/to/espanso/config';
+  
+  return null;
 }
 
 // 获取Espanso配置文件
@@ -222,7 +222,7 @@ export async function getEspansoConfigFiles(): Promise<EspansoFile[]> {
 
   // 如果preloadApi不可用，尝试自己实现功能
   try {
-    const configDir = getEspansoConfigDir();
+    const configDir = await getEspansoConfigDir();
     const matchDir = `${configDir}/match`;
     const configPath = `${configDir}/config`;
 
@@ -288,10 +288,124 @@ export async function getEspansoConfigFiles(): Promise<EspansoFile[]> {
 }
 
 // 显示通知
-export function showNotification(message: string): void {
+export async function showNotification(title: string, body: string): Promise<void> {
   if (window.preloadApi?.showNotification) {
-    window.preloadApi.showNotification(message);
+    await window.preloadApi.showNotification(title, body);
   } else {
-    console.log('通知:', message);
+    console.log('通知:', title, body);
   }
 }
+
+class FileService {
+  private preloadApi: PreloadApi | undefined;
+
+  constructor() {
+    this.preloadApi = window.preloadApi;
+  }
+
+  async readFile(filePath: string): Promise<string> {
+    if (!this.preloadApi) {
+      return Promise.resolve('');
+    }
+    return this.preloadApi.readFile(filePath);
+  }
+
+  async writeFile(filePath: string, content: string): Promise<void> {
+    if (!this.preloadApi) {
+      return Promise.resolve();
+    }
+    return this.preloadApi.writeFile(filePath, content);
+  }
+
+  async readYamlFile(filePath: string): Promise<any> {
+    try {
+      const content = await this.readFile(filePath);
+      return await this.parseYaml(content);
+    } catch (error) {
+      console.error('读取YAML文件失败:', error);
+      throw error;
+    }
+  }
+
+  async writeYamlFile(filePath: string, data: any): Promise<void> {
+    try {
+      const content = await this.serializeYaml(data);
+      return await this.writeFile(filePath, content);
+    } catch (error) {
+      console.error('写入YAML文件失败:', error);
+      throw error;
+    }
+  }
+
+  async existsFile(filePath: string): Promise<boolean> {
+    if (!this.preloadApi) {
+      return Promise.resolve(false);
+    }
+    return this.preloadApi.existsFile(filePath);
+  }
+
+  async listFiles(dirPath: string): Promise<FileInfo[]> {
+    if (!this.preloadApi) {
+      return Promise.resolve([]);
+    }
+    return this.preloadApi.listFiles(dirPath);
+  }
+
+  async showOpenDialog(options: OpenDialogOptions): Promise<OpenDialogResult> {
+    if (!this.preloadApi) {
+      return Promise.resolve({ canceled: true, filePaths: [] });
+    }
+    return this.preloadApi.showOpenDialog(options);
+  }
+
+  async showSaveDialog(options: SaveDialogOptions): Promise<SaveDialogResult> {
+    if (!this.preloadApi) {
+      return Promise.resolve({ canceled: true, filePath: undefined });
+    }
+    return this.preloadApi.showSaveDialog(options);
+  }
+
+  async showMessageBox(options: MessageBoxOptions): Promise<MessageBoxResult> {
+    if (!this.preloadApi) {
+      return Promise.resolve({ response: 0, checkboxChecked: false });
+    }
+    return this.preloadApi.showMessageBox(options);
+  }
+
+  async parseYaml(content: string): Promise<YamlData> {
+    if (!this.preloadApi) {
+      return Promise.resolve({});
+    }
+    return this.preloadApi.parseYaml(content);
+  }
+
+  async serializeYaml(data: YamlData): Promise<string> {
+    if (!this.preloadApi) {
+      return Promise.resolve('example: yaml');
+    }
+    return this.preloadApi.serializeYaml(data);
+  }
+
+  async getEspansoConfigFiles(): Promise<EspansoFile[]> {
+    if (!this.preloadApi) {
+      return Promise.resolve([]);
+    }
+    return this.preloadApi.getEspansoConfigFiles() as Promise<EspansoFile[]>;
+  }
+
+  async showNotification(title: string, body: string): Promise<void> {
+    if (!this.preloadApi) {
+      return Promise.resolve();
+    }
+    return this.preloadApi.showNotification(title, body);
+  }
+
+  async getPlatform(): Promise<string> {
+    if (!this.preloadApi) {
+      return Promise.resolve('unknown');
+    }
+    return this.preloadApi.platform();
+  }
+}
+
+export const fileService = new FileService();

@@ -227,14 +227,15 @@ function parseYaml(content) {
 // 序列化为YAML
 function serializeYaml(data) {
   try {
-    return yaml.dump(data, {
+    const result = yaml.dump(data, {
       indent: 2,
       lineWidth: -1, // 不限制行宽
       noRefs: true // 避免使用引用标记
     });
+    return Promise.resolve(result);
   } catch (error) {
     console.error('序列化YAML失败', error);
-    throw error;
+    return Promise.reject(error);
   }
 }
 
@@ -293,6 +294,11 @@ async function getEspansoConfigFiles() {
   return files;
 }
 
+// 获取操作系统平台
+function platform() {
+  return Promise.resolve(process.platform);
+}
+
 // 显示通知
 function showNotification(message) {
   if (window.utools && window.utools.showNotification) {
@@ -322,6 +328,9 @@ window.preloadApi = {
   // Espanso相关
   getEspansoConfigDir,
   getEspansoConfigFiles,
+
+  // 系统操作
+  platform,
 
   // 通知
   showNotification

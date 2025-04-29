@@ -3,7 +3,7 @@
     <div class="flex flex-col p-4 border-b border-border gap-3">
       <div class="flex items-center">
         <h3 class="text-xl font-semibold text-foreground m-0">规则列表</h3>
-        <Badge variant="outline" class="ml-2" v-if="config && config.root">
+        <Badge variant="outline" class="ml-2" v-if="config">
           {{ filteredItems.length }} 项
         </Badge>
       </div>
@@ -26,7 +26,7 @@
       </div>
     </div>
 
-    <div class="p-3 bg-muted" v-if="filterTags.length > 0">
+    <div class="p-3 bg-muted" v-if="filterTags && filterTags.length > 0">
       <div class="flex items-center flex-wrap gap-2">
         <div class="text-xs font-medium text-muted-foreground">已筛选:</div>
         <div class="flex flex-wrap gap-1">
@@ -62,7 +62,7 @@
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未加载配置</h4>
         <p class="mb-6 text-muted-foreground max-w-md">请点击顶部的"打开配置"按钮加载Espanso配置文件</p>
       </div>
-      <div v-else-if="config.root.children.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+      <div v-else-if="config.matches && config.matches.length === 0 && config.groups && config.groups.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
         <FileTextIcon class="h-12 w-12 mb-4" />
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
         <p class="mb-6 text-muted-foreground max-w-md">点击"添加规则"按钮创建第一条规则</p>
@@ -84,12 +84,12 @@
           @click="selectItem(item.id)"
         >
           <CardContent class="p-4">
-            <div v-if="item.type === 'rule'">
+            <div v-if="item.type === 'match'">
               <div class="flex justify-between items-start">
-                <span class="font-semibold text-foreground">{{ item.trigger }}</span>
-                <div class="flex flex-wrap gap-1" v-if="item.tags && item.tags.length > 0">
+                <span class="font-semibold text-foreground">{{ (item as Match).trigger }}</span>
+                <div class="flex flex-wrap gap-1" v-if="(item as Match).tags && (item as Match).tags.length > 0">
                   <Badge
-                    v-for="tag in item.tags"
+                    v-for="tag in (item as Match).tags"
                     :key="tag"
                     @click.stop="addTagFilter(tag)"
                   >
@@ -97,20 +97,20 @@
                   </Badge>
                 </div>
               </div>
-              <div class="text-sm text-muted-foreground my-1 whitespace-pre-line">{{ getContentPreview(item) }}</div>
+              <div class="text-sm text-muted-foreground my-1 whitespace-pre-line">{{ getContentPreview(item as Match) }}</div>
               <div class="flex justify-between text-xs text-muted-foreground mt-1">
-                <Badge variant="outline" class="bg-muted">{{ getContentTypeLabel(item.contentType) }}</Badge>
-                <span>{{ formatDate(item.updatedAt) }}</span>
+                <Badge variant="outline" class="bg-muted">{{ getContentTypeLabel((item as Match).contentType) }}</Badge>
+                <span v-if="(item as Match).updatedAt">{{ formatDate((item as Match).updatedAt) }}</span>
               </div>
             </div>
             <div v-else-if="item.type === 'group'">
               <div class="flex justify-between items-start">
-                <span class="font-semibold text-foreground">{{ item.name }}</span>
-                <Badge variant="secondary">{{ item.children.length }} 项</Badge>
+                <span class="font-semibold text-foreground">{{ (item as Group).name }}</span>
+                <Badge variant="secondary" v-if="(item as Group).matches">{{ (item as Group).matches?.length || 0 }} 项</Badge>
               </div>
               <div class="flex justify-between text-xs text-muted-foreground mt-1">
                 <Badge variant="outline" class="bg-muted">分组</Badge>
-                <span>{{ formatDate(item.updatedAt) }}</span>
+                <span v-if="(item as Group).updatedAt">{{ formatDate((item as Group).updatedAt) }}</span>
               </div>
             </div>
           </CardContent>
@@ -121,155 +121,207 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useEspansoStore } from '../../store/useEspansoStore';
-import { EspansoRule, EspansoGroup } from '../../types/espanso-config';
+import { ref, computed, nextTick } from 'vue'
+import { useEspansoStore } from '../../store/espansoStore'
+import Button from '@/components/ui/button.vue'
+import Input from '@/components/ui/input.vue'
+import Badge from '@/components/ui/badge.vue'
+import Card from '@/components/ui/card.vue'
+import CardContent from '@/components/ui/card-content.vue'
 import {
-  PlusIcon,
-  XIcon,
+  SearchIcon,
   FolderIcon,
   FileTextIcon,
-  SearchIcon
-} from 'lucide-vue-next';
-import Button from '../ui/button.vue';
-import Input from '../ui/input.vue';
-import Badge from '../ui/badge.vue';
-import Card from '../ui/card.vue';
-import CardContent from '../ui/card-content.vue';
+  PlusIcon,
+  XIcon,
+} from 'lucide-vue-next'
+import { nanoid } from 'nanoid'
+import { Match, Group } from '../../types/espanso'
 
-const store = useEspansoStore();
-const config = computed(() => store.config);
-const loading = computed(() => store.loading);
-const selectedItemId = computed(() => store.selectedItemId);
-const filterTags = computed(() => store.middlePaneFilterTags);
+const store = useEspansoStore()
+const searchQuery = ref('')
 
-// 搜索查询
-const searchQuery = ref('');
+// 使用计算属性直接从store获取数据
+const config = computed(() => store.state.config)
+const selectedItemId = computed(() => store.state.selectedItemId)
+const filterTags = computed(() => store.state.selectedTags)
+const loading = computed(() => store.state.config === null)
 
-// 过滤后的项目列表
+// 过滤和排序项目
 const filteredItems = computed(() => {
-  if (!config.value || !config.value.root) return [];
-
-  let items = config.value.root.children;
-
-  // 应用标签过滤
-  if (filterTags.value.length > 0) {
-    items = items.filter(item => {
-      if (item.type === 'rule' && item.tags) {
-        return filterTags.value.every(tag => item.tags!.includes(tag));
-      }
-      return false;
-    });
+  if (!config.value || (!config.value.matches && !config.value.groups)) {
+    return []
   }
 
-  // 应用搜索过滤
-  if (searchQuery.value.trim()) {
-    const query = searchQuery.value.toLowerCase().trim();
-    items = items.filter(item => {
-      if (item.type === 'rule') {
-        return item.trigger.toLowerCase().includes(query) ||
-               (typeof item.content === 'string' && item.content.toLowerCase().includes(query));
+  let allItems: (Match | Group)[] = []
+
+  // 添加所有匹配项
+  if (config.value.matches) {
+    allItems = allItems.concat(config.value.matches.map(match => ({
+      ...match,
+      type: 'match'
+    })))
+  }
+
+  // 添加所有分组
+  if (config.value.groups) {
+    allItems = allItems.concat(config.value.groups.map(group => ({
+      ...group,
+      type: 'group'
+    })))
+  }
+
+  // 先按搜索过滤
+  let filtered = allItems
+  if (searchQuery.value && searchQuery.value.trim() !== '') {
+    const query = searchQuery.value.toLowerCase()
+    filtered = filtered.filter(item => {
+      if (item.type === 'match') {
+        const match = item as Match
+        return (
+          match.trigger?.toLowerCase().includes(query) ||
+          match.replace?.toLowerCase().includes(query)
+        )
       } else if (item.type === 'group') {
-        return item.name.toLowerCase().includes(query);
+        const group = item as Group
+        return group.name?.toLowerCase().includes(query)
       }
-      return false;
-    });
+      return false
+    })
   }
 
-  return items;
-});
-
-// 获取内容预览
-const getContentPreview = (item: EspansoRule) => {
-  if (item.type !== 'rule') return '';
-
-  // 根据contentType返回不同的预览
-  switch (item.contentType) {
-    case 'plain':
-      return String(item.content).substring(0, 60) + (String(item.content).length > 60 ? '...' : '');
-    case 'rich':
-    case 'html':
-      return '[富文本内容]';
-    case 'script':
-      return '[脚本内容]';
-    case 'image':
-      return '[图片内容]';
-    case 'form':
-      return '[表单内容]';
-    case 'clipboard':
-      return '[剪贴板内容]';
-    case 'shell':
-      return '[Shell命令]';
-    case 'key':
-      return '[按键序列]';
-    default:
-      return String(item.content);
+  // 按标签过滤
+  if (filterTags.value && filterTags.value.length > 0) {
+    filtered = filtered.filter(item => {
+      if (item.type === 'match') {
+        const match = item as Match
+        return match.tags && filterTags.value.every(tag => match.tags.includes(tag))
+      }
+      return false
+    })
   }
-};
+
+  // 按最后更新日期排序（最新的在前面）
+  filtered.sort((a, b) => {
+    const dateA = a.type === 'match' 
+      ? (a as Match).updatedAt ? new Date((a as Match).updatedAt).getTime() : 0 
+      : (a as Group).updatedAt ? new Date((a as Group).updatedAt).getTime() : 0
+    const dateB = b.type === 'match' 
+      ? (b as Match).updatedAt ? new Date((b as Match).updatedAt).getTime() : 0 
+      : (b as Group).updatedAt ? new Date((b as Group).updatedAt).getTime() : 0
+    return dateB - dateA
+  })
+
+  return filtered
+})
+
+// 内容预览
+const getContentPreview = (item: Match) => {
+  if (!item || item.type !== 'match') {
+    return ''
+  }
+  
+  if (!item.replace) {
+    return ''
+  }
+  
+  const text = typeof item.replace === 'string' 
+    ? item.replace 
+    : JSON.stringify(item.replace)
+  
+  return text.length > 100 ? text.substring(0, 100) + '...' : text
+}
 
 // 获取内容类型标签
-const getContentTypeLabel = (contentType: string) => {
-  switch (contentType) {
-    case 'plain': return '纯文本';
-    case 'rich': return '富文本';
-    case 'html': return 'HTML';
-    case 'script': return '脚本';
-    case 'image': return '图片';
-    case 'form': return '表单';
-    case 'clipboard': return '剪贴板';
-    case 'shell': return 'Shell';
-    case 'key': return '按键序列';
-    default: return contentType;
+const getContentTypeLabel = (contentType?: string) => {
+  if (!contentType) return '纯文本'
+  
+  const typeMap: Record<string, string> = {
+    'text': '纯文本',
+    'html': 'HTML',
+    'image': '图片',
+    'script': '脚本',
+    'keystroke': '按键',
+    'form': '表单'
   }
-};
+  
+  return typeMap[contentType] || contentType
+}
 
 // 格式化日期
-const formatDate = (timestamp: number) => {
-  if (!timestamp) return '';
-  const date = new Date(timestamp);
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
   return date.toLocaleDateString('zh-CN', {
     year: 'numeric',
-    month: 'short',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit'
-  });
-};
+    month: '2-digit',
+    day: '2-digit',
+  })
+}
 
 // 选择项目
-const selectItem = (itemId: string) => {
-  store.selectItem(itemId);
-};
+const selectItem = (id: string) => {
+  store.state.selectedItemId = id
+}
 
-// 添加标签过滤
+// 标签筛选
 const addTagFilter = (tag: string) => {
-  if (!filterTags.value.includes(tag)) {
-    store.setMiddlePaneFilterTags([...filterTags.value, tag]);
+  if (filterTags.value && !filterTags.value.includes(tag)) {
+    store.state.selectedTags = [...filterTags.value, tag]
   }
-};
+}
 
-// 移除标签过滤
 const removeTagFilter = (tag: string) => {
-  store.setMiddlePaneFilterTags(filterTags.value.filter(t => t !== tag));
-};
+  if (filterTags.value) {
+    store.state.selectedTags = filterTags.value.filter(t => t !== tag)
+  }
+}
 
-// 清除所有过滤器
 const clearFilters = () => {
-  store.setMiddlePaneFilterTags([]);
-  searchQuery.value = '';
-};
+  store.state.selectedTags = []
+  searchQuery.value = ''
+}
 
 // 添加新规则
 const addNewRule = () => {
-  // 这里将在后续任务中实现
-  console.log('添加新规则');
-};
+  if (!config.value) return
+  
+  const newMatch: Match = {
+    id: nanoid(),
+    type: 'match',
+    trigger: 'new_trigger',
+    replace: '替换内容',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  
+  store.addItem(newMatch)
+  
+  // 选择新添加的规则并等待DOM更新后滚动到视图
+  nextTick(() => {
+    selectItem(newMatch.id)
+  })
+}
 
 // 添加新分组
 const addNewGroup = () => {
-  // 这里将在后续任务中实现
-  console.log('添加新分组');
-};
+  if (!config.value) return
+  
+  const newGroup: Group = {
+    id: nanoid(),
+    type: 'group',
+    name: '新分组',
+    matches: [],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }
+  
+  store.addItem(newGroup)
+  
+  // 选择新添加的分组并等待DOM更新后滚动到视图
+  nextTick(() => {
+    selectItem(newGroup.id)
+  })
+}
 </script>
 
 

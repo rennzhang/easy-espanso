@@ -136,14 +136,15 @@ function parseYaml(content) {
 // 序列化为YAML
 function serializeYaml(data) {
   try {
-    return yaml.dump(data, {
+    const result = yaml.dump(data, {
       indent: 2,
       lineWidth: -1, // 不限制行宽
       noRefs: true // 避免使用引用标记
     });
+    return Promise.resolve(result);
   } catch (error) {
     console.error('序列化YAML失败', error);
-    throw error;
+    return Promise.reject(error);
   }
 }
 
@@ -207,6 +208,11 @@ function showNotification(message) {
   window.utools.showNotification(message);
 }
 
+// 获取操作系统平台
+function platform() {
+  return Promise.resolve(process.platform);
+}
+
 // 暴露API给渲染进程
 window.preloadApi = {
   // 文件操作
@@ -228,6 +234,9 @@ window.preloadApi = {
   getEspansoConfigDir,
   getEspansoConfigFiles,
 
+  // 系统操作
+  platform,
+  
   // 通知
   showNotification
 };

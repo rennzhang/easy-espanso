@@ -26,7 +26,7 @@
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未选择项目</h4>
         <p class="m-0 max-w-md">请从左侧列表选择一个规则或分组进行编辑</p>
       </div>
-      <div v-else-if="selectedItem.type === 'rule'" class="max-w-2xl mx-auto">
+      <div v-else-if="selectedItem.type === 'match'" class="max-w-2xl mx-auto">
         <RuleEditForm
           :rule="selectedItem"
           @save="saveRule"
@@ -53,20 +53,23 @@ import { SaveIcon, TrashIcon } from 'lucide-vue-next';
 import Button from '../ui/button.vue';
 import RuleEditForm from '../forms/RuleEditForm.vue';
 import GroupEditForm from '../forms/GroupEditForm.vue';
-import { EspansoRule, EspansoGroup } from '../../types/espanso-config';
+import { Match, Group } from '../../types/espanso';
 
 const store = useEspansoStore();
-const selectedItem = computed(() => store.selectedItem);
-const loading = computed(() => store.loading);
+const selectedItem = computed(() => {
+  if (!store.state.selectedItemId) return null;
+  return store.findItemById(store.state.selectedItemId);
+});
+const loading = computed(() => false); // 模拟的 loading 状态
 
 // 标题
 const headerTitle = computed(() => {
   if (!selectedItem.value) return '详情';
 
-  if (selectedItem.value.type === 'rule') {
-    return `编辑规则: ${selectedItem.value.trigger}`;
+  if (selectedItem.value.type === 'match') {
+    return `编辑规则: ${(selectedItem.value as Match).trigger}`;
   } else if (selectedItem.value.type === 'group') {
-    return `编辑分组: ${selectedItem.value.name}`;
+    return `编辑分组: ${(selectedItem.value as Group).name}`;
   }
 
   return '详情';
@@ -89,10 +92,10 @@ const formatDate = (timestamp: number) => {
 const saveItem = () => {
   if (!selectedItem.value) return;
 
-  if (selectedItem.value.type === 'rule') {
-    saveRule(selectedItem.value.id, selectedItem.value);
+  if (selectedItem.value.type === 'match') {
+    saveRule(selectedItem.value.id, selectedItem.value as Match);
   } else if (selectedItem.value.type === 'group') {
-    saveGroup(selectedItem.value.id, selectedItem.value);
+    saveGroup(selectedItem.value.id, selectedItem.value as Group);
   }
 };
 
@@ -100,7 +103,7 @@ const saveItem = () => {
 const deleteItem = () => {
   if (!selectedItem.value) return;
 
-  if (selectedItem.value.type === 'rule') {
+  if (selectedItem.value.type === 'match') {
     deleteRule(selectedItem.value.id);
   } else if (selectedItem.value.type === 'group') {
     deleteGroup(selectedItem.value.id);
@@ -108,28 +111,28 @@ const deleteItem = () => {
 };
 
 // 保存规则
-const saveRule = (id: string, updatedRule: Partial<EspansoRule>) => {
-  store.updateRule(id, updatedRule);
+const saveRule = (id: string, updatedRule: Match) => {
+  store.updateItem(updatedRule);
 };
 
 // 保存分组
-const saveGroup = (id: string, updatedGroup: Partial<EspansoGroup>) => {
-  store.updateGroup(id, updatedGroup);
+const saveGroup = (id: string, updatedGroup: Group) => {
+  store.updateItem(updatedGroup);
 };
 
 // 取消编辑
 const cancelEdit = () => {
-  store.setSelectedItemId('');
+  store.state.selectedItemId = null;
 };
 
 // 删除规则
 const deleteRule = (id: string) => {
-  store.deleteRule(id);
+  store.deleteItem(id, 'match');
 };
 
 // 删除分组
 const deleteGroup = (id: string) => {
-  store.deleteGroup(id);
+  store.deleteItem(id, 'group');
 };
 </script>
 

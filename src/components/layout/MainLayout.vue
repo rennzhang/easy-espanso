@@ -1,25 +1,5 @@
 <template>
   <div class="flex flex-col h-screen overflow-hidden bg-background relative">
-    <header class="h-16 bg-card border-b border-border flex items-center px-4 shadow-sm z-10">
-      <div class="flex-1 flex items-center">
-        <div class="font-bold text-xl text-primary flex items-center">
-          <span v-if="!leftMenuCollapsed">Espanso GUI</span>
-          <div v-else class="w-8 h-8 bg-primary text-primary-foreground rounded flex items-center justify-center font-bold">E</div>
-        </div>
-      </div>
-      <div class="flex-2 flex justify-center items-center">
-        <h1 class="text-xl font-semibold text-foreground m-0">Espanso 配置管理工具</h1>
-      </div>
-      <div class="flex-1 flex items-center justify-end gap-2">
-        <Button variant="outline" size="sm" @click="loadConfig">
-          打开配置
-        </Button>
-        <Button size="sm" @click="saveConfig" :disabled="!config">
-          保存配置
-        </Button>
-      </div>
-    </header>
-
     <div class="flex flex-1 overflow-hidden bg-card shadow m-4 rounded-lg" :class="{ 'left-collapsed': leftMenuCollapsed }">
       <LeftPane class="w-[250px] transition-[width] duration-300 ease-in-out overflow-y-auto border-r border-border bg-muted rounded-l-lg left-pane" />
       <MiddlePane class="w-[350px] overflow-y-auto border-r border-border bg-card" />
@@ -36,27 +16,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
 import LeftPane from '../panels/LeftPane.vue';
 import MiddlePane from '../panels/MiddlePane.vue';
 import RightPane from '../panels/RightPane.vue';
-import Button from '../ui/button.vue';
 
 const store = useEspansoStore();
-const leftMenuCollapsed = computed(() => store.leftMenuCollapsed);
-const loading = computed(() => store.loading);
-const config = computed(() => store.config);
-
-// 加载配置
-const loadConfig = async () => {
-  await store.loadConfig();
-};
-
-// 保存配置
-const saveConfig = async () => {
-  await store.saveConfig();
-};
+const leftMenuCollapsed = computed(() => store.state.leftMenuCollapsed);
+const loading = ref(false);
 </script>
 
 <style>

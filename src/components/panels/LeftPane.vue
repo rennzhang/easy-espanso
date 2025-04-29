@@ -1,6 +1,10 @@
 <template>
   <div class="flex flex-col h-full">
-    <div class="flex justify-end items-center p-2 border-b border-border">
+    <div class="flex items-center justify-between p-4 border-b border-border">
+      <div class="font-bold text-xl text-primary flex items-center">
+        <span v-if="!leftMenuCollapsed">Espanso GUI</span>
+        <div v-else class="w-8 h-8 bg-primary text-primary-foreground rounded flex items-center justify-center font-bold">E</div>
+      </div>
       <Button
         variant="ghost"
         size="icon"
@@ -138,16 +142,17 @@ import Button from '../ui/button.vue';
 import Badge from '../ui/badge.vue';
 
 const store = useEspansoStore();
-const leftMenuCollapsed = computed(() => store.leftMenuCollapsed);
-const allTags = computed(() => store.allTags);
-const activeTagFilters = computed(() => store.middlePaneFilterTags);
+const leftMenuCollapsed = computed(() => store.state.leftMenuCollapsed);
+// 临时解决方案，创建模拟的标签数据
+const allTags = computed(() => ['match', 'group']);
+const activeTagFilters = computed(() => store.state.selectedTags);
 
 // 当前活动的导航项
 const activeSection = ref('rules');
 
 // 切换左侧菜单折叠状态
 const toggleLeftMenu = () => {
-  store.setLeftMenuCollapsed(!leftMenuCollapsed.value);
+  store.state.leftMenuCollapsed = !leftMenuCollapsed.value;
 };
 
 // 设置活动的导航项
@@ -157,7 +162,7 @@ const setActiveSection = (section: string) => {
 
 // 切换标签过滤
 const toggleTagFilter = (tag: string) => {
-  const currentTags = [...store.middlePaneFilterTags];
+  const currentTags = [...store.state.selectedTags];
   const index = currentTags.indexOf(tag);
 
   if (index === -1) {
@@ -166,12 +171,12 @@ const toggleTagFilter = (tag: string) => {
     currentTags.splice(index, 1);
   }
 
-  store.setMiddlePaneFilterTags(currentTags);
+  store.state.selectedTags = currentTags;
 };
 
 // 清除所有标签过滤
 const clearTagFilters = () => {
-  store.setMiddlePaneFilterTags([]);
+  store.state.selectedTags = [];
 };
 
 // 检查标签是否激活
@@ -181,23 +186,14 @@ const isTagActive = (tag: string) => {
 
 // 获取标签的规则数量
 const getTagCount = (tag: string) => {
-  if (!store.config) return 0;
+  if (!store.state.config) return 0;
 
-  let count = 0;
-  const countRules = (items: any[]) => {
-    for (const item of items) {
-      if (item.type === 'rule' && item.tags && item.tags.includes(tag)) {
-        count++;
-      } else if (item.type === 'group' && item.children) {
-        countRules(item.children);
-      }
-    }
-  };
-
-  if (store.config.root && store.config.root.children) {
-    countRules(store.config.root.children);
+  if (tag === 'match') {
+    return store.state.config.matches.length;
+  } else if (tag === 'group') {
+    return store.state.config.groups.length;
   }
-
-  return count;
+  
+  return 0;
 };
 </script>

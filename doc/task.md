@@ -249,10 +249,10 @@
     * **涉及文件:** `src/components/RuleEditForm.vue`, `src/utils/espanzo-utils.ts`
     * **目标:**
         * **插入:**
-            * 在表单中添加“插入变量”按钮，点击后使用 `<UPopover>` 或 `<USelectMenu>` 显示 **任务 1.5** `getAvailableVariables()` 返回的列表。
+            * 在表单中添加"插入变量"按钮，点击后使用 `<UPopover>` 或 `<USelectMenu>` 显示 **任务 1.5** `getAvailableVariables()` 返回的列表。
             * 选中变量后，获取当前激活的内容编辑器的引用 (`ref`)，并在光标位置插入对应的 Espanso 变量占位符 (如 `{{date}}`)。
         * **预览:**
-            * 添加“预览”按钮。
+            * 添加"预览"按钮。
             * 点击按钮时，获取当前 `formState`。
             * 调用 **任务 1.5** 的 `generatePreview(formState.value)` (暂时返回占位符)。
             * 使用 Nuxt UI `<UModal>` 显示预览结果。
@@ -294,7 +294,7 @@
     * **负责人:** 实习生 (指导: 你)
     * **涉及文件:** UI 组件 (如 `LeftPane` 或新按钮), `src/store/useEspansoStore.ts`
     * **目标:**
-        * **UI:** 添加“导入”和“导出”按钮。
+        * **UI:** 添加"导入"和"导出"按钮。
         * **Store Actions:**
             * `importConfig()`: 调用 `showOpenDialog` 选择文件，调用 `readFile`, `parseYaml`, `convertToInternalFormat`，然后用结果**替换** `state.config`。
             * `exportConfig(filePath: string)`: 获取 `state.config`，调用 `convertToEspansoFormat`, `serializeYaml`, `writeFile` 保存到指定路径 (可能需要 `showSaveDialog`)。
@@ -315,6 +315,61 @@
     * **负责人:** 你 和 实习生
     * **目标:** 全面测试所有功能，特别关注边界情况和 YAML 转换的准确性。进行最后的代码审查，确保代码风格统一、逻辑清晰、符合架构设计。
     * **验收标准:** 应用稳定可靠，功能符合预期。
+
+**紧急优化与问题解决阶段 (Phase 8: Urgent Improvement)**
+
+* **任务 8.1: 平台逻辑分离与重构**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/services/fileService.ts`, `public/preload/services.js`
+    * **目标:** 清晰分离Electron和Web环境逻辑，消除现有代码中的平台判断混乱问题。
+        * 重构`fileService.ts`，移除环境检测逻辑，仅保留API桥接功能
+        * 设计清晰的接口继承结构，分别实现Web和Electron平台实现
+        * 移除`detectEnvironment()`函数，代替为平台适配器工厂模式
+        * 确保两个平台有独立且完整的代码路径，降低耦合性
+    * **验收标准:** 代码结构清晰，平台相关逻辑分离，删除冗余代码，保持功能一致性。
+
+* **任务 8.2: 层级化数据结构实现**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/types/espanso-config.ts`, `src/utils/espanzo-utils.ts`
+    * **目标:** 设计并实现能够准确表示目录-文件-规则层级关系的数据结构，替代当前扁平化的数据模型。
+        * 定义`FileSystemNode`接口，支持不同类型节点(目录/文件/规则)共存于一个树结构
+        * 修改`EspansoConfig`结构，使其更适合表示层级数据
+        * 更新树遍历和操作函数，以适应新的数据结构
+        * 实现层级化数据的序列化和反序列化功能
+    * **验收标准:** 数据结构设计合理，能够准确表示文件系统层级，适配现有函数。
+
+* **任务 8.3: Electron端自动加载默认配置**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `public/preload/services.js`, `src/store/useEspansoStore.ts`, `src/App.vue`
+    * **目标:** 实现Electron环境下自动检测并加载用户的Espanso配置目录，无需手动选择。
+        * 实现`getEspansoConfigPath()`，根据不同操作系统返回正确的默认配置路径
+        * 实现`scanDirectory(dirPath)`，扫描指定目录并返回层级结构
+        * 在Store中添加`loadElectronConfig()`方法，自动加载配置
+        * 在应用启动时检测环境并自动调用相应方法
+        * 实现多层级展示：将目录名作为一级分组，文件名作为二级分组
+    * **验收标准:** Electron端启动自动加载配置，无需用户交互，正确展示多层级结构。
+
+* **任务 8.4: Web端上传逻辑修复**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/store/useEspansoStore.ts`, `src/components/FileUploader.vue`
+    * **目标:** 修复Web端上传文件后无限加载的问题，优化文件上传流程。
+        * 实现`loadWebConfig(files)`函数，处理文件上传后的解析和加载
+        * 使用异步文件读取API和错误处理
+        * 确保加载状态正确切换，避免无限加载
+        * 优化上传界面，支持多文件选择和拖放
+        * 添加上传进度和结果反馈
+    * **验收标准:** Web端上传文件后不再无限加载，能正确解析和展示配置。
+
+* **任务 8.5: UI层级适配**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/components/MiddlePane.vue`, `src/components/ConfigNode.vue`(新)
+    * **目标:** 重构UI组件以支持展示层级化的配置结构，使用户能够直观地浏览和管理规则。
+        * 设计并实现递归组件用于渲染树状结构
+        * 添加展开/折叠功能，降低信息负荷
+        * 实现文件夹、文件和规则的视觉区分
+        * 更新搜索和过滤功能，使其能够在树状结构中正确工作
+        * 优化层级导航体验
+    * **验收标准:** UI能够清晰展示多层级结构，支持折叠/展开，搜索和过滤功能正常工作。
 
 ---
 
