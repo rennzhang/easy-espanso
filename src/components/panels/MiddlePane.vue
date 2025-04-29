@@ -62,7 +62,7 @@
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未加载配置</h4>
         <p class="mb-6 text-muted-foreground max-w-md">请点击顶部的"打开配置"按钮加载Espanso配置文件</p>
       </div>
-      <div v-else-if="config.matches && config.matches.length === 0 && config.groups && config.groups.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+      <div v-else-if="store.getAllMatchesFromTree().length === 0 && store.getAllGroupsFromTree().length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
         <FileTextIcon class="h-12 w-12 mb-4" />
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
         <p class="mb-6 text-muted-foreground max-w-md">点击"添加规则"按钮创建第一条规则</p>
@@ -122,7 +122,7 @@
 
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
-import { useEspansoStore } from '../../store/espansoStore'
+import { useEspansoStore } from '../../store/useEspansoStore'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
 import Badge from '@/components/ui/badge.vue'
@@ -149,27 +149,16 @@ const loading = computed(() => store.state.config === null)
 
 // 过滤和排序项目
 const filteredItems = computed(() => {
-  if (!config.value || (!config.value.matches && !config.value.groups)) {
+  if (!config.value) {
     return []
   }
 
-  let allItems: (Match | Group)[] = []
+  // 从树结构中获取所有匹配项和分组
+  const matches = store.getAllMatchesFromTree ? store.getAllMatchesFromTree() : []
+  const groups = store.getAllGroupsFromTree ? store.getAllGroupsFromTree() : []
 
-  // 添加所有匹配项
-  if (config.value.matches) {
-    allItems = allItems.concat(config.value.matches.map(match => ({
-      ...match,
-      type: 'match'
-    })))
-  }
-
-  // 添加所有分组
-  if (config.value.groups) {
-    allItems = allItems.concat(config.value.groups.map(group => ({
-      ...group,
-      type: 'group'
-    })))
-  }
+  // 合并所有项目
+  let allItems: (Match | Group)[] = [...matches, ...groups]
 
   // 先按搜索过滤
   let filtered = allItems
@@ -203,11 +192,11 @@ const filteredItems = computed(() => {
 
   // 按最后更新日期排序（最新的在前面）
   filtered.sort((a, b) => {
-    const dateA = a.type === 'match' 
-      ? (a as Match).updatedAt ? new Date((a as Match).updatedAt).getTime() : 0 
+    const dateA = a.type === 'match'
+      ? (a as Match).updatedAt ? new Date((a as Match).updatedAt).getTime() : 0
       : (a as Group).updatedAt ? new Date((a as Group).updatedAt).getTime() : 0
-    const dateB = b.type === 'match' 
-      ? (b as Match).updatedAt ? new Date((b as Match).updatedAt).getTime() : 0 
+    const dateB = b.type === 'match'
+      ? (b as Match).updatedAt ? new Date((b as Match).updatedAt).getTime() : 0
       : (b as Group).updatedAt ? new Date((b as Group).updatedAt).getTime() : 0
     return dateB - dateA
   })
@@ -220,22 +209,22 @@ const getContentPreview = (item: Match) => {
   if (!item || item.type !== 'match') {
     return ''
   }
-  
+
   if (!item.replace) {
     return ''
   }
-  
-  const text = typeof item.replace === 'string' 
-    ? item.replace 
+
+  const text = typeof item.replace === 'string'
+    ? item.replace
     : JSON.stringify(item.replace)
-  
+
   return text.length > 100 ? text.substring(0, 100) + '...' : text
 }
 
 // 获取内容类型标签
 const getContentTypeLabel = (contentType?: string) => {
   if (!contentType) return '纯文本'
-  
+
   const typeMap: Record<string, string> = {
     'text': '纯文本',
     'html': 'HTML',
@@ -244,7 +233,7 @@ const getContentTypeLabel = (contentType?: string) => {
     'keystroke': '按键',
     'form': '表单'
   }
-  
+
   return typeMap[contentType] || contentType
 }
 
@@ -284,7 +273,7 @@ const clearFilters = () => {
 // 添加新规则
 const addNewRule = () => {
   if (!config.value) return
-  
+
   const newMatch: Match = {
     id: nanoid(),
     type: 'match',
@@ -293,9 +282,9 @@ const addNewRule = () => {
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
-  
+
   store.addItem(newMatch)
-  
+
   // 选择新添加的规则并等待DOM更新后滚动到视图
   nextTick(() => {
     selectItem(newMatch.id)
@@ -305,18 +294,19 @@ const addNewRule = () => {
 // 添加新分组
 const addNewGroup = () => {
   if (!config.value) return
-  
+
   const newGroup: Group = {
     id: nanoid(),
     type: 'group',
     name: '新分组',
     matches: [],
+    groups: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }
-  
+
   store.addItem(newGroup)
-  
+
   // 选择新添加的分组并等待DOM更新后滚动到视图
   nextTick(() => {
     selectItem(newGroup.id)

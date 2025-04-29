@@ -143,6 +143,13 @@
   - 添加了uTools插件打包脚本
   - 确保在uTools环境中正常加载应用
 
+- [x] **紧急任务 8.3: Electron端自动加载默认配置**
+  - 实现了getDefaultEspansoConfigPath() Preload API，根据操作系统自动检测默认配置路径
+  - 实现了scanDirectory() Preload API，扫描目录结构并返回层级化的文件树
+  - 实现了loadElectronDefaultConfig函数，在Electron应用启动时自动加载Espanso配置
+  - 添加了递归查找配置文件的功能，支持复杂的目录结构
+  - 优化了应用启动流程，提升用户体验
+
 ## 待完成功能
 
 ### 🚨 紧急优先级（系统稳定性与架构问题）
@@ -158,11 +165,6 @@
   - 修改`EspansoConfig`使其适合表示层级数据
   - 更新序列化与反序列化逻辑
   
-- [ ] **Electron端自动加载默认配置**
-  - 实现根据操作系统自动检测Espanso配置路径
-  - 添加目录扫描功能，构建层级结构
-  - 应用启动时自动加载配置
-
 - [ ] **Web端上传逻辑修复**
   - 解决上传文件后无限加载的问题
   - 完善异步文件读取逻辑和错误处理
@@ -186,12 +188,6 @@
   - 修改EspansoConfig数据结构，支持树状结构
   - 更新Store中的状态管理逻辑，适配新的数据结构
   - 重构CRUD操作，支持层级化数据的增删改查
-
-- [ ] **紧急任务 8.3: Electron端自动加载默认配置**
-  - 实现getEspansoConfigPath() Preload API，自动检测平台并返回默认配置路径
-  - 实现scanDirectory() Preload API，扫描目录结构并返回层级化的文件结构
-  - 实现loadElectronConfig Store Action，启动时自动加载Espanso配置
-  - 将配置文件夹名作为一级分组，文件名作为二级分组，规则作为叶子节点
 
 - [ ] **紧急任务 8.4: Web端上传逻辑修复**
   - 修复Web端上传文件后无限加载的问题

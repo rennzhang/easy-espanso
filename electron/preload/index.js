@@ -1,65 +1,22 @@
-const { contextBridge, ipcRenderer } = require('electron');
-let fs, path, os, yaml;
+import { contextBridge, ipcRenderer } from 'electron';
+import yaml from 'js-yaml'; // 确保 js-yaml 已安装
 
-// 尝试导入模块，并处理可能的错误
+// 确保在最开始打印这条信息，以验证预加载脚本是否被执行
+console.log('[Preload] Script started execution...');
+
+let fsModule, pathModule, osModule, yamlModule;
 try {
-  fs = require('fs');
-  path = require('path');
-  os = require('os');
-
-  try {
-    yaml = require('js-yaml');
-    console.log('js-yaml模块加载成功');
-  } catch (yamlError) {
-    console.error('无法加载js-yaml模块:', yamlError);
-    // 提供一个简单的降级实现
-    yaml = {
-      load: (content) => {
-        console.warn('使用降级YAML解析器，功能受限');
-        try {
-          return JSON.parse(content);
-        } catch (e) {
-          console.error('降级YAML解析失败，返回空对象', e);
-          return {};
-        }
-      },
-      dump: (data) => {
-        console.warn('使用降级YAML序列化器，功能受限');
-        try {
-          return JSON.stringify(data, null, 2);
-        } catch (e) {
-          console.error('降级YAML序列化失败', e);
-          return '{}';
-        }
-      }
-    };
-  }
+  fsModule = require('fs');
+  pathModule = require('path');
+  osModule = require('os');
+  yamlModule = require('js-yaml');
+  console.log('[Preload] Node modules (fs, path, os, js-yaml) loaded successfully.');
 } catch (error) {
-  console.error('初始化Node.js模块失败:', error);
-  // 提供空的模拟对象
-  fs = {
-    readFile: (_, __, callback) => callback(new Error('fs模块不可用')),
-    writeFile: (_, __, ___, callback) => callback(new Error('fs模块不可用')),
-    mkdir: (_, __, callback) => callback(new Error('fs模块不可用')),
-    readdir: (_, __, callback) => callback(new Error('fs模块不可用')),
-    access: (_, __, callback) => callback(new Error('fs模块不可用')),
-    constants: { F_OK: 0 }
-  };
-  path = {
-    join: (...args) => args.join('/'),
-    dirname: (p) => p.split('/').slice(0, -1).join('/')
-  };
-  os = {
-    homedir: () => '/home'
-  };
-  yaml = {
-    load: () => ({}),
-    dump: () => '{}'
-  };
+  console.error('[Preload] Failed to load Node modules:', error);
+  // 如果模块加载失败，后续依赖这些模块的函数会出错
 }
 
-// 获取用户主目录
-const homeDir = os.homedir();
+const homeDir = osModule ? osModule.homedir() : '/'; // Provide fallback
 
 // 获取Espanso配置目录
 function getEspansoConfigDir() {
@@ -69,13 +26,13 @@ function getEspansoConfigDir() {
   try {
     switch (process.platform) {
       case 'win32':
-        configDir = path.join(process.env.APPDATA || '', 'espanso');
+        configDir = pathModule.join(process.env.APPDATA || '', 'espanso');
         break;
       case 'darwin':
-        configDir = path.join(homeDir, 'Library', 'Application Support', 'espanso');
+        configDir = pathModule.join(homeDir, 'Library', 'Application Support', 'espanso');
         break;
       default: // Linux和其他Unix系统
-        configDir = path.join(homeDir, '.config', 'espanso');
+        configDir = pathModule.join(homeDir, '.config', 'espanso');
         break;
     }
   } catch (error) {
@@ -87,81 +44,71 @@ function getEspansoConfigDir() {
 }
 
 // 读取文件内容
-function readFile(filePath) {
-  return new Promise((resolve, reject) => {
-    try {
-      fs.readFile(filePath, 'utf8', (err, data) => {
-        if (err) {
-          console.error(`读取文件失败: ${filePath}`, err);
-          reject(err);
-        } else {
-          resolve(data);
-        }
-      });
-    } catch (error) {
-      console.error(`读取文件异常: ${filePath}`, error);
-      reject(error);
-    }
-  });
+async function readFile(filePath) {
+  console.log(`[Preload] readFile called with path: ${filePath}`);
+  if (!fsModule) {
+    console.error('[Preload] readFile: fs module not loaded.');
+    throw new Error('fs module not available in preload');
+  }
+  try {
+    const data = await fsModule.promises.readFile(filePath, 'utf8');
+    console.log(`[Preload] readFile successful for: ${filePath}`);
+    return data;
+  } catch (error) {
+    console.error(`[Preload] readFile error for ${filePath}:`, error);
+    throw error; // Re-throw the error to be caught by the caller
+  }
 }
 
 // 写入文件内容
-function writeFile(filePath, content) {
-  return new Promise((resolve, reject) => {
-    try {
-      // 确保目录存在
-      const dirPath = path.dirname(filePath);
-      fs.mkdir(dirPath, { recursive: true }, (mkdirErr) => {
-        if (mkdirErr && mkdirErr.code !== 'EEXIST') {
-          console.error(`创建目录失败: ${dirPath}`, mkdirErr);
-          reject(mkdirErr);
-          return;
-        }
-
-        // 写入文件
-        fs.writeFile(filePath, content, 'utf8', (writeErr) => {
-          if (writeErr) {
-            console.error(`写入文件失败: ${filePath}`, writeErr);
-            reject(writeErr);
-          } else {
-            resolve();
-          }
-        });
-      });
-    } catch (error) {
-      console.error(`写入文件异常: ${filePath}`, error);
-      reject(error);
-    }
-  });
+async function writeFile(filePath, content) {
+  console.log(`[Preload] writeFile called for path: ${filePath}`);
+  if (!fsModule || !pathModule) {
+    console.error('[Preload] writeFile: fs or path module not loaded.');
+    throw new Error('fs or path module not available in preload');
+  }
+  try {
+    // 确保目录存在
+    await fsModule.promises.mkdir(pathModule.dirname(filePath), { recursive: true });
+    await fsModule.promises.writeFile(filePath, content, 'utf8');
+    console.log(`[Preload] writeFile successful for: ${filePath}`);
+  } catch (error) {
+    console.error(`[Preload] writeFile error for ${filePath}:`, error);
+    throw error;
+  }
 }
 
 // 显示打开文件对话框
 async function showOpenFileDialog(options) {
+  console.log('[Preload] showOpenDialog called with options:', options);
   try {
     const result = await ipcRenderer.invoke('show-open-dialog', {
       ...options,
       properties: ['openFile']
     });
 
+    console.log('[Preload] showOpenDialog result:', result);
     if (result.canceled) {
       return undefined;
     }
 
     return result.filePaths;
   } catch (error) {
-    console.error('打开文件对话框失败:', error);
+    console.error('[Preload] showOpenDialog error:', error);
     return undefined;
   }
 }
 
 // 显示打开目录对话框
 async function showOpenDirectoryDialog(options) {
+  console.log('[Preload] showOpenDirectoryDialog called with options:', options);
   try {
     const result = await ipcRenderer.invoke('show-open-dialog', {
       ...options,
       properties: ['openDirectory']
     });
 
+    console.log('[Preload] showOpenDirectoryDialog result:', result);
     if (result.canceled) {
       return undefined;
     }
@@ -175,85 +122,96 @@ async function showOpenDirectoryDialog(options) {
 
 // 显示保存文件对话框
 async function showSaveDialog(options) {
+  console.log('[Preload] showSaveDialog called with options:', options);
   try {
-    return ipcRenderer.invoke('show-save-dialog', options);
+    const result = await ipcRenderer.invoke('show-save-dialog', options);
+    console.log('[Preload] showSaveDialog result:', result);
+    return result;
   } catch (error) {
-    console.error('保存文件对话框失败:', error);
-    return undefined;
+    console.error('[Preload] showSaveDialog error:', error);
+    throw error;
   }
 }
 
 // 列出目录中的文件
-function listFiles(dirPath) {
-  return new Promise((resolve, reject) => {
-    try {
-      fs.readdir(dirPath, { withFileTypes: true }, (err, entries) => {
-        if (err) {
-          console.error(`读取目录失败: ${dirPath}`, err);
-          reject(err);
-          return;
-        }
-
-        const files = entries
-          .filter(entry => entry.isFile())
-          .map(entry => ({
-            name: entry.name,
-            path: path.join(dirPath, entry.name),
-            extension: path.extname(entry.name).toLowerCase()
-          }));
-
-        const directories = entries
-          .filter(entry => entry.isDirectory())
-          .map(entry => ({
-            name: entry.name,
-            path: path.join(dirPath, entry.name),
-            isDirectory: true
-          }));
-
-        resolve([...directories, ...files]);
-      });
-    } catch (error) {
-      console.error(`列出目录异常: ${dirPath}`, error);
-      reject(error);
-    }
-  });
+async function listFiles(dirPath) {
+  console.log(`[Preload] listFiles called for dir: ${dirPath}`);
+  if (!fsModule || !pathModule) {
+    console.error('[Preload] listFiles: fs or path module not loaded.');
+    throw new Error('fs or path module not available in preload');
+  }
+  try {
+    const files = await fsModule.promises.readdir(dirPath, { withFileTypes: true });
+    console.log(`[Preload] listFiles: Found ${files.length} entries in ${dirPath}`);
+    return files.map(file => ({
+      name: file.name,
+      path: pathModule.join(dirPath, file.name),
+      isDirectory: file.isDirectory(),
+      isFile: file.isFile(),
+      extension: file.isFile() ? pathModule.extname(file.name) : undefined
+    }));
+  } catch (error) {
+    console.error(`[Preload] listFiles error for ${dirPath}:`, error);
+    // Decide on fallback behavior: return empty array or throw error
+    return [];
+    // throw error;
+  }
 }
 
 // 检查文件是否存在
-function fileExists(filePath) {
-  return new Promise((resolve) => {
-    try {
-      fs.access(filePath, fs.constants.F_OK, (err) => {
-        resolve(!err);
-      });
-    } catch (error) {
-      console.error(`检查文件存在异常: ${filePath}`, error);
-      resolve(false);
-    }
-  });
+async function fileExists(filePath) {
+  console.log(`[Preload] fileExists called for path: ${filePath}`);
+  if (!fsModule) {
+    console.error('[Preload] fileExists: fs module not loaded.');
+    // Decide on fallback behavior: maybe return false or throw error
+    return false;
+    // throw new Error('fs module not available in preload');
+  }
+  try {
+    await fsModule.promises.access(filePath);
+    console.log(`[Preload] fileExists: ${filePath} exists.`);
+    return true;
+  } catch {
+    console.log(`[Preload] fileExists: ${filePath} does not exist.`);
+    return false;
+  }
 }
 
 // 解析YAML文件
 function parseYaml(content) {
+  console.log('[Preload] parseYaml called');
+  if (!yamlModule) {
+    console.error('[Preload] parseYaml: yaml module not loaded.');
+    throw new Error('yaml module not available in preload');
+  }
   try {
-    return yaml.load(content);
+    const data = yamlModule.load(content);
+    console.log('[Preload] parseYaml successful.');
+    return data;
   } catch (error) {
-    console.error('解析YAML失败', error);
-    return {}; // 返回空对象而不是抛出异常
+    console.error('[Preload] parseYaml error:', error);
+    throw error;
   }
 }
 
 // 序列化为YAML
 function serializeYaml(data) {
+  console.log('[Preload] serializeYaml called');
+  if (!yamlModule) {
+    console.error('[Preload] serializeYaml: yaml module not loaded.');
+    throw new Error('yaml module not available in preload');
+  }
   try {
-    return yaml.dump(data, {
+    const yamlString = yamlModule.dump(data, {
       indent: 2,
       lineWidth: -1, // 禁用行宽限制
       noRefs: true // 避免YAML别名/锚点
     });
+    console.log('[Preload] serializeYaml successful.');
+    return yamlString;
   } catch (error) {
-    console.error('序列化YAML失败', error);
-    return '{}'; // 返回空对象字符串而不是抛出异常
+    console.error('[Preload] serializeYaml error:', error);
+    throw error;
   }
 }
 
@@ -279,11 +237,11 @@ async function getEspansoConfigFiles() {
     }
 
     // 获取配置文件
-    const configPath = path.join(configDir, 'config');
+    const configPath = pathModule.join(configDir, 'config');
     const configFileExists = await fileExists(configPath);
 
     // 获取匹配文件
-    const matchDirPath = path.join(configDir, 'match');
+    const matchDirPath = pathModule.join(configDir, 'match');
     const matchDirExists = await fileExists(matchDirPath);
     
     let matchFiles = [];
@@ -320,6 +278,72 @@ function showNotification(message) {
   });
 }
 
+// 获取Espanso默认配置路径
+const getDefaultEspansoConfigPath = () => {
+  console.log('[Preload] getDefaultEspansoConfigPath called');
+  if (!pathModule || !osModule) {
+    console.error('[Preload] getDefaultEspansoConfigPath: path or os module not loaded.');
+    throw new Error('path or os module not available in preload');
+  }
+  const platform = process.platform;
+  let configPath = '';
+  const appData = process.env.APPDATA || ''; // Handle case where APPDATA might be undefined
+  const home = homeDir; // Use the previously determined homeDir
+
+  try {
+    switch (platform) {
+      case 'win32':
+        configPath = pathModule.join(appData, 'espanso');
+        break;
+      case 'darwin':
+        configPath = pathModule.join(home, 'Library', 'Application Support', 'espanso');
+        break;
+      case 'linux':
+      default:
+        configPath = pathModule.join(home, '.config', 'espanso');
+        break;
+    }
+    console.log(`[Preload] Determined default config path for ${platform}: ${configPath}`);
+    return configPath;
+  } catch (error) {
+    console.error('[Preload] Error determining default config path:', error);
+    throw error;
+  }
+};
+
+// 递归扫描目录，返回文件树结构
+const scanDirectory = async (dirPath) => {
+  try {
+    const entries = await fsModule.promises.readdir(dirPath, { withFileTypes: true });
+    const result = [];
+    
+    for (const entry of entries) {
+      const fullPath = pathModule.join(dirPath, entry.name);
+      
+      if (entry.isDirectory()) {
+        const children = await scanDirectory(fullPath);
+        result.push({
+          type: 'directory',
+          name: entry.name,
+          path: fullPath,
+          children
+        });
+      } else if (entry.isFile() && (entry.name.endsWith('.yml') || entry.name.endsWith('.yaml'))) {
+        result.push({
+          type: 'file',
+          name: entry.name,
+          path: fullPath
+        });
+      }
+    }
+    
+    return result;
+  } catch (error) {
+    console.error(`扫描目录失败: ${dirPath}`, error);
+    return [];
+  }
+};
+
 // 导出API到渲染进程
 contextBridge.exposeInMainWorld('electronAPI', {
   // 文件操作
@@ -348,4 +372,67 @@ contextBridge.exposeInMainWorld('electronAPI', {
   quitApp: () => ipcRenderer.send('quit-app'),
   minimizeApp: () => ipcRenderer.send('minimize-app'),
   maximizeApp: () => ipcRenderer.send('maximize-app')
-}); 
+});
+
+// 导出函数 - 确保上下文桥接正确设置
+try {
+  console.log('正在通过contextBridge暴露preloadApi...');
+  // 确保使用contextBridge而不是直接赋值
+  contextBridge.exposeInMainWorld('preloadApi', {
+    // 文件操作
+    readFile,
+    writeFile,
+    fileExists,
+    listFiles,
+
+    // 对话框
+    showOpenDialog: showOpenFileDialog,
+    showOpenDirectoryDialog,
+    showSaveDialog,
+
+    // YAML处理
+    parseYaml,
+    serializeYaml,
+
+    // Espanso相关
+    getEspansoConfigDir,
+    getEspansoConfigFiles,
+    getDefaultEspansoConfigPath,
+    scanDirectory,
+
+    // 系统操作
+    platform: () => process.platform,
+
+    // 通知
+    showNotification,
+    
+    // 环境信息
+    isElectron: true
+  });
+  console.log('preloadApi成功暴露到window对象');
+  // You can add a check here:
+  if (window.preloadApi) {
+    console.log('[Preload] Verified: window.preloadApi exists after exposeInMainWorld.');
+    console.log('[Preload] Available methods:', Object.keys(window.preloadApi).join(', '));
+  } else {
+    console.error('[Preload] Verification failed: window.preloadApi does NOT exist after exposeInMainWorld.');
+  }
+} catch (error) {
+  console.error('无法暴露API到渲染进程:', error);
+}
+
+// Example of setting up IPC handlers in the main process (electron/main/index.ts)
+// You need matching handlers in the main process for 'show-open-dialog' and 'show-save-dialog'
+/*
+import { ipcMain, dialog } from 'electron';
+
+ipcMain.handle('show-open-dialog', async (event, options) => {
+  const result = await dialog.showOpenDialog(options);
+  return result;
+});
+
+ipcMain.handle('show-save-dialog', async (event, options) => {
+  const result = await dialog.showSaveDialog(options);
+  return result;
+});
+*/ 

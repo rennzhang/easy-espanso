@@ -34,9 +34,9 @@
     <template v-else>
       <!-- 主布局 -->
       <MainLayout />
-      
+
       <!-- 自动保存状态提示 -->
-      <div v-if="autoSaveStatus" 
+      <div v-if="autoSaveStatus"
            class="fixed bottom-4 right-4 p-4 rounded-lg shadow-lg transition-all duration-300"
            :class="{
              'bg-primary text-primary-foreground': autoSaveStatus === 'saving',
@@ -59,10 +59,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
 import { useEspansoStore } from './store/useEspansoStore';
-import { detectEnvironment, getEspansoConfigDir, showOpenDirectoryDialog, saveConfigDirPath, fileService } from './services/fileService';
+import { detectEnvironment, getEspansoConfigDir, showOpenDirectoryDialog, saveConfigDirPath, getDefaultEspansoConfigPath, scanDirectory } from './services/fileService';
 import MainLayout from './components/layout/MainLayout.vue';
 import { FolderIcon, LoaderIcon, CheckIcon, XIcon } from 'lucide-vue-next';
-import type { PreloadApi } from './types/preload';
+import type { PreloadApi, FileSystemNode } from './types/preload';
 
 // 声明全局 window 对象的类型
 declare global {
@@ -83,6 +83,7 @@ const store = useEspansoStore();
 const isLoading = ref(true);
 const needsConfigSelection = ref(false);
 const environment = ref<'electron' | 'web'>('web');
+const configData = ref<FileSystemNode[]>([]);
 
 // 自动保存状态文本
 const autoSaveStatus = computed(() => store.state.autoSaveStatus);
@@ -99,21 +100,135 @@ const autoSaveStatusText = computed(() => {
   }
 });
 
+// 加载Electron默认配置
+const loadElectronDefaultConfig = async () => {
+  try {
+    console.log('尝试获取Electron默认配置路径...');
+    // 获取默认配置路径
+    const defaultConfigPath = await getDefaultEspansoConfigPath();
+    console.log('默认配置路径:', defaultConfigPath);
+
+    if (!defaultConfigPath) {
+      console.log('未找到默认配置路径');
+      return false;
+    }
+
+    // 确保路径使用正确的分隔符
+    const normalizedConfigPath = defaultConfigPath.replace(/\\/g, '/');
+
+    // 扫描配置目录
+    console.log('扫描目录结构...');
+    const fileTree = await scanDirectory(normalizedConfigPath);
+    configData.value = fileTree;
+    console.log('文件树结构:', fileTree);
+
+    // 保存配置目录路径
+    await saveConfigDirPath(normalizedConfigPath);
+
+    // 直接加载整个配置目录，让新的树结构逻辑处理文件
+    console.log('加载配置目录:', normalizedConfigPath);
+    await store.loadConfig(normalizedConfigPath);
+
+    // 检查是否成功加载
+    const hasMatches = store.getAllMatchesFromTree().length > 0;
+    const hasGroups = store.getAllGroupsFromTree().length > 0;
+    const hasGlobalConfig = store.state.globalConfig !== null;
+
+    console.log('加载结果:', {
+      hasMatches,
+      hasGroups,
+      hasGlobalConfig,
+      configTree: store.state.configTree.length
+    });
+
+    return hasMatches || hasGroups || hasGlobalConfig || store.state.configTree.length > 0;
+  } catch (error: any) {
+    console.error('加载Electron默认配置失败:', error);
+    return false;
+  }
+};
+
+// 递归查找默认配置文件路径
+const findDefaultConfigPath = (nodes: FileSystemNode[]): string | null => {
+  for (const node of nodes) {
+    if (node.type === 'directory' && node.name === 'config') {
+      // 在config目录中查找default.yml
+      if (node.children) {
+        const defaultConfig = node.children.find(
+          child => child.type === 'file' && (child.name === 'default.yml' || child.name === 'default.yaml')
+        );
+        if (defaultConfig) {
+          return defaultConfig.path;
+        }
+      }
+    } else if (node.type === 'directory' && node.children) {
+      // 递归查找子目录
+      const result = findDefaultConfigPath(node.children);
+      if (result) {
+        return result;
+      }
+    }
+  }
+  return null;
+};
+
 // 检测运行环境并初始化
 onMounted(async () => {
   try {
     // 检测环境
     environment.value = await detectEnvironment();
-    
-    // 尝试获取配置目录
+    console.log('检测到运行环境:', environment.value);
+
+    if (environment.value === 'electron') {
+      // Electron环境下尝试自动加载默认配置
+      console.log('尝试自动加载Electron默认配置');
+      const loaded = await loadElectronDefaultConfig();
+
+      if (loaded) {
+        console.log('成功加载默认配置');
+        // 输出当前store状态，验证数据是否正确加载
+        console.log('当前store状态:', {
+          configTree: store.state.configTree.length,
+          globalConfig: store.state.globalConfig !== null,
+          matches: store.getAllMatchesFromTree().length,
+          groups: store.getAllGroupsFromTree().length
+        });
+        needsConfigSelection.value = false;
+        return;
+      }
+    }
+
+    // 尝试从本地存储获取配置目录
     const configDir = await getEspansoConfigDir();
-    
+    console.log('从本地存储获取配置目录:', configDir);
+
     if (configDir) {
       // 如果找到配置目录，直接加载配置
+      console.log('加载已保存的配置目录:', configDir);
       await store.loadConfig(configDir);
-      needsConfigSelection.value = false;
+
+      // 检查是否成功加载
+      const hasMatches = store.getAllMatchesFromTree().length > 0;
+      const hasGroups = store.getAllGroupsFromTree().length > 0;
+      const hasGlobalConfig = store.state.globalConfig !== null;
+      const hasConfigTree = store.state.configTree.length > 0;
+
+      console.log('加载结果:', {
+        hasMatches,
+        hasGroups,
+        hasGlobalConfig,
+        configTree: store.state.configTree.length
+      });
+
+      if (hasMatches || hasGroups || hasGlobalConfig || hasConfigTree) {
+        needsConfigSelection.value = false;
+      } else {
+        console.log('配置目录无效或为空，显示选择界面');
+        needsConfigSelection.value = true;
+      }
     } else {
       // 如果没有找到配置目录，显示选择界面
+      console.log('未找到配置目录，显示选择界面');
       needsConfigSelection.value = true;
     }
   } catch (error) {
@@ -130,74 +245,104 @@ const selectConfigFolder = async () => {
     isLoading.value = true;
     const selectedPath = await showOpenDirectoryDialog();
     console.log('选择的路径:', selectedPath);
-    
+
     if (selectedPath) {
-      let configPath: string;
-      let matchPath: string;
-      
-      if (environment.value === 'web') {
-        // Web 环境下使用正斜杠
-        configPath = `${selectedPath}/config/default.yml`;
-        matchPath = `${selectedPath}/match`;
-      } else {
-        // Electron 环境下根据平台使用不同的分隔符
-        const platform = await fileService.getPlatform();
-        configPath = `${selectedPath}${platform === 'win32' ? '\\config\\default.yml' : '/config/default.yml'}`;
-        matchPath = `${selectedPath}${platform === 'win32' ? '\\match' : '/match'}`;
-      }
-      
+      // 标准化路径
+      const normalizedPath = selectedPath.replace(/\\/g, '/');
+
       console.log('环境:', environment.value);
-      console.log('配置文件路径:', configPath);
-      console.log('匹配文件夹路径:', matchPath);
-      
+      console.log('选择的配置目录:', normalizedPath);
+
       try {
-        let configExists = false;
-        
+        let isValidEspansoDir = false;
+
         if (environment.value === 'web') {
           // Web 环境下的文件检查逻辑
           const input = document.createElement('input');
           input.type = 'file';
           input.webkitdirectory = true;
-          
+
           const files = await new Promise<FileList | null>((resolve) => {
             input.onchange = (e) => resolve((e.target as HTMLInputElement).files);
             input.click();
           });
-          
+
           if (files) {
+            // 检查是否包含 config/default.yml 或 match 目录
+            let hasConfigDefault = false;
+            let hasMatchDir = false;
+
             for (let i = 0; i < files.length; i++) {
               const file = files[i];
-              if (file.webkitRelativePath.endsWith('config/default.yml')) {
-                configExists = true;
-                break;
+              const path = file.webkitRelativePath;
+
+              if (path.endsWith('config/default.yml')) {
+                hasConfigDefault = true;
+              }
+
+              if (path.includes('/match/') && path.endsWith('.yml')) {
+                hasMatchDir = true;
               }
             }
+
+            isValidEspansoDir = hasConfigDefault || hasMatchDir;
           }
         } else {
           // Electron 环境下的文件检查逻辑
-          configExists = await fileService.existsFile(configPath);
+          // 扫描目录结构
+          const fileTree = await scanDirectory(normalizedPath);
+
+          // 检查是否包含 config/default.yml 或 match 目录
+          const hasConfigDir = fileTree.some(node =>
+            node.type === 'directory' && node.name === 'config'
+          );
+
+          const hasMatchDir = fileTree.some(node =>
+            node.type === 'directory' && node.name === 'match'
+          );
+
+          isValidEspansoDir = hasConfigDir || hasMatchDir;
         }
-        
-        console.log('配置文件状态:', configExists ? '存在' : '不存在');
-        
-        if (configExists) {
-          console.log('配置文件有效，正在保存路径...');
+
+        console.log('是否为有效的Espanso目录:', isValidEspansoDir);
+
+        if (isValidEspansoDir) {
+          console.log('有效的Espanso目录，正在保存路径...');
           // 保存选择的路径
-          await saveConfigDirPath(selectedPath);
+          saveConfigDirPath(normalizedPath);
+
           // 加载配置
           console.log('正在加载配置...');
-          await store.loadConfig(configPath);
-          needsConfigSelection.value = false;
-          console.log('配置加载完成');
+          await store.loadConfig(normalizedPath);
+
+          // 检查是否成功加载
+          const hasMatches = store.getAllMatchesFromTree().length > 0;
+          const hasGroups = store.getAllGroupsFromTree().length > 0;
+          const hasGlobalConfig = store.state.globalConfig !== null;
+          const hasConfigTree = store.state.configTree.length > 0;
+
+          console.log('加载结果:', {
+            hasMatches,
+            hasGroups,
+            hasGlobalConfig,
+            configTree: store.state.configTree.length
+          });
+
+          if (hasMatches || hasGroups || hasGlobalConfig || hasConfigTree) {
+            needsConfigSelection.value = false;
+            console.log('配置加载完成');
+          } else {
+            throw new Error('未找到有效的配置文件');
+          }
         } else {
-          throw new Error('未找到 default.yml 配置文件');
+          throw new Error('选择的目录不是有效的Espanso配置目录');
         }
-      } catch (error) {
+      } catch (error: any) {
         console.error('无效的 Espanso 配置文件夹:', error);
-        alert(`请选择有效的 Espanso 配置文件夹，该文件夹必须包含 config/default.yml 文件\n\n错误详情：${error.message}`);
+        alert(`请选择有效的 Espanso 配置文件夹，该文件夹应包含 config 或 match 目录\n\n错误详情：${error.message}`);
       }
     }
-  } catch (error) {
+  } catch (error: any) {
     console.error('选择配置文件夹失败:', error);
     alert(`选择配置文件夹失败：${error.message}`);
   } finally {

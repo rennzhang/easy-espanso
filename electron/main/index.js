@@ -4,6 +4,79 @@ const fs = require('fs');
 const os = require('os');
 const { default: installExtension, VUE_DEVTOOLS } = require('electron-devtools-installer');
 
+// 创建调试日志目录和文件
+const homeDir = os.homedir();
+const logDir = path.join(homeDir, 'Desktop', 'espanso-logs');
+if (!fs.existsSync(logDir)) {
+  try {
+    fs.mkdirSync(logDir, { recursive: true });
+    console.log('创建日志目录成功:', logDir);
+  } catch (err) {
+    console.error('创建日志目录失败:', err);
+  }
+}
+const logFile = path.join(logDir, `app-${new Date().toISOString().replace(/[:.]/g, '-')}.log`);
+let logStream;
+try {
+  logStream = fs.createWriteStream(logFile, { flags: 'a' });
+  console.log('创建日志文件成功:', logFile);
+} catch (err) {
+  console.error('创建日志文件失败:', err);
+}
+
+// 重写console.log方法以同时写入文件
+const originalConsoleLog = console.log;
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+
+console.log = function() {
+  const args = Array.from(arguments);
+  const message = args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+  ).join(' ');
+  
+  if (logStream && logStream.writable) {
+    try {
+      logStream.write(`[INFO][${new Date().toISOString()}] ${message}\n`);
+    } catch (err) {
+      originalConsoleError('写入日志失败:', err);
+    }
+  }
+  originalConsoleLog.apply(console, args);
+};
+
+console.error = function() {
+  const args = Array.from(arguments);
+  const message = args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+  ).join(' ');
+  
+  if (logStream && logStream.writable) {
+    try {
+      logStream.write(`[ERROR][${new Date().toISOString()}] ${message}\n`);
+    } catch (err) {
+      originalConsoleError('写入错误日志失败:', err);
+    }
+  }
+  originalConsoleError.apply(console, args);
+};
+
+console.warn = function() {
+  const args = Array.from(arguments);
+  const message = args.map(arg => 
+    typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
+  ).join(' ');
+  
+  if (logStream && logStream.writable) {
+    try {
+      logStream.write(`[WARN][${new Date().toISOString()}] ${message}\n`);
+    } catch (err) {
+      originalConsoleError('写入警告日志失败:', err);
+    }
+  }
+  originalConsoleWarn.apply(console, args);
+};
+
 // 输出重要的系统和应用信息
 console.log('Electron版本:', process.versions.electron);
 console.log('Chrome版本:', process.versions.chrome);

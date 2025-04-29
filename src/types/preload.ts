@@ -6,6 +6,13 @@ export interface FileInfo {
   extension: string;
 }
 
+export interface FileSystemNode {
+  type: 'directory' | 'file';
+  name: string;
+  path: string;
+  children?: FileSystemNode[];
+}
+
 export interface PreloadApi {
   // 文件操作
   readFile: (filePath: string) => Promise<string>;
@@ -26,6 +33,10 @@ export interface PreloadApi {
   serializeYaml: (data: YamlData) => Promise<string>;
   getEspansoConfigFiles: () => Promise<EspansoFile[]>;
   showNotification: (title: string, body: string) => Promise<void>;
+  
+  // 新增API
+  getDefaultEspansoConfigPath: () => Promise<string | null>;
+  scanDirectory: (dirPath: string) => Promise<FileSystemNode[]>;
 }
 
 declare global {

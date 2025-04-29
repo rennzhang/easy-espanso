@@ -1,11 +1,11 @@
 // 从preload脚本导入文件服务函数
 import type { EspansoFile } from '@/types/espanso-config';
-import type { 
-  PreloadApi, 
-  OpenDialogOptions, 
-  OpenDialogResult, 
-  FileInfo, 
-  SaveDialogOptions, 
+import type {
+  PreloadApi,
+  OpenDialogOptions,
+  OpenDialogResult,
+  FileInfo,
+  SaveDialogOptions,
   SaveDialogResult,
   FileFilter,
   MessageBoxOptions,
@@ -25,7 +25,7 @@ export async function detectEnvironment(): Promise<'electron' | 'web'> {
 // 显示打开目录对话框
 export async function showOpenDirectoryDialog(): Promise<string | null> {
   const env = await detectEnvironment();
-  
+
   if (env === 'web') {
     return new Promise((resolve) => {
       const input = document.createElement('input');
@@ -47,7 +47,7 @@ export async function showOpenDirectoryDialog(): Promise<string | null> {
       input.click();
     });
   }
-  
+
   // Electron 环境
   if (window.preloadApi?.showOpenDialog) {
     const options: OpenDialogOptions = {
@@ -71,7 +71,17 @@ export async function showOpenDirectoryDialog(): Promise<string | null> {
 
 // 保存配置目录路径
 export function saveConfigDirPath(path: string): void {
-  localStorage.setItem('espansoConfigDir', path);
+  // 确保路径格式正确 (统一使用正斜杠)
+  const normalizedPath = path.replace(/\\/g, '/');
+
+  // 确保路径是完整的 (如果是相对路径，则自动转为绝对路径)
+  let fullPath = normalizedPath;
+  if (!normalizedPath.startsWith('/') && typeof process !== 'undefined' && process.platform === 'darwin') {
+    fullPath = `/${normalizedPath}`;
+  }
+
+  console.log('保存配置目录路径:', fullPath);
+  localStorage.setItem('espansoConfigDir', fullPath);
 }
 
 // 读取文件内容
@@ -99,12 +109,18 @@ export async function writeFile(filePath: string, content: string): Promise<void
 
 // 检查文件是否存在
 export async function fileExists(filePath: string): Promise<boolean> {
-  if (window.preloadApi?.fileExists) {
-    return window.preloadApi.fileExists(filePath);
+  if (window.preloadApi && typeof window.preloadApi.existsFile === 'function') {
+    console.log(`[fileService] 检查文件是否存在: ${filePath}`);
+    try {
+      return await window.preloadApi.existsFile(filePath);
+    } catch (error) {
+      console.warn(`[fileService] 检查文件存在性出错:`, error);
+      return false;
+    }
   }
 
   // 如果preloadApi不可用，返回一个模拟的Promise
-  console.warn('preloadApi.fileExists不可用，使用模拟数据');
+  console.warn('[fileService] preloadApi.fileExists不可用，使用模拟数据');
   return Promise.resolve(true);
 }
 
@@ -187,29 +203,34 @@ export async function serializeYaml(data: YamlData): Promise<string> {
 // 获取Espanso配置目录
 export async function getEspansoConfigDir(): Promise<string | null> {
   const env = await detectEnvironment();
-  
+
   if (env === 'web') {
-    return localStorage.getItem('espansoConfigDir');
+    const savedPath = localStorage.getItem('espansoConfigDir');
+    // 验证保存的路径并标准化
+    if (savedPath) {
+      return savedPath.replace(/\\/g, '/');
+    }
+    return null;
   }
-  
+
   if (window.preloadApi?.platform) {
     try {
       const platform = await window.preloadApi.platform();
-      
+
       switch (platform) {
         case 'win32':
-          return `${process.env.APPDATA || ''}\\espanso`;
+          return `${typeof process !== 'undefined' ? (process.env.APPDATA || '') : ''}\\espanso`;
         case 'darwin':
-          return `${process.env.HOME || ''}\\Library\\Application Support\\espanso`;
+          return `/Users/${typeof process !== 'undefined' ? (process.env.USER || process.env.HOME?.split('/').pop() || '') : ''}/Library/Application Support/espanso`;
         default:
-          return `${process.env.HOME || ''}\\.config\\espanso`;
+          return `${typeof process !== 'undefined' ? (process.env.HOME || '') : ''}\\.config\\espanso`;
       }
     } catch (error) {
       console.error('获取配置目录失败:', error);
       return null;
     }
   }
-  
+
   return null;
 }
 
@@ -409,3 +430,56 @@ class FileService {
 }
 
 export const fileService = new FileService();
+
+/**
+ * 获取Espanso默认配置路径（仅Electron环境）
+ * @returns 默认配置路径或null
+ */
+export const getDefaultEspansoConfigPath = async (): Promise<string | null> => {
+  try {
+    // 检查环境类型
+    const env = await detectEnvironment();
+    if (env !== 'electron') {
+      console.warn('仅在Electron环境下可获取默认配置路径');
+      return null;
+    }
+
+    // 调用预加载API
+    if (window.preloadApi?.getDefaultEspansoConfigPath) {
+      return await window.preloadApi.getDefaultEspansoConfigPath();
+    }
+
+    console.warn('预加载API不可用');
+    return null;
+  } catch (error) {
+    console.error('获取默认配置路径失败:', error);
+    return null;
+  }
+};
+
+/**
+ * 扫描目录，返回文件树结构（仅Electron环境）
+ * @param dirPath 要扫描的目录路径
+ * @returns 文件树结构
+ */
+export const scanDirectory = async (dirPath: string): Promise<any[]> => {
+  try {
+    // 检查环境类型
+    const env = await detectEnvironment();
+    if (env !== 'electron') {
+      console.warn('仅在Electron环境下可扫描目录');
+      return [];
+    }
+
+    // 调用预加载API
+    if (window.preloadApi?.scanDirectory) {
+      return await window.preloadApi.scanDirectory(dirPath);
+    }
+
+    console.warn('预加载API不可用');
+    return [];
+  } catch (error) {
+    console.error('扫描目录失败:', error);
+    return [];
+  }
+};
