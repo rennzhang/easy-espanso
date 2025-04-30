@@ -5,13 +5,15 @@
   "main": "dist/electron/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build",
+    "build": "node scripts/build.js",
+    "build:quiet": "node scripts/build.js --quiet",
     "preview": "electron-vite preview",
     "electron:dev": "electron-vite dev",
-    "electron:build": "electron-vite build && electron-builder --config electron/electron-builder.json",
-    "electron:build:mac": "electron-vite build && electron-builder --mac --config electron/electron-builder.json",
-    "electron:build:win": "electron-vite build && electron-builder --win --config electron/electron-builder.json",
-    "electron:build:linux": "electron-vite build && electron-builder --linux --config electron/electron-builder.json"
+    "electron:build": "node scripts/build.js --electron",
+    "electron:build:mac": "node scripts/build.js --electron --target=mac",
+    "electron:build:win": "node scripts/build.js --electron --target=win",
+    "electron:build:linux": "node scripts/build.js --electron --target=linux",
+    "electron:build:quiet": "node scripts/build.js --electron --quiet"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
@@ -31,6 +33,7 @@
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
     "@types/node": "^20.10.0",
+    "@types/node-notifier": "^8.0.5",
     "@types/uuid": "^9.0.7",
     "@vitejs/plugin-vue": "^5.0.0",
     "autoprefixer": "^10.4.16",
@@ -41,6 +44,8 @@
     "electron-devtools-installer": "^4.0.0",
     "electron-vite": "^3.1.0",
     "lucide-vue-next": "^0.503.0",
+    "node-notifier": "^10.0.1",
+    "play-sound": "^1.1.6",
     "postcss": "^8.4.31",
     "radix-vue": "^1.9.17",
     "tailwind-merge": "^3.2.0",

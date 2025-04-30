@@ -201,7 +201,34 @@ export function getAvailableVariables(): string[] {
 
 // 生成规则预览
 export function generatePreview(rule: EspansoRule): string {
-  let previewText = rule.content;
-  // 这里将在后续任务中实现更复杂的预览逻辑
-  return `Preview of "${rule.trigger}":\n---\n${previewText}\n--- (Note: Preview is a simulation)`;
+  if (!rule.content) {
+    return '无内容可预览';
+  }
+
+  let preview = rule.content;
+
+  // 处理变量
+  const variableRegex = /\{\{([^}]+)\}\}/g;
+  preview = preview.replace(variableRegex, (match, variableName) => {
+    // 根据变量类型生成预览
+    if (variableName === 'date') {
+      return new Date().toLocaleDateString();
+    } else if (variableName === 'time') {
+      return new Date().toLocaleTimeString();
+    } else if (variableName.startsWith('date:')) {
+      return new Date().toLocaleString();
+    } else if (variableName === 'clipboard') {
+      return '[剪贴板内容]';
+    } else if (variableName.startsWith('random')) {
+      return Math.floor(Math.random() * 100).toString();
+    } else if (variableName.startsWith('shell:')) {
+      return '[Shell 命令结果]';
+    } else if (variableName.startsWith('form:')) {
+      return '[表单输入]';
+    } else {
+      return `[变量: ${variableName}]`;
+    }
+  });
+
+  return `预览 "${rule.trigger}":\n---\n${preview}\n--- (注意: 预览是模拟效果)`;
 }
