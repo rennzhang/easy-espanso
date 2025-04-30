@@ -39,6 +39,7 @@
           class="w-full h-8 text-sm"
           ref="searchInputRef"
           id="search-input"
+          autofocus
         />
       </div>
     </div>
@@ -183,7 +184,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch } from 'vue'
+import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
 import { useEspansoStore } from '../../store/useEspansoStore'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
@@ -210,23 +211,148 @@ const searchInputRef = ref<HTMLInputElement | null>(null)
 // 从本地存储中读取提示显示状态
 const showListViewTip = ref(false)
 
-// 在组件挂载后检查是否需要显示提示并选择第一个项目
+// 设置键盘快捷键来打开搜索
 onMounted(() => {
-  // 只有当本地存储中没有设置 hideListViewTip 为 true 时才显示提示
-  if (localStorage.getItem('hideListViewTip') !== 'true') {
+  // 返回值是用于清理事件监听器的函数
+  const setupKeyboardShortcuts = () => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 检查Ctrl+F或Command+F快捷键
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        console.log('检测到搜索快捷键: Ctrl/Cmd + F');
+        e.preventDefault(); // 阻止浏览器默认的搜索行为
+        
+        // 显示搜索栏并聚焦
+        if (!showSearchBar.value) {
+          showSearchBar.value = true;
+          focusSearchInput();
+        } else {
+          // 如果搜索栏已经显示，只需聚焦
+          focusSearchInput();
+        }
+      }
+    };
+    
+    // 添加全局事件监听器
+    window.addEventListener('keydown', handleKeyDown);
+    
+    // 返回清理函数
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  };
+  
+  // 初始化键盘快捷键
+  const cleanup = setupKeyboardShortcuts();
+  
+  // 组件卸载时清理监听器
+  onUnmounted(() => {
+    cleanup();
+  });
+  
+  // 其他现有的onMounted逻辑...
+  const savedHideListViewTip = localStorage.getItem('hideListViewTip')
+  if (savedHideListViewTip === 'true') {
+    showListViewTip.value = false
+  } else {
     showListViewTip.value = true
   }
 
-  // 当配置加载完成后，自动选择第一个项目
-  const unwatch = watch(() => filteredItems.value, (items) => {
-    if (items.length > 0 && !store.state.selectedItemId) {
-      // 选择第一个项目
-      selectItem(items[0].id)
-      // 取消监听，避免重复选择
+  // 检查是否有预加载的配置
+  if (store.state.config && store.getAllMatchesFromTree) {
+    const matches = store.getAllMatchesFromTree()
+    if (matches.length > 0) {
+      // 如果有匹配项，选择第一个
+      selectItem(matches[0].id)
+    }
+  }
+
+  // 如果是从URL加载配置，在加载完成后显示列表
+  const unwatch = watch(() => store.state.config, (newConfig) => {
+    if (newConfig && store.getAllMatchesFromTree) {
+      const matches = store.getAllMatchesFromTree()
+      if (matches.length > 0 && !store.state.selectedItemId) {
+        selectItem(matches[0].id)
+      }
       unwatch()
     }
   }, { immediate: true })
 })
+
+// 聚焦搜索框的函数
+const focusSearchInput = () => {
+  console.log('尝试聚焦中间面板搜索框...');
+  
+  // 使用嵌套的setTimeout确保多次尝试聚焦
+  const attemptFocus = (attempts = 0) => {
+    if (attempts > 5) return; // 最多尝试5次
+    
+    // 方法1: 使用ref
+    if (searchInputRef.value) {
+      console.log(`第${attempts+1}次尝试: 通过ref聚焦搜索框`);
+      searchInputRef.value.focus();
+      return;
+    }
+    
+    // 方法2: 使用DOM ID
+    const searchInput = document.getElementById('search-input');
+    if (searchInput) {
+      console.log(`第${attempts+1}次尝试: 通过DOM ID聚焦搜索框`);
+      // 1. 尝试直接聚焦
+      searchInput.focus();
+      
+      // 2. 尝试使用click事件聚焦
+      setTimeout(() => {
+        try {
+          (searchInput as HTMLElement).click();
+          (searchInput as HTMLInputElement).focus();
+        } catch (e) {
+          console.error('聚焦点击失败:', e);
+        }
+      }, 10);
+      
+      return;
+    }
+    
+    // 如果以上方法都失败，则递增延迟重试
+    setTimeout(() => attemptFocus(attempts + 1), 100 * (attempts + 1));
+  };
+  
+  // 在下一个tick和短暂延迟后尝试聚焦
+  nextTick(() => {
+    setTimeout(() => attemptFocus(), 50);
+    
+    // 额外尝试，使用直接的DOM操作
+    setTimeout(() => {
+      const input = document.querySelector('#search-input') as HTMLInputElement;
+      if (input) {
+        console.log('尝试使用querySelector聚焦搜索框');
+        input.focus();
+        // 尝试模拟用户点击
+        try {
+          const evt = new MouseEvent('click', {
+            bubbles: true,
+            cancelable: true,
+            view: window
+          });
+          input.dispatchEvent(evt);
+          input.focus();
+        } catch (e) {
+          console.error('模拟点击失败:', e);
+        }
+      }
+    }, 150);
+  });
+};
+
+// 监听showSearchBar的变化
+watch(showSearchBar, (newVal) => {
+  if (newVal) {
+    console.log('搜索栏显示，准备聚焦');
+    focusSearchInput();
+  } else {
+    searchQuery.value = '';
+  }
+});
 
 // 使用计算属性直接从store获取数据
 const config = computed(() => store.state.config)
@@ -386,22 +512,8 @@ const toggleSearchBar = () => {
   console.log('切换搜索栏:', showSearchBar.value);
 
   if (showSearchBar.value) {
-    // 如果显示搜索栏，等待DOM更新后聚焦搜索框
-    nextTick(() => {
-      // 尝试多种方式聚焦搜索框
-      setTimeout(() => {
-        // 方法1: 通过ref
-        if (searchInputRef.value) {
-          searchInputRef.value.focus();
-        }
-
-        // 方法2: 通过DOM
-        const searchInput = document.getElementById('search-input');
-        if (searchInput) {
-          searchInput.focus();
-        }
-      }, 50); // 短暂延迟确保DOM已完全更新
-    });
+    // 使用改进的聚焦方法
+    focusSearchInput();
   } else {
     // 如果关闭搜索栏，清空搜索内容
     searchQuery.value = '';

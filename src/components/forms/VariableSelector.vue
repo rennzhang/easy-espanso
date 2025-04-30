@@ -17,6 +17,9 @@
               v-model="searchQuery" 
               placeholder="搜索变量..." 
               class="w-full p-2 border rounded-md"
+              ref="searchInputRef"
+              id="variable-search-input"
+              autofocus
             />
           </div>
           
@@ -52,7 +55,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 
 // 变量类型定义
 interface VariableItem {
@@ -96,6 +99,9 @@ const categories = ref<VariableCategory[]>([
   }
 ]);
 
+// 搜索框引用
+const searchInputRef = ref<HTMLInputElement | null>(null);
+
 // 搜索功能
 const searchQuery = ref('');
 const filteredCategories = computed(() => {
@@ -119,9 +125,66 @@ const filteredCategories = computed(() => {
 // 模态框控制
 const show = ref(false);
 
+// 聚焦搜索框的函数 - 使用多种尝试方法确保聚焦
+const focusSearchInput = () => {
+  console.log('尝试聚焦搜索框...');
+  
+  // 使用嵌套的setTimeout确保多次尝试聚焦
+  const attemptFocus = (attempts = 0) => {
+    if (attempts > 5) return; // 最多尝试5次
+    
+    // 方法1: 使用ref
+    if (searchInputRef.value) {
+      console.log(`第${attempts+1}次尝试: 通过ref聚焦`);
+      searchInputRef.value.focus();
+      return;
+    }
+    
+    // 方法2: 使用DOM ID
+    const searchInput = document.getElementById('variable-search-input');
+    if (searchInput) {
+      console.log(`第${attempts+1}次尝试: 通过DOM ID聚焦`);
+      // 1. 尝试直接聚焦
+      searchInput.focus();
+      
+      // 2. 尝试使用click事件聚焦
+      setTimeout(() => {
+        try {
+          (searchInput as HTMLElement).click();
+          (searchInput as HTMLInputElement).focus();
+        } catch (e) {
+          console.error('聚焦点击失败:', e);
+        }
+      }, 10);
+      
+      return;
+    }
+    
+    // 如果以上方法都失败，则递增延迟重试
+    setTimeout(() => attemptFocus(attempts + 1), 100 * (attempts + 1));
+  };
+  
+  // 在下一个tick和短暂延迟后尝试聚焦
+  nextTick(() => {
+    setTimeout(() => attemptFocus(), 50);
+  });
+};
+
+// 监听show变化，处理聚焦
+watch(show, (newVal) => {
+  if (newVal) {
+    console.log('变量选择器显示，准备聚焦搜索框');
+    focusSearchInput();
+  } else {
+    searchQuery.value = '';
+  }
+});
+
 // 打开模态框
 const showModal = () => {
+  console.log('打开变量选择器');
   show.value = true;
+  focusSearchInput();
 };
 
 // 关闭模态框
