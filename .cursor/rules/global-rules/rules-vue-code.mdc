@@ -43,6 +43,8 @@ alwaysApply: true
 - 组件样式必须使用 `scoped` 属性
 - 禁止使用行内样式
 - 禁止直接使用 Element Plus 的类名作为选择器（如：`.el-input`）
+- 所有按钮在任何状态下都不要显示 outline
+- 整体的风格
 
 ### 状态管理规范
 - 全局状态必须使用 Pinia store 管理
@@ -79,3 +81,4 @@ src/
 1. 保留 CSS 中原有的 !important 关键字
 2. 保留原有的代码注释和 console.log
 3. 请勿将文案和注释中的全角引号（“”）改为半角引号（""）
+4. !!!每次对话结束后运行 pnpm run build

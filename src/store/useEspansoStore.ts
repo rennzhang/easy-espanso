@@ -216,28 +216,30 @@ export const useEspansoStore = defineStore('espanso', () => {
   };
 
   // 处理匹配项，确保有ID和必要的字段
-  const processMatch = (match: any): Match => {
+  const processMatch = (match: any, filePath?: string): Match => {
     return {
       id: match.id || generateId('match'),
       type: 'match',
       trigger: match.trigger || '',
       replace: match.replace || '',
+      filePath: filePath || match.filePath || '',
       ...Object.fromEntries(
-        Object.entries(match).filter(([key]) => !['trigger', 'replace'].includes(key))
+        Object.entries(match).filter(([key]) => !['trigger', 'replace', 'filePath'].includes(key))
       )
     };
   };
 
   // 处理分组，确保有ID和必要的字段
-  const processGroup = (group: any): Group => {
+  const processGroup = (group: any, filePath?: string): Group => {
     return {
       id: group.id || generateId('group'),
       type: 'group',
       name: group.name || '未命名分组',
-      matches: Array.isArray(group.matches) ? group.matches.map(processMatch) : [],
-      groups: Array.isArray(group.groups) ? group.groups.map(processGroup) : [],
+      matches: Array.isArray(group.matches) ? group.matches.map(match => processMatch(match, filePath)) : [],
+      groups: Array.isArray(group.groups) ? group.groups.map(nestedGroup => processGroup(nestedGroup, filePath)) : [],
+      filePath: filePath || group.filePath || '',
       ...Object.fromEntries(
-        Object.entries(group).filter(([key]) => !['name', 'matches', 'groups'].includes(key))
+        Object.entries(group).filter(([key]) => !['name', 'matches', 'groups', 'filePath'].includes(key))
       )
     };
   };
@@ -245,11 +247,11 @@ export const useEspansoStore = defineStore('espanso', () => {
   // 创建文件节点
   const createFileNode = (file: FileInfo, content: YamlData, fileType: 'match' | 'config' | 'package'): ConfigFileNode => {
     const matches = Array.isArray(content.matches)
-      ? content.matches.map(processMatch)
+      ? content.matches.map(match => processMatch(match, file.path))
       : [];
 
     const groups = Array.isArray(content.groups)
-      ? content.groups.map(processGroup)
+      ? content.groups.map(group => processGroup(group, file.path))
       : [];
 
     return {
@@ -442,12 +444,12 @@ export const useEspansoStore = defineStore('espanso', () => {
 
                   // 收集匹配项和分组
                   if (yaml.matches) {
-                    const matches = yaml.matches.map(processMatch);
+                    const matches = yaml.matches.map(match => processMatch(match, dirNode.path));
                     allMatches = [...allMatches, ...matches];
                   }
 
                   if (yaml.groups) {
-                    const groups = yaml.groups.map(processGroup);
+                    const groups = yaml.groups.map(group => processGroup(group, dirNode.path));
                     allGroups = [...allGroups, ...groups];
                   }
                 } catch (error) {

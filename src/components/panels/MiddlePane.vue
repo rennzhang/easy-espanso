@@ -15,11 +15,11 @@
         />
       </div>
       <div class="flex justify-end gap-2">
-        <Button @click="addNewRule" size="sm">
+        <Button @click="addNewRule" size="sm" class="border-none focus:ring-0 focus:ring-offset-0">
           <PlusIcon class="h-4 w-4 mr-1" />
           添加规则
         </Button>
-        <Button variant="outline" @click="addNewGroup" size="sm">
+        <Button variant="ghost" @click="addNewGroup" size="sm" class="border-none focus:ring-0 focus:ring-offset-0">
           <PlusIcon class="h-4 w-4 mr-1" />
           添加分组
         </Button>
@@ -46,13 +46,13 @@
             </button>
           </Badge>
         </div>
-        <Button variant="ghost" size="sm" class="h-6 text-xs" @click="clearFilters">
+        <Button variant="ghost" size="sm" class="h-6 text-xs border-none focus:ring-0 focus:ring-offset-0" @click="clearFilters">
           清除全部
         </Button>
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-4">
+    <div class="flex-1 overflow-y-auto">
       <div v-if="loading" class="flex flex-col justify-center items-center h-full gap-4">
         <div class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
         <div class="text-primary font-medium">加载中...</div>
@@ -66,80 +66,149 @@
         <FileTextIcon class="h-12 w-12 mb-4" />
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
         <p class="mb-6 text-muted-foreground max-w-md">点击"添加规则"按钮创建第一条规则</p>
-        <Button @click="addNewRule">添加规则</Button>
+        <Button @click="addNewRule" class="border-none focus:ring-0 focus:ring-offset-0">添加规则</Button>
       </div>
       <div v-else-if="filteredItems.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
         <SearchIcon class="h-12 w-12 mb-4" />
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未找到匹配项</h4>
         <p class="mb-6 text-muted-foreground max-w-md">尝试使用不同的搜索词或标签过滤器</p>
-        <Button variant="outline" @click="clearFilters">清除过滤器</Button>
+        <Button variant="ghost" class="border-none focus:ring-0 focus:ring-offset-0" @click="clearFilters">清除过滤器</Button>
       </div>
-      <div v-else class="flex flex-col gap-3">
-        <!-- 这里将来会使用vue-draggable-next实现拖拽排序 -->
-        <Card
-          v-for="item in filteredItems"
-          :key="item.id"
-          :class="{ 'border-primary shadow-[0_0_0_1px] shadow-primary': selectedItemId === item.id }"
-          class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md"
-          @click="selectItem(item.id)"
-        >
-          <CardContent class="p-4">
-            <div v-if="item.type === 'match'">
-              <div class="flex justify-between items-start">
-                <span class="font-semibold text-foreground">{{ (item as Match).trigger }}</span>
-                <div class="flex flex-wrap gap-1" v-if="(item as Match).tags && (item as Match).tags.length > 0">
-                  <Badge
-                    v-for="tag in (item as Match).tags"
-                    :key="tag"
-                    @click.stop="addTagFilter(tag)"
-                  >
-                    {{ tag }}
-                  </Badge>
+      <div v-else class="h-full">
+        <!-- 视图切换按钮 -->
+        <div class="flex justify-end p-2 border-b">
+          <div class="relative">
+            <Button
+              @click="toggleViewMode"
+              variant="ghost"
+              class="h-10 w-10 !p-0 border-none focus:ring-0 focus:ring-offset-0 flex items-center justify-center"
+              :class="viewMode === 'list' ? 'bg-accent' : ''"
+              :title="viewMode === 'tree' ? '切换到列表视图' : '切换到树视图'"
+            >
+              <ListIcon v-if="viewMode === 'tree'" class="h-6 w-6" />
+              <FolderTreeIcon v-else class="h-6 w-6" />
+            </Button>
+
+            <!-- 提示气泡 -->
+            <div
+              v-if="showListViewTip && viewMode === 'tree'"
+              class="absolute right-0 top-full mt-2 p-2 bg-popover text-popover-foreground rounded shadow-md z-10 w-48"
+            >
+              <p class="text-xs mb-2">点击可切换到列表视图，以平铺方式查看所有片段</p>
+              <div class="flex justify-between">
+                <Button
+                  @click="hideListViewTip"
+                  variant="ghost"
+                  size="sm"
+                  class="text-xs border-none focus:ring-0 focus:ring-offset-0"
+                >
+                  不再提示
+                </Button>
+                <Button
+                  @click="showListViewTip = false"
+                  variant="ghost"
+                  size="sm"
+                  class="text-xs border-none focus:ring-0 focus:ring-offset-0"
+                >
+                  知道了
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 树视图 -->
+        <div v-if="viewMode === 'tree'" class="h-[calc(100%-40px)] p-0 m-0">
+          <ConfigTree
+            :selected-id="selectedItemId"
+            @select="handleTreeItemSelect"
+          />
+        </div>
+
+        <!-- 列表视图 -->
+        <div v-else class="p-4">
+          <div class="flex flex-col gap-3">
+            <Card
+              v-for="item in filteredItems"
+              :key="item.id"
+              :class="{ 'border-primary shadow-[0_0_0_1px] shadow-primary': selectedItemId === item.id }"
+              class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md"
+              @click="selectItem(item.id)"
+            >
+              <CardContent class="p-4">
+                <div v-if="item.type === 'match'">
+                  <div class="flex justify-between items-start">
+                    <span class="font-semibold text-foreground">{{ (item as Match).trigger }}</span>
+                    <div class="flex flex-wrap gap-1" v-if="(item as Match).tags && (item as Match).tags.length > 0">
+                      <Badge
+                        v-for="tag in (item as Match).tags"
+                        :key="tag"
+                        @click.stop="addTagFilter(tag)"
+                      >
+                        {{ tag }}
+                      </Badge>
+                    </div>
+                  </div>
+                  <div class="text-sm text-muted-foreground my-1 whitespace-pre-line">{{ getContentPreview(item as Match) }}</div>
+                  <div class="flex justify-between text-xs text-muted-foreground mt-1">
+                    <Badge variant="outline" class="bg-muted">{{ getContentTypeLabel((item as Match).contentType) }}</Badge>
+                    <span v-if="(item as Match).updatedAt">{{ formatDate((item as Match).updatedAt) }}</span>
+                  </div>
                 </div>
-              </div>
-              <div class="text-sm text-muted-foreground my-1 whitespace-pre-line">{{ getContentPreview(item as Match) }}</div>
-              <div class="flex justify-between text-xs text-muted-foreground mt-1">
-                <Badge variant="outline" class="bg-muted">{{ getContentTypeLabel((item as Match).contentType) }}</Badge>
-                <span v-if="(item as Match).updatedAt">{{ formatDate((item as Match).updatedAt) }}</span>
-              </div>
-            </div>
-            <div v-else-if="item.type === 'group'">
-              <div class="flex justify-between items-start">
-                <span class="font-semibold text-foreground">{{ (item as Group).name }}</span>
-                <Badge variant="secondary" v-if="(item as Group).matches">{{ (item as Group).matches?.length || 0 }} 项</Badge>
-              </div>
-              <div class="flex justify-between text-xs text-muted-foreground mt-1">
-                <Badge variant="outline" class="bg-muted">分组</Badge>
-                <span v-if="(item as Group).updatedAt">{{ formatDate((item as Group).updatedAt) }}</span>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+                <div v-else-if="item.type === 'group'">
+                  <div class="flex justify-between items-start">
+                    <span class="font-semibold text-foreground">{{ (item as Group).name }}</span>
+                    <Badge variant="secondary" v-if="(item as Group).matches">{{ (item as Group).matches?.length || 0 }} 项</Badge>
+                  </div>
+                  <div class="flex justify-between text-xs text-muted-foreground mt-1">
+                    <Badge variant="outline" class="bg-muted">分组</Badge>
+                    <span v-if="(item as Group).updatedAt">{{ formatDate((item as Group).updatedAt) }}</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed, nextTick, onMounted } from 'vue'
 import { useEspansoStore } from '../../store/useEspansoStore'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
 import Badge from '@/components/ui/badge.vue'
 import Card from '@/components/ui/card.vue'
 import CardContent from '@/components/ui/card-content.vue'
+import ConfigTree from '@/components/ConfigTree.vue'
 import {
   SearchIcon,
   FolderIcon,
   FileTextIcon,
   PlusIcon,
   XIcon,
+  ListIcon,
+  FolderTreeIcon
 } from 'lucide-vue-next'
 import { nanoid } from 'nanoid'
 import { Match, Group } from '../../types/espanso'
 
 const store = useEspansoStore()
 const searchQuery = ref('')
+const viewMode = ref<'tree' | 'list'>('tree')
+
+// 从本地存储中读取提示显示状态
+const showListViewTip = ref(false)
+
+// 在组件挂载后检查是否需要显示提示
+onMounted(() => {
+  // 只有当本地存储中没有设置 hideListViewTip 为 true 时才显示提示
+  if (localStorage.getItem('hideListViewTip') !== 'true') {
+    showListViewTip.value = true
+  }
+})
 
 // 使用计算属性直接从store获取数据
 const config = computed(() => store.state.config)
@@ -311,6 +380,24 @@ const addNewGroup = () => {
   nextTick(() => {
     selectItem(newGroup.id)
   })
+}
+
+// 切换视图模式
+const toggleViewMode = () => {
+  viewMode.value = viewMode.value === 'tree' ? 'list' : 'tree';
+  console.log('切换视图模式:', viewMode.value);
+};
+
+// 隐藏列表视图提示
+const hideListViewTip = () => {
+  showListViewTip.value = false;
+  localStorage.setItem('hideListViewTip', 'true');
+};
+
+// 处理树节点选择
+const handleTreeItemSelect = (item: Match | Group) => {
+  console.log('选择树节点:', item);
+  selectItem(item.id);
 }
 </script>
 

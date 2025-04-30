@@ -1,8 +1,13 @@
 <template>
-  <div class="flex flex-col h-screen overflow-hidden bg-background relative">
-    <div class="flex flex-1 overflow-hidden bg-card shadow m-4 rounded-lg" :class="{ 'left-collapsed': leftMenuCollapsed }">
-      <LeftPane class="w-[250px] transition-[width] duration-300 ease-in-out overflow-y-auto border-r border-border bg-muted rounded-l-lg left-pane" />
-      <MiddlePane class="w-[350px] overflow-y-auto border-r border-border bg-card" />
+  <div class="flex h-screen overflow-hidden bg-background">
+    <!-- 左侧固定宽度导航栏 -->
+    <div class="w-16 flex-shrink-0 h-full">
+      <LeftPane />
+    </div>
+
+    <!-- 主内容区域 -->
+    <div class="flex flex-1 overflow-hidden bg-card shadow my-4 mr-4 rounded-lg">
+      <MiddlePane class="w-[350px] overflow-y-auto border-r border-border bg-card rounded-l-lg" />
       <RightPane class="flex-1 overflow-y-auto bg-card rounded-r-lg" />
     </div>
 
@@ -16,19 +21,15 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
-import { useEspansoStore } from '../../store/useEspansoStore';
+import { ref } from 'vue';
 import LeftPane from '../panels/LeftPane.vue';
 import MiddlePane from '../panels/MiddlePane.vue';
 import RightPane from '../panels/RightPane.vue';
 
-const store = useEspansoStore();
-const leftMenuCollapsed = computed(() => store.state.leftMenuCollapsed);
+// 加载状态
 const loading = ref(false);
 </script>
 
 <style>
-.left-collapsed .left-pane {
-  width: 60px;
-}
+/* 移除未使用的样式 */
 </style>
