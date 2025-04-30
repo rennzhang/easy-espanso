@@ -38,6 +38,7 @@ export interface TreeNodeItem {
 
 const props = defineProps<{
   selectedId?: string | null;
+  filteredItems?: (Match | Group)[];
 }>();
 
 const emit = defineEmits<{
@@ -52,11 +53,23 @@ const treeData = computed(() => {
   const tree: TreeNodeItem[] = [];
 
   // 获取所有匹配项和分组
-  const allMatches = store.getAllMatchesFromTree ? store.getAllMatchesFromTree() : [];
-  const allGroups = store.getAllGroupsFromTree ? store.getAllGroupsFromTree() : [];
+  let allMatches: Match[] = [];
+  let allGroups: Group[] = [];
 
-  console.log('所有匹配项数量:', allMatches.length);
-  console.log('所有分组数量:', allGroups.length);
+  // 如果提供了过滤后的项目，则使用过滤后的项目
+  if (props.filteredItems && props.filteredItems.length > 0) {
+    // 使用过滤后的项目
+    allMatches = props.filteredItems.filter(item => item.type === 'match') as Match[];
+    allGroups = props.filteredItems.filter(item => item.type === 'group') as Group[];
+    console.log('使用过滤后的项目 - 匹配项数量:', allMatches.length);
+    console.log('使用过滤后的项目 - 分组数量:', allGroups.length);
+  } else {
+    // 使用所有项目
+    allMatches = store.getAllMatchesFromTree ? store.getAllMatchesFromTree() : [];
+    allGroups = store.getAllGroupsFromTree ? store.getAllGroupsFromTree() : [];
+    console.log('使用所有项目 - 匹配项数量:', allMatches.length);
+    console.log('使用所有项目 - 分组数量:', allGroups.length);
+  }
 
   // 创建一个映射，用于跟踪文件路径到分组节点的映射
   const filePathToGroupMap = new Map<string, TreeNodeItem>();
@@ -67,6 +80,40 @@ const treeData = computed(() => {
 
   // 处理配置树
   const processConfigTree = () => {
+    // 如果有过滤项，直接使用简化的树结构
+    if (props.filteredItems && props.filteredItems.length > 0) {
+      // 创建一个"搜索结果"节点
+      const searchResultsNode: TreeNodeItem = {
+        id: 'search-results',
+        type: 'folder',
+        name: '搜索结果',
+        children: []
+      };
+
+      // 添加匹配项
+      for (const match of allMatches) {
+        searchResultsNode.children.push({
+          id: match.id,
+          type: 'match',
+          name: match.trigger,
+          match: match
+        });
+      }
+
+      // 添加分组
+      for (const group of allGroups) {
+        const groupNode = createGroupNode(group);
+        searchResultsNode.children.push(groupNode);
+      }
+
+      // 只添加有子节点的"搜索结果"节点
+      if (searchResultsNode.children.length > 0) {
+        tree.push(searchResultsNode);
+      }
+
+      return;
+    }
+
     const configTree = store.state.configTree;
     console.log('配置树数据:', configTree);
 

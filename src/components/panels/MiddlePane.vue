@@ -1,28 +1,45 @@
 <template>
   <div class="flex flex-col h-full bg-card">
-    <div class="flex flex-col p-4 border-b border-border gap-3">
-      <div class="flex items-center">
-        <h3 class="text-xl font-semibold text-foreground m-0">规则列表</h3>
-        <Badge variant="outline" class="ml-2" v-if="config">
-          {{ filteredItems.length }} 项
-        </Badge>
+    <div class="flex flex-col py-2 px-4 border-b border-border">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <h3 class="text-lg font-semibold text-foreground m-0">规则列表</h3>
+          <Badge variant="outline" class="ml-2" v-if="config">
+            {{ filteredItems.length }} 项
+          </Badge>
+        </div>
+        <div class="flex items-center gap-2">
+          <Button
+            @click="toggleSearchBar"
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
+            :class="showSearchBar ? 'bg-accent' : ''"
+          >
+            <SearchIcon class="h-4 w-4" />
+          </Button>
+          <Button
+            @click="toggleViewMode"
+            variant="ghost"
+            size="icon"
+            class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
+            :class="viewMode === 'list' ? 'bg-accent' : ''"
+            :title="viewMode === 'tree' ? '切换到列表视图' : '切换到树视图'"
+          >
+            <ListIcon v-if="viewMode === 'tree'" class="h-4 w-4" />
+            <FolderTreeIcon v-else class="h-4 w-4" />
+          </Button>
+        </div>
       </div>
-      <div>
+
+      <div v-if="showSearchBar" class="mt-2">
         <Input
           v-model="searchQuery"
           placeholder="搜索规则..."
-          class="w-full"
+          class="w-full h-8 text-sm"
+          ref="searchInputRef"
+          id="search-input"
         />
-      </div>
-      <div class="flex justify-end gap-2">
-        <Button @click="addNewRule" size="sm" class="border-none focus:ring-0 focus:ring-offset-0">
-          <PlusIcon class="h-4 w-4 mr-1" />
-          添加规则
-        </Button>
-        <Button variant="ghost" @click="addNewGroup" size="sm" class="border-none focus:ring-0 focus:ring-offset-0">
-          <PlusIcon class="h-4 w-4 mr-1" />
-          添加分组
-        </Button>
       </div>
     </div>
 
@@ -65,8 +82,7 @@
       <div v-else-if="store.getAllMatchesFromTree().length === 0 && store.getAllGroupsFromTree().length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
         <FileTextIcon class="h-12 w-12 mb-4" />
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
-        <p class="mb-6 text-muted-foreground max-w-md">点击"添加规则"按钮创建第一条规则</p>
-        <Button @click="addNewRule" class="border-none focus:ring-0 focus:ring-offset-0">添加规则</Button>
+        <p class="mb-6 text-muted-foreground max-w-md">请在右侧面板添加新规则</p>
       </div>
       <div v-else-if="filteredItems.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
         <SearchIcon class="h-12 w-12 mb-4" />
@@ -75,52 +91,44 @@
         <Button variant="ghost" class="border-none focus:ring-0 focus:ring-offset-0" @click="clearFilters">清除过滤器</Button>
       </div>
       <div v-else class="h-full">
-        <!-- 视图切换按钮 -->
-        <div class="flex justify-end p-2 border-b">
-          <div class="relative">
+        <!-- 提示气泡 -->
+        <div
+          v-if="showListViewTip && viewMode === 'tree'"
+          class="fixed right-4 top-16 mt-2 p-2 bg-popover text-popover-foreground rounded shadow-md z-10 w-48"
+        >
+          <p class="text-xs mb-2">点击可切换到列表视图，以平铺方式查看所有片段</p>
+          <div class="flex justify-between">
             <Button
-              @click="toggleViewMode"
+              @click="hideListViewTip"
               variant="ghost"
-              class="h-10 w-10 !p-0 border-none focus:ring-0 focus:ring-offset-0 flex items-center justify-center"
-              :class="viewMode === 'list' ? 'bg-accent' : ''"
-              :title="viewMode === 'tree' ? '切换到列表视图' : '切换到树视图'"
+              size="sm"
+              class="text-xs border-none focus:ring-0 focus:ring-offset-0"
             >
-              <ListIcon v-if="viewMode === 'tree'" class="h-6 w-6" />
-              <FolderTreeIcon v-else class="h-6 w-6" />
+              不再提示
             </Button>
-
-            <!-- 提示气泡 -->
-            <div
-              v-if="showListViewTip && viewMode === 'tree'"
-              class="absolute right-0 top-full mt-2 p-2 bg-popover text-popover-foreground rounded shadow-md z-10 w-48"
+            <Button
+              @click="showListViewTip = false"
+              variant="ghost"
+              size="sm"
+              class="text-xs border-none focus:ring-0 focus:ring-offset-0"
             >
-              <p class="text-xs mb-2">点击可切换到列表视图，以平铺方式查看所有片段</p>
-              <div class="flex justify-between">
-                <Button
-                  @click="hideListViewTip"
-                  variant="ghost"
-                  size="sm"
-                  class="text-xs border-none focus:ring-0 focus:ring-offset-0"
-                >
-                  不再提示
-                </Button>
-                <Button
-                  @click="showListViewTip = false"
-                  variant="ghost"
-                  size="sm"
-                  class="text-xs border-none focus:ring-0 focus:ring-offset-0"
-                >
-                  知道了
-                </Button>
-              </div>
-            </div>
+              知道了
+            </Button>
           </div>
         </div>
 
         <!-- 树视图 -->
-        <div v-if="viewMode === 'tree'" class="h-[calc(100%-40px)] p-0 m-0">
+        <div v-if="viewMode === 'tree'" class="h-full px-2 pt-2 m-0">
+          <div v-if="searchQuery && filteredItems.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+            <SearchIcon class="h-12 w-12 mb-4" />
+            <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未找到匹配项</h4>
+            <p class="mb-6 text-muted-foreground max-w-md">尝试使用不同的搜索词或标签过滤器</p>
+            <Button variant="ghost" class="border-none focus:ring-0 focus:ring-offset-0" @click="clearFilters">清除过滤器</Button>
+          </div>
           <ConfigTree
+            v-else
             :selected-id="selectedItemId"
+            :filtered-items="searchQuery.trim() ? filteredItems : []"
             @select="handleTreeItemSelect"
           />
         </div>
@@ -175,7 +183,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, nextTick, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useEspansoStore } from '../../store/useEspansoStore'
 import Button from '@/components/ui/button.vue'
 import Input from '@/components/ui/input.vue'
@@ -187,27 +195,37 @@ import {
   SearchIcon,
   FolderIcon,
   FileTextIcon,
-  PlusIcon,
   XIcon,
   ListIcon,
   FolderTreeIcon
 } from 'lucide-vue-next'
-import { nanoid } from 'nanoid'
 import { Match, Group } from '../../types/espanso'
 
 const store = useEspansoStore()
 const searchQuery = ref('')
 const viewMode = ref<'tree' | 'list'>('tree')
+const showSearchBar = ref(false)
+const searchInputRef = ref<HTMLInputElement | null>(null)
 
 // 从本地存储中读取提示显示状态
 const showListViewTip = ref(false)
 
-// 在组件挂载后检查是否需要显示提示
+// 在组件挂载后检查是否需要显示提示并选择第一个项目
 onMounted(() => {
   // 只有当本地存储中没有设置 hideListViewTip 为 true 时才显示提示
   if (localStorage.getItem('hideListViewTip') !== 'true') {
     showListViewTip.value = true
   }
+
+  // 当配置加载完成后，自动选择第一个项目
+  const unwatch = watch(() => filteredItems.value, (items) => {
+    if (items.length > 0 && !store.state.selectedItemId) {
+      // 选择第一个项目
+      selectItem(items[0].id)
+      // 取消监听，避免重复选择
+      unwatch()
+    }
+  }, { immediate: true })
 })
 
 // 使用计算属性直接从store获取数据
@@ -236,9 +254,22 @@ const filteredItems = computed(() => {
     filtered = filtered.filter(item => {
       if (item.type === 'match') {
         const match = item as Match
+        // 搜索多个字段
         return (
+          // 搜索触发词
           match.trigger?.toLowerCase().includes(query) ||
-          match.replace?.toLowerCase().includes(query)
+          // 搜索描述/标签
+          match.label?.toLowerCase().includes(query) ||
+          match.description?.toLowerCase().includes(query) ||
+          // 搜索替换内容 - 支持多种内容类型
+          match.replace?.toString().toLowerCase().includes(query) ||
+          match.content?.toString().toLowerCase().includes(query) ||
+          match.markdown?.toString().toLowerCase().includes(query) ||
+          match.html?.toString().toLowerCase().includes(query) ||
+          // 搜索标签
+          match.tags?.some((tag: string) => tag.toLowerCase().includes(query)) ||
+          // 搜索搜索词
+          match.search_terms?.some((term: string) => term.toLowerCase().includes(query))
         )
       } else if (item.type === 'group') {
         const group = item as Group
@@ -339,53 +370,42 @@ const clearFilters = () => {
   searchQuery.value = ''
 }
 
-// 添加新规则
-const addNewRule = () => {
-  if (!config.value) return
+// 添加新规则功能已移至右侧面板
 
-  const newMatch: Match = {
-    id: nanoid(),
-    type: 'match',
-    trigger: 'new_trigger',
-    replace: '替换内容',
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
-  store.addItem(newMatch)
-
-  // 选择新添加的规则并等待DOM更新后滚动到视图
-  nextTick(() => {
-    selectItem(newMatch.id)
-  })
-}
-
-// 添加新分组
-const addNewGroup = () => {
-  if (!config.value) return
-
-  const newGroup: Group = {
-    id: nanoid(),
-    type: 'group',
-    name: '新分组',
-    matches: [],
-    groups: [],
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  }
-
-  store.addItem(newGroup)
-
-  // 选择新添加的分组并等待DOM更新后滚动到视图
-  nextTick(() => {
-    selectItem(newGroup.id)
-  })
-}
+// 添加新分组功能已移除
 
 // 切换视图模式
 const toggleViewMode = () => {
   viewMode.value = viewMode.value === 'tree' ? 'list' : 'tree';
   console.log('切换视图模式:', viewMode.value);
+};
+
+// 切换搜索栏显示
+const toggleSearchBar = () => {
+  showSearchBar.value = !showSearchBar.value;
+  console.log('切换搜索栏:', showSearchBar.value);
+
+  if (showSearchBar.value) {
+    // 如果显示搜索栏，等待DOM更新后聚焦搜索框
+    nextTick(() => {
+      // 尝试多种方式聚焦搜索框
+      setTimeout(() => {
+        // 方法1: 通过ref
+        if (searchInputRef.value) {
+          searchInputRef.value.focus();
+        }
+
+        // 方法2: 通过DOM
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+          searchInput.focus();
+        }
+      }, 50); // 短暂延迟确保DOM已完全更新
+    });
+  } else {
+    // 如果关闭搜索栏，清空搜索内容
+    searchQuery.value = '';
+  }
 };
 
 // 隐藏列表视图提示

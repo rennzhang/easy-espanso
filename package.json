@@ -5,15 +5,15 @@
   "main": "dist/electron/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "node scripts/build.js",
-    "build:quiet": "node scripts/build.js --quiet",
+    "build": "electron-vite build && afplay /System/Library/Sounds/Glass.aiff",
+    "build:quiet": "electron-vite build",
     "preview": "electron-vite preview",
     "electron:dev": "electron-vite dev",
-    "electron:build": "node scripts/build.js --electron",
-    "electron:build:mac": "node scripts/build.js --electron --target=mac",
-    "electron:build:win": "node scripts/build.js --electron --target=win",
-    "electron:build:linux": "node scripts/build.js --electron --target=linux",
-    "electron:build:quiet": "node scripts/build.js --electron --quiet"
+    "electron:build": "electron-vite build && electron-builder --config electron/electron-builder.json && afplay /System/Library/Sounds/Glass.aiff",
+    "electron:build:mac": "electron-vite build && electron-builder --mac --config electron/electron-builder.json && afplay /System/Library/Sounds/Glass.aiff",
+    "electron:build:win": "electron-vite build && electron-builder --win --config electron/electron-builder.json && afplay /System/Library/Sounds/Glass.aiff",
+    "electron:build:linux": "electron-vite build && electron-builder --linux --config electron/electron-builder.json && afplay /System/Library/Sounds/Glass.aiff",
+    "electron:build:quiet": "electron-vite build && electron-builder --config electron/electron-builder.json"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",
