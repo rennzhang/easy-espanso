@@ -1,7 +1,7 @@
 ---
-description: 
+description: vue
 globs: 
-alwaysApply: true
+alwaysApply: false
 ---
 ---
 description: 
