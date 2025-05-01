@@ -34,9 +34,9 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { XIcon } from 'lucide-vue-next';
-import Button from '../ui/button.vue';
-import Input from '../ui/input.vue';
-import Badge from '../ui/badge.vue';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
 
 // 定义props

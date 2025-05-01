@@ -1,0 +1,15 @@
+matches:
+  - id: test-match-123
+    type: match
+    triggers:
+      - ':aiprd'
+      - ':ddd'
+    replace: Hello, this is a test with multiple triggers
+    label: 测试多触发词
+    description: 这是一个测试多触发词的示例
+  - id: test-match-456
+    type: match
+    trigger: ':hello'
+    replace: Hello, this is a test with single trigger
+    label: 测试单触发词
+    description: 这是一个测试单触发词的示例

@@ -50,8 +50,8 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
-import Button from '../ui/button.vue';
-import Input from '../ui/input.vue';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
 import type { Group } from '../../types/espanso';
 import { Transition } from 'vue';
 

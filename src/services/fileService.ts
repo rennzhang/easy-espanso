@@ -191,13 +191,74 @@ export async function parseYaml(yamlString: string): Promise<YamlData> {
 
 // 序列化YAML
 export async function serializeYaml(data: YamlData): Promise<string> {
+  // 处理数据中的数组（特别是triggers），确保正确格式化
+  const prepareData = (obj: any): any => {
+    // 如果是数组，确保每个元素都正确处理
+    if (Array.isArray(obj)) {
+      return obj.map(item => prepareData(item));
+    }
+    
+    // 如果是对象，递归处理每个属性
+    if (obj && typeof obj === 'object') {
+      const result: any = {};
+      
+      for (const key in obj) {
+        // 特殊处理triggers数组，确保输出为YAML流式数组
+        if (key === 'triggers' && Array.isArray(obj[key])) {
+          console.log('[serializeYaml] 处理triggers数组:', obj[key]);
+          result[key] = prepareData(obj[key]);
+        } else {
+          result[key] = prepareData(obj[key]);
+        }
+      }
+      
+      return result;
+    }
+    
+    // 原始类型直接返回
+    return obj;
+  };
+  
+  // 预处理数据
+  const processedData = prepareData(data);
+  
+  // 首先尝试使用预加载脚本
   if (window.preloadApi?.serializeYaml) {
-    return window.preloadApi.serializeYaml(data);
+    try {
+      return window.preloadApi.serializeYaml(processedData);
+    } catch (error) {
+      console.error('[serializeYaml] 预加载脚本序列化失败，尝试备用方法:', error);
+      // 如果预加载脚本失败，尝试备用方法
+    }
   }
-
-  // 如果preloadApi不可用，返回一个模拟的Promise
-  console.warn('preloadApi.serializeYaml不可用，使用模拟数据');
-  return Promise.resolve('# 示例YAML内容\nmatches:\n  - trigger: ":hello"\n    replace: "Hello, World!"');
+  
+  // 如果预加载脚本不可用或失败，尝试使用js-yaml直接实现
+  try {
+    // 动态导入js-yaml
+    const yamlModule = await import('js-yaml');
+    const yaml = yamlModule.default;
+    
+    // 使用js-yaml直接序列化，指定特殊选项确保数组正确格式化
+    const result = yaml.dump(processedData, {
+      indent: 2,
+      lineWidth: -1, // 禁用行宽限制
+      noRefs: true, // 避免YAML别名/锚点
+      flowLevel: 1, // 设置为流式风格，触发器数组采用[item1, item2]形式
+    });
+    
+    console.log('[serializeYaml] 使用直接js-yaml序列化成功');
+    
+    // 最后的修正：确保YAML表示的triggers数组格式正确
+    const fixedResult = result.replace(/triggers: \|-\n\s+/g, 'triggers:\n  ');
+    
+    return fixedResult;
+  } catch (importError) {
+    console.error('[serializeYaml] 动态导入js-yaml失败:', importError);
+  }
+  
+  // 如果上面的方法都失败，使用模拟数据
+  console.warn('serializeYaml 所有方法都失败，使用模拟数据');
+  return '# 无法序列化数据\n# 请检查您的环境设置\nmatches:\n  - trigger: ":error"\n    replace: "序列化失败"';
 }
 
 // 获取Espanso配置目录

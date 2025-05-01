@@ -169,43 +169,42 @@ const selfMatchesSearch = computed(() => {
   try {
     const escapedQuery = escapeRegex(query);
     const regex = new RegExp(escapedQuery, "i"); // Case-insensitive regex
-    let matches = false;
 
-    const nodeName = props.node.name; // Get name once
-    const nodeType = props.node.type; // Get type once
+    const nodeType = props.node.type;
 
-    // Always check the node name (covers name for folder/file/group, and trigger for match)
-    const nameMatchResult = checkMatch(nodeName, regex);
-
-    if (nameMatchResult) {
-      matches = true;
+    // Check folder/file/group name
+    if (nodeType !== 'match') {
+      return checkMatch(props.node.name, regex);
     }
 
-    // If name didn't match AND it's a match node, check additional match-specific fields
-    if (!matches && nodeType === "match" && props.node.match) {
+    // --- Match Node Checks --- 
+    if (props.node.match) {
       const match = props.node.match;
-      const labelMatch = checkMatch(match.label, regex);
-      const descriptionMatch = checkMatch(match.description, regex);
-      const replaceMatch = checkMatch(match.replace?.toString(), regex);
-      const tagsMatch = match.tags?.some((tag: string) =>
-        checkMatch(tag, regex)
-      );
-      const termsMatch = match.search_terms?.some((term: string) =>
-        checkMatch(term, regex)
-      );
+      
+      // Check trigger or triggers array
+      if (checkMatch(match.trigger, regex) || 
+          (Array.isArray(match.triggers) && match.triggers.some(t => checkMatch(t, regex)))) {
+        return true;
+      }
 
+      // Check other match fields
       if (
-        labelMatch ||
-        descriptionMatch ||
-        replaceMatch ||
-        tagsMatch ||
-        termsMatch
+        checkMatch(match.label, regex) ||
+        checkMatch(match.description, regex) ||
+        checkMatch(match.replace?.toString(), regex) ||
+        checkMatch(match.content?.toString(), regex) ||
+        checkMatch(match.markdown?.toString(), regex) ||
+        checkMatch(match.html?.toString(), regex) ||
+        match.tags?.some((tag: string) => checkMatch(tag, regex)) ||
+        match.search_terms?.some((term: string) => checkMatch(term, regex))
       ) {
-        matches = true;
+        return true;
       }
     }
 
-    return matches;
+    // If no fields matched for a match node
+    return false;
+
   } catch (e) {
     console.error("Invalid regex in TreeNode (selfMatchesSearch):", e);
     return false; // Treat invalid regex as no match
@@ -225,19 +224,18 @@ const descendantMatchesSearch = computed(() => {
       for (const childNode of nodes) {
         let childSelfMatches = false;
 
-        // Check child name first (covers name for folder/file/group, and trigger for match)
-        if (checkMatch(childNode.name, regex)) {
-          childSelfMatches = true;
+        // Check name for folder/file/group
+        if (childNode.type !== 'match' && checkMatch(childNode.name, regex)) {
+           childSelfMatches = true;
         }
-
-        // If name didn't match AND it's a match type, check specific match fields
-        if (
-          !childSelfMatches &&
-          childNode.type === "match" &&
-          childNode.match
-        ) {
+        // Check specific match fields for match type
+        else if (childNode.type === "match" && childNode.match) {
           const match = childNode.match;
           if (
+            // Check trigger or triggers
+            checkMatch(match.trigger, regex) ||
+            (Array.isArray(match.triggers) && match.triggers.some(t => checkMatch(t, regex))) ||
+            // Check other fields
             checkMatch(match.label, regex) ||
             checkMatch(match.description, regex) ||
             checkMatch(match.replace?.toString(), regex) ||
@@ -250,7 +248,6 @@ const descendantMatchesSearch = computed(() => {
             childSelfMatches = true;
           }
         }
-        // No additional fields to check for descendant folder/file/group beyond their name
 
         if (childSelfMatches) {
           return true; // Found a matching descendant

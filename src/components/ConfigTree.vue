@@ -52,10 +52,21 @@ const loading = computed(() => store.state.loading);
 
 // 创建匹配项节点
 const createMatchNode = (match: Match): TreeNodeItem => {
+  // Determine the display name based on trigger or triggers
+  let displayName = match.trigger || ''; // Default to trigger
+  if (!displayName && Array.isArray(match.triggers) && match.triggers.length > 0) {
+    displayName = match.triggers[0]; // Use first trigger if trigger is missing
+    if (match.triggers.length > 1) {
+      displayName += '...'; // Indicate multiple triggers
+    }
+  } else if (!displayName) {
+    displayName = '[未命名触发词]'; // Fallback if neither exists
+  }
+
   return {
     id: match.id,
     type: 'match',
-    name: match.trigger,
+    name: displayName, // Use the determined display name
     match: match,
     children: []
   };

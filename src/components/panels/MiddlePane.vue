@@ -262,11 +262,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from "vue";
 import { useEspansoStore } from "../../store/useEspansoStore";
-import Button from "@/components/ui/button.vue";
-import Input from "@/components/ui/input.vue";
-import Badge from "@/components/ui/badge.vue";
-import Card from "@/components/ui/card.vue";
-import CardContent from "@/components/ui/card-content.vue";
+import { Button } from "../ui/button";
+import { Input } from "../ui/input";
+import { Badge } from "../ui/badge";
+import { Card, CardContent } from "../ui/card";
 import ConfigTree from "@/components/ConfigTree.vue";
 import HighlightText from "@/components/common/HighlightText.vue";
 import {

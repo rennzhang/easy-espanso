@@ -130,7 +130,7 @@ export const useEspansoStore = defineStore('espanso', () => {
 
   const getAllGroupsFromTree = (): Group[] => {
     const groups: Group[] = [];
-     const traverseTree = (nodes: ConfigTreeNode[]) => {
+    const traverseTree = (nodes: ConfigTreeNode[]) => {
       for (const node of nodes) {
         if (node.type === 'file') {
           if (node.groups) {
@@ -159,14 +159,63 @@ export const useEspansoStore = defineStore('espanso', () => {
 
   // Process raw match data into internal format
   const processMatch = (match: any, filePath?: string): Match => {
-    return {
+    console.log('[processMatch] 处理触发词:', match.trigger, match.triggers);
+    const baseMatch: Match = {
       id: match.id || generateId('match'),
       type: 'match',
-      trigger: match.trigger || '',
-      replace: match.replace || '',
       filePath: filePath || match.filePath || '',
-      ...(match as Omit<Match, 'id' | 'type' | 'trigger' | 'replace' | 'filePath'>)
+      // Initialize trigger/triggers as undefined
+      trigger: undefined,
+      triggers: undefined,
+      // Copy other known properties explicitly or use spread cautiously
+      replace: match.replace || '',
+      label: match.label,
+      description: match.description,
+      word: match.word,
+      left_word: match.left_word,
+      right_word: match.right_word,
+      propagate_case: match.propagate_case,
+      uppercase_style: match.uppercase_style,
+      force_mode: match.force_mode,
+      apps: match.apps,
+      exclude_apps: match.exclude_apps,
+      vars: match.vars,
+      search_terms: match.search_terms,
+      priority: match.priority,
+      hotkey: match.hotkey,
+      image_path: match.image_path,
+      markdown: match.markdown,
+      html: match.html,
+      content: match.content,
     };
+
+    // 处理多行触发词字符串 (YAML字符块，比如 trigger: |- )
+    if (match.trigger && typeof match.trigger === 'string' && 
+       (match.trigger.includes('\n') || match.trigger.includes(','))) {
+      console.log('[processMatch] 检测到多行触发词:', match.trigger);
+      // 使用触发词分割逻辑，统一处理
+      const triggerItems = match.trigger
+        .split(/[,\n]/)
+        .map((t: string) => t.trim())
+        .filter((t: string) => t !== '');
+      
+      if (triggerItems.length > 1) {
+        console.log('[processMatch] 将多行触发词转换为数组:', triggerItems);
+        baseMatch.triggers = triggerItems;
+        return baseMatch;
+      }
+    }
+
+    // 标准处理逻辑
+    if (Array.isArray(match.triggers) && match.triggers.length > 0) {
+      // 如果有triggers数组，优先使用
+      baseMatch.triggers = match.triggers;
+    } else if (match.trigger) {
+      // 如果只有单个trigger，使用它
+      baseMatch.trigger = match.trigger;
+    }
+
+    return baseMatch;
   };
 
   // Process raw group data into internal format
@@ -347,8 +396,8 @@ export const useEspansoStore = defineStore('espanso', () => {
       if (await fileExists(defaultGlobalPath)) {
           try {
               const content = await readFile(defaultGlobalPath);
-              const yaml = await parseYaml(content) as YamlData;
-              state.value.globalConfig = yaml;
+          const yaml = await parseYaml(content) as YamlData;
+          state.value.globalConfig = yaml;
               state.value.globalConfigPath = defaultGlobalPath;
               const fileNode = createFileNode({ name: 'default.yml', path: defaultGlobalPath, extension: '.yml' }, yaml, 'config', [], []);
               addToTree(configTree, fileNode, 'config');
@@ -360,13 +409,13 @@ export const useEspansoStore = defineStore('espanso', () => {
       const matchDir = safeJoinPath(configDir, 'match');
       if (await fileExists(matchDir)) {
           const matchDirTree = await scanDirectory(matchDir);
-          console.log('匹配目录结构:', matchDirTree); 
+          console.log('匹配目录结构:', matchDirTree);
 
           const processDirectory = async (dirNode: any, relativePath: string = '') => {
               if (dirNode.type === 'file' && isConfigFile(dirNode.name)) {
-                  try {
-                      const content = await readFile(dirNode.path);
-                      const yaml = await parseYaml(content) as YamlData;
+                try {
+                  const content = await readFile(dirNode.path);
+                  const yaml = await parseYaml(content) as YamlData;
                       const fileType = relativePath.startsWith('packages/') ? 'package' : 'match';
 
                       // Process matches and groups ONCE
@@ -379,7 +428,7 @@ export const useEspansoStore = defineStore('espanso', () => {
 
                       // Create file node using the processed items
                       const fileNode = createFileNode({ name: dirNode.name, path: dirNode.path, extension: '.yml' }, yaml, fileType, fileMatches, fileGroups);
-                      addToTree(configTree, fileNode, relativePath);
+                  addToTree(configTree, fileNode, relativePath);
 
                       // Add the processed items to the global list
                       if (fileMatches.length > 0) {
@@ -391,36 +440,62 @@ export const useEspansoStore = defineStore('espanso', () => {
                            if (!firstMatchFilePath) firstMatchFilePath = dirNode.path;
                       }
                   } catch (e) { console.warn(`处理文件 ${dirNode.path} 失败:`, e); }
-              } else if (dirNode.type === 'directory') {
+            } else if (dirNode.type === 'directory') {
                   const newRelativePath = relativePath ? safeJoinPath(relativePath, dirNode.name) : dirNode.name;
-                  if (Array.isArray(dirNode.children)) {
-                      for (const child of dirNode.children) {
-                          await processDirectory(child, newRelativePath);
-                      }
-                  }
+              if (Array.isArray(dirNode.children)) {
+                for (const child of dirNode.children) {
+                  await processDirectory(child, newRelativePath);
+                }
               }
+            }
           };
 
           if (Array.isArray(matchDirTree)) {
-              for (const node of matchDirTree) {
-                  await processDirectory(node);
-              }
+            for (const node of matchDirTree) {
+              await processDirectory(node);
+            }
           }
       }
 
       // If no matches/groups found, create example
       if (currentMatches.length === 0 && currentGroups.length === 0) {
           console.log('未找到规则, 创建示例...');
-          const exampleMatch = processMatch({ trigger: ':hello', replace: 'Hello World!' }, safeJoinPath(matchDir, 'base.yml'));
-          currentMatches.push(exampleMatch);
-          firstMatchFilePath = exampleMatch.filePath;
-          const exampleYaml = { matches: [{ trigger: ':hello', replace: 'Hello World!' }] };
-          try {
-            await writeFile(exampleMatch.filePath, await serializeYaml(exampleYaml));
-            const fileNode = createFileNode({ name: 'base.yml', path: exampleMatch.filePath, extension: '.yml' }, exampleYaml, 'match', [exampleMatch], []);
-            addToTree(configTree, fileNode, '');
-             console.log('示例文件已创建:', exampleMatch.filePath);
-          } catch(e) { console.error('创建示例文件失败:', e); }
+          const exampleFilePath = safeJoinPath(matchDir, 'base.yml'); // Get path first
+          if (!exampleFilePath || typeof exampleFilePath !== 'string') {
+             console.error('无法为示例文件生成有效路径!');
+             // Handle error appropriately, maybe skip example creation or throw
+        } else {
+              // 创建示例匹配规则
+              const exampleMatch = processMatch({ 
+                  trigger: ':hello', 
+                  replace: 'Hello World!' 
+              }, exampleFilePath);
+              
+              currentMatches.push(exampleMatch);
+              firstMatchFilePath = exampleFilePath; // Assign the confirmed string path
+              
+              // 创建示例YAML文件内容
+              const exampleYaml = { 
+                  matches: [{ 
+                      trigger: ':hello', 
+                      replace: 'Hello World!' 
+                  }] 
+              };
+              
+              try {
+                await writeFile(exampleFilePath, await serializeYaml(exampleYaml)); // Use confirmed string path
+                const fileNode = createFileNode({ 
+                    name: 'base.yml', 
+                    path: exampleFilePath, 
+                    extension: '.yml' 
+                }, exampleYaml, 'match', [exampleMatch], []); // Use confirmed string path
+                
+                addToTree(configTree, fileNode, '');
+                console.log('示例文件已创建:', exampleFilePath);
+              } catch(e) { 
+                  console.error('创建示例文件失败:', e); 
+              }
+          }
       }
 
       // Update state
@@ -523,7 +598,7 @@ export const useEspansoStore = defineStore('espanso', () => {
 
   // Helper to find and update item reference in the configTree
   const findAndUpdateInTree = (nodes: ConfigTreeNode[], updatedItem: Match | Group): boolean => {
-      for (const node of nodes) {
+            for (const node of nodes) {
           if (node.type === 'file') {
               if (updatedItem.type === 'match' && node.matches) {
                   const index = node.matches.findIndex(m => m.id === updatedItem.id);
@@ -542,7 +617,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                      if (findAndUpdateInGroup(groupInFile, updatedItem)) return true;
                   }
               }
-          } else if (node.type === 'folder') {
+              } else if (node.type === 'folder') {
               if (findAndUpdateInTree(node.children, updatedItem)) {
                   return true;
               }
@@ -566,40 +641,63 @@ export const useEspansoStore = defineStore('espanso', () => {
       let matchIndex = state.value.config.matches.findIndex(m => m.id === itemId);
       if (matchIndex !== -1) {
         targetItem = state.value.config.matches[matchIndex];
-        // Apply updates directly (mutate)
-        Object.assign(targetItem, updateData);
-        // console.log('[Store updateConfigState] Updated item in config.matches:', JSON.parse(JSON.stringify(targetItem)));
-      } else {
+        } else {
         // 2. If not in matches, find in groups (recursively)
         const findInGroupsRecursive = (groups: Group[]): Group | null => {
           for (let i = 0; i < groups.length; i++) {
             if (groups[i].id === itemId) {
-              targetItem = groups[i];
-              // Apply updates directly (mutate)
-              Object.assign(targetItem, updateData);
-              // console.log('[Store updateConfigState] Updated item in config.groups:', JSON.parse(JSON.stringify(targetItem)));
-              return targetItem;
+              return groups[i]; // Return the found item
             }
             if (groups[i].groups) {
-              const found = findInGroupsRecursive(groups[i].groups!);
+              const found = findInGroupsRecursive(groups[i].groups!); // Change var name
               if (found) return found;
             }
           }
           return null;
         };
-        findInGroupsRecursive(state.value.config.groups); // Call the recursive function
+        targetItem = findInGroupsRecursive(state.value.config.groups); // Assign result
       }
 
       if (!targetItem) {
         console.error(`[Store updateConfigState] Item with ID ${itemId} not found in config.`);
-        // Optionally throw error or handle differently
         return; 
+      }
+
+      // 复制更新数据，以免修改原始数据
+      const updateDataCopy = { ...updateData };
+      
+      if (targetItem.type === 'match') {
+        // 暂存触发词相关字段
+        const newTrigger = (updateDataCopy as Partial<Match>).trigger;
+        const newTriggers = (updateDataCopy as Partial<Match>).triggers;
+        
+        // 从更新数据中删除这些字段，以便后面单独处理
+        delete (updateDataCopy as Partial<Match>).trigger;
+        delete (updateDataCopy as Partial<Match>).triggers;
+        
+        // 先应用其他更新
+        Object.assign(targetItem, updateDataCopy);
+        
+        // 删除现有的trigger和triggers字段
+        delete (targetItem as Match).trigger;
+        delete (targetItem as Match).triggers;
+        
+        // 根据情况分配新的trigger或triggers
+        if (newTriggers && newTriggers.length > 0) {
+          (targetItem as Match).triggers = newTriggers;
+        } else if (newTrigger !== undefined) {
+          (targetItem as Match).trigger = newTrigger;
+        } else {
+          // 如果更新数据中未提供trigger和triggers，保留原有值
+        }
+      } else {
+        // 对于Group类型，直接应用更新
+        Object.assign(targetItem, updateDataCopy);
       }
 
       // 3. Find and update the item reference in the configTree
       if (!findAndUpdateInTree(state.value.configTree, targetItem)) {
         console.warn(`[Store updateConfigState] Item ID ${itemId} was updated in config, but not found/updated in configTree. Tree might be out of sync.`);
-        // This indicates a potential issue in tree structure or update logic
       } else {
         // console.log(`[Store updateConfigState] Item ID ${itemId} reference updated in configTree.`);
       }
@@ -607,8 +705,6 @@ export const useEspansoStore = defineStore('espanso', () => {
       // Mark changes as unsaved
       state.value.hasUnsavedChanges = true;
       state.value.autoSaveStatus = 'idle';
-
-      // console.log('配置状态更新完成，标记为未保存');
 
     } catch (error: any) {
       console.error('更新配置状态失败:', error);
@@ -632,7 +728,7 @@ export const useEspansoStore = defineStore('espanso', () => {
     const updateFn = (config: EspansoConfig) => {
         if (type === 'match') {
             config.matches = config.matches.filter(i => i.id !== id);
-        } else {
+          } else {
             const removeGroupRecursive = (groups: Group[]): Group[] => {
                 return groups.filter(group => group.id !== id).map(group => {
                     if (group.groups) {
@@ -739,6 +835,17 @@ export const useEspansoStore = defineStore('espanso', () => {
   // Save a specific item (Match or Group) to its corresponding file
   const saveItemToFile = async (itemToSave: Match | Group) => {
     console.log(`[Store saveItemToFile] Attempting to save item ID: ${itemToSave.id} to its file.`);
+    // 调试触发词
+    if (itemToSave.type === 'match') {
+      if ((itemToSave as Match).triggers) {
+        console.log('[Store saveItemToFile] 调试 - 发现多触发词:', (itemToSave as Match).triggers);
+      } else if ((itemToSave as Match).trigger) {
+        console.log('[Store saveItemToFile] 调试 - 发现单触发词:', (itemToSave as Match).trigger);
+      } else {
+        console.log('[Store saveItemToFile] 调试 - 未找到触发词!');
+      }
+    }
+    
     state.value.autoSaveStatus = 'saving';
 
     const targetFilePath = itemToSave.filePath;
@@ -783,17 +890,12 @@ export const useEspansoStore = defineStore('espanso', () => {
 
       // Recursive cleaner function for groups (same as before)
       const cleanNested = (g: Group): any => {
-        const { id, type, filePath, matches, groups, ...rest } = g;
+        const { id, type, filePath, updatedAt, matches, groups, ...rest } = g;
         const cleanedGroup: any = { ...rest };
         if (matches && matches.length > 0) {
           cleanedGroup.matches = matches.map((m: Match) => {
-            const { id: mId, type: mType, filePath: mFilePath, ...mRest } = m;
-            // Ensure properties like uppercase_style are handled if null/undefined
-            if (mRest.uppercase_style === null || mRest.uppercase_style === undefined) {
-              delete mRest.uppercase_style;
-            }
-            // Add similar checks for other optional fields if needed
-            return mRest;
+            // Use the new cleaner function for matches
+            return cleanMatchForSaving(m);
           });
         }
         if (groups && groups.length > 0) {
@@ -802,16 +904,75 @@ export const useEspansoStore = defineStore('espanso', () => {
         return cleanedGroup;
       };
 
+      // Helper function to clean a Match object for YAML serialization
+      const cleanMatchForSaving = (match: Match): any => {
+        const { id, type, filePath, updatedAt, content, contentType, ...rest } = match;
+        const cleanedMatch: any = { ...rest };
+
+        // 处理带有换行符的trigger字段，将其转换为triggers数组
+        if (cleanedMatch.trigger && typeof cleanedMatch.trigger === 'string') {
+          // 检查trigger是否包含换行符或逗号
+          if (cleanedMatch.trigger.includes('\n') || cleanedMatch.trigger.includes(',')) {
+            console.log('[cleanMatchForSaving] 发现包含换行符或逗号的trigger:', cleanedMatch.trigger);
+            // 按换行符和逗号分割
+            const triggerItems = cleanedMatch.trigger
+              .split(/[,\n]/)
+              .map((t: string) => t.trim())
+              .filter((t: string) => t !== '');
+            
+            // 如果分割后有多个项目，则使用triggers数组
+            if (triggerItems.length > 1) {
+              cleanedMatch.triggers = triggerItems;
+              delete cleanedMatch.trigger;
+              console.log('[cleanMatchForSaving] 已转换为triggers数组:', cleanedMatch.triggers);
+            }
+          }
+        }
+
+        // 确保只包含trigger或triggers中的一个，不同时包含两者
+        if (cleanedMatch.triggers && Array.isArray(cleanedMatch.triggers) && cleanedMatch.triggers.length > 0) {
+          // 如果triggers数组存在且不为空，删除单个trigger字段
+          delete cleanedMatch.trigger;
+        } else if (cleanedMatch.trigger) {
+          // 如果单个trigger存在，删除triggers数组字段
+          delete cleanedMatch.triggers;
+        } else {
+          // 如果两者都不存在，默认设置为空trigger
+          cleanedMatch.trigger = '';
+          delete cleanedMatch.triggers;
+        }
+
+        // Remove null/undefined optional fields explicitly if needed (example: uppercase_style)
+        if (cleanedMatch.uppercase_style === null || cleanedMatch.uppercase_style === undefined || cleanedMatch.uppercase_style === '') {
+          delete cleanedMatch.uppercase_style;
+        }
+        // Add similar checks for other optional fields like force_mode, priority, hotkey etc. if they might be empty strings or 0
+        if (cleanedMatch.force_mode === 'default') { // Assuming 'default' means don't include in YAML
+          delete cleanedMatch.force_mode;
+        }
+        if (cleanedMatch.priority === 0) { // Assuming 0 priority is default and shouldn't be saved
+          delete cleanedMatch.priority;
+        }
+        // ... add more checks as needed ...
+
+        return cleanedMatch;
+      };
+
+      // 调试触发词处理
+      console.log('[Store saveItemToFile] Matches before cleaning:', JSON.stringify(allMatchesForFile.map(m => ({
+        id: m.id,
+        trigger: m.trigger,
+        triggers: m.triggers
+      })), null, 2));
+
       // Add matches if any
       if (allMatchesForFile.length > 0) {
-        saveData.matches = allMatchesForFile.map((match: Match) => {
-          const { id, type, filePath, ...rest } = match;
-           if (rest.uppercase_style === null || rest.uppercase_style === undefined) {
-              delete rest.uppercase_style;
-            }
-          return rest;
-        });
+        // Use the cleaner function for each match
+        saveData.matches = allMatchesForFile.map(cleanMatchForSaving);
       }
+
+      // 调试清理后的结果
+      console.log('[Store saveItemToFile] Matches after cleaning:', JSON.stringify(saveData.matches, null, 2));
 
       // Add groups if any
       if (allGroupsForFile.length > 0) {
@@ -837,6 +998,9 @@ export const useEspansoStore = defineStore('espanso', () => {
       console.log('[Store saveItemToFile] Preparing to write file with saveData:', JSON.parse(JSON.stringify(saveData)));
       const purifiedSaveData = JSON.parse(JSON.stringify(saveData));
       const yamlContent = Object.keys(purifiedSaveData).length === 0 ? '' : await serializeYaml(purifiedSaveData);
+      
+      // 调试生成的YAML字符串
+      console.log('[Store saveItemToFile] Generated YAML:\n', yamlContent);
 
       await writeFile(targetFilePath, yamlContent);
       console.log('[Store saveItemToFile] File written successfully:', targetFilePath);
@@ -855,24 +1019,36 @@ export const useEspansoStore = defineStore('espanso', () => {
   };
 
   // Action to show toast
-  const showToast = (message: string, type: 'success' | 'error' = 'success', duration: number = 3000) => {
+  const showToast = (message: string, type: 'success' | 'error' = 'success', duration: number = 3000, persistent: boolean = false) => {
     // Clear previous timeout if exists
     if (state.value.toastTimeoutId) {
       clearTimeout(state.value.toastTimeoutId);
+      state.value.toastTimeoutId = null; // Explicitly nullify after clearing
     }
 
     state.value.toastMessage = message;
     state.value.toastType = type;
     state.value.toastVisible = true;
 
-    // Set new timeout to hide the toast
-    state.value.toastTimeoutId = setTimeout(() => {
-      state.value.toastVisible = false;
+    // Only set timeout if not persistent
+    if (!persistent) {
+      state.value.toastTimeoutId = setTimeout(() => {
+        hideToast(); // Use hideToast to ensure proper cleanup
+      }, duration);
+    }
+  };
+
+  // Action to hide toast
+  const hideToast = () => {
+    state.value.toastVisible = false;
+    // Clear timeout just in case it was set (e.g., if hiding manually before timeout)
+    if (state.value.toastTimeoutId) {
+      clearTimeout(state.value.toastTimeoutId);
       state.value.toastTimeoutId = null;
-      // Reset message and type after hiding for cleanliness
-      state.value.toastMessage = null;
-      state.value.toastType = null;
-    }, duration);
+    }
+    // Reset message and type
+    state.value.toastMessage = null;
+    state.value.toastType = null;
   };
 
   return {
@@ -895,6 +1071,7 @@ export const useEspansoStore = defineStore('espanso', () => {
     findFileNode,
     saveItemToFile,
     showToast, // Expose the action
+    hideToast, // Expose the new action
     // --- Comment out exposure --- 
     // initializePlatformAndFullscreenListener
     // --- End comment out --- 

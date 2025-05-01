@@ -1,16 +1,32 @@
 export interface Match {
   id: string;
   type: 'match';
-  trigger: string;
+  // Either trigger (single) or triggers (multiple) should be used, not both.
+  trigger?: string; // Optional single trigger
+  triggers?: string[]; // Optional array of triggers
   replace: string;
   description?: string;
+  label?: string; // Often used as description in Espanso GUI contexts
   word?: boolean;
+  left_word?: boolean; // Added for consistency
+  right_word?: boolean; // Added for consistency
   propagate_case?: boolean;
   uppercase_style?: 'capitalize_words' | 'uppercase_first';
-  force_mode?: 'clipboard' | 'keys';
+  force_mode?: 'default' | 'clipboard' | 'keys'; // Added default
   apps?: string[];
   exclude_apps?: string[];
-  vars?: any[];
+  vars?: any[]; // Consider defining a Var type if structure is known
+  search_terms?: string[]; // Added based on RuleEditForm
+  priority?: number; // Added based on RuleEditForm
+  hotkey?: string; // Added based on RuleEditForm
+  image_path?: string; // Added based on RuleEditForm
+  markdown?: string; // Added based on RuleEditForm
+  html?: string; // Added based on RuleEditForm
+  content?: string; // Added based on RuleEditForm (generic)
+  contentType?: string; // Added based on RuleEditForm (internal UI state)
+  filePath?: string; // Added path tracking
+  updatedAt?: string; // Added timestamp
+  // Allow other Espanso-specific fields
   [key: string]: any;
 }
 
@@ -18,9 +34,13 @@ export interface Group {
   id: string;
   type: 'group';
   name: string;
-  description?: string;
+  label?: string; // Added label for consistency
+  prefix?: string; // Added prefix for consistency
   matches?: Match[];
   groups?: Group[];
+  filePath?: string; // Added path tracking
+  updatedAt?: string; // Added timestamp
+  // Allow other Espanso-specific fields
   [key: string]: any;
 }
 

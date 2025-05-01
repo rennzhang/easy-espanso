@@ -4,9 +4,31 @@
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-semibold text-foreground m-0">{{ headerTitle }}</h3>
         <div class="flex gap-2" v-if="selectedItem">
-          <Button size="sm" variant="outline" class="h-8 px-2 py-0" @click="saveItem">
-            <SaveIcon class="h-4 w-4 mr-1" />
-            保存
+          <Button
+            size="sm"
+            variant="outline"
+            class="h-8 px-2 py-0 w-28 justify-center"
+            @click="saveItem"
+            :disabled="isSaving"
+          >
+            <Transition name="fade" mode="out-in">
+              <div v-if="isSaving" key="saving" class="flex items-center justify-center w-full">
+                <Loader2Icon class="h-4 w-4 mr-1 animate-spin" />
+                <span>保存中...</span>
+              </div>
+              <div v-else-if="saveState === 'success'" key="success" class="flex items-center justify-center w-full">
+                <CheckIcon class="h-4 w-4 mr-1 text-green-500" />
+                <span>已保存</span>
+              </div>
+              <div v-else-if="saveState === 'error'" key="error" class="flex items-center justify-center w-full">
+                <XIcon class="h-4 w-4 mr-1 text-red-500" />
+                <span>保存失败</span>
+              </div>
+              <div v-else key="idle" class="flex items-center justify-center w-full">
+                <SaveIcon class="h-4 w-4 mr-1" />
+                <span>保存</span>
+              </div>
+            </Transition>
           </Button>
         </div>
       </div>
@@ -45,8 +67,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
-import { SaveIcon } from 'lucide-vue-next';
-import Button from '../ui/button.vue';
+import { SaveIcon, Loader2Icon, CheckIcon, XIcon } from 'lucide-vue-next';
+import { Button } from '../ui/button';
 import RuleEditForm from '../forms/RuleEditForm.vue';
 import GroupEditForm from '../forms/GroupEditForm.vue';
 import type { Match, Group } from '../../types/espanso';
@@ -63,6 +85,11 @@ const selectedItem = computed(() => {
   return item;
 });
 const loading = computed(() => false);
+
+// State for save button
+const isSaving = ref(false);
+const saveState = ref<'idle' | 'success' | 'error'>('idle');
+let saveStateTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // 标题
 const headerTitle = computed(() => {
@@ -81,7 +108,16 @@ const headerTitle = computed(() => {
 
 // 保存项目
 const saveItem = async () => {
-  if (!selectedItem.value) return;
+  if (!selectedItem.value || isSaving.value) return;
+
+  // Clear previous timeout if any
+  if (saveStateTimeout) {
+    clearTimeout(saveStateTimeout);
+    saveStateTimeout = null;
+  }
+
+  isSaving.value = true;
+  saveState.value = 'idle';
 
   let currentFormData: Partial<Match> | Partial<Group> | null = null;
   let formType: 'match' | 'group' | null = null;
@@ -97,7 +133,10 @@ const saveItem = async () => {
 
   if (!currentFormData || !formType) {
     console.error('无法从表单组件获取当前数据或类型!');
-    alert('保存失败: 无法获取表单数据。');
+    isSaving.value = false;
+    saveState.value = 'error';
+    saveStateTimeout = setTimeout(() => { saveState.value = 'idle'; }, 2000);
+    store.showToast('保存失败: 无法获取表单数据', 'error', 0, true);
     return;
   }
 
@@ -107,13 +146,16 @@ const saveItem = async () => {
     } else if (formType === 'group') {
       await saveGroup(selectedItem.value.id, currentFormData as Partial<Group>);
     }
-    // Trigger global toast AFTER successful save
-    store.showToast('保存成功！', 'success');
+    isSaving.value = false;
+    saveState.value = 'success';
+    saveStateTimeout = setTimeout(() => { saveState.value = 'idle'; }, 1500);
 
   } catch (error: any) {
     console.error('保存项目失败 (saveItem): ', error);
-    // Trigger global error toast
-    store.showToast(`保存失败: ${error.message || '未知错误'}`, 'error', 5000); // Show error longer
+    isSaving.value = false;
+    saveState.value = 'error';
+    saveStateTimeout = setTimeout(() => { saveState.value = 'idle'; }, 2000);
+    store.showToast(`保存失败: ${error.message || '未知错误'}`, 'error', 0, true);
   }
 };
 
@@ -216,5 +258,17 @@ const deleteGroup = (id: string) => {
   }
 };
 </script>
+
+<style>
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
+}
+
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
+}
+</style>
 
 

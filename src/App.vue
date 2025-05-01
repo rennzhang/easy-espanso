@@ -39,13 +39,19 @@
       <Transition name="toast-fade">
         <div
           v-if="isToastVisible"
-          class="fixed top-5 left-1/2 transform -translate-x-1/2 py-2 px-5 rounded-md shadow-lg text-sm font-medium z-50"
+          class="fixed top-5 right-5 py-2 px-4 pr-8 rounded-md shadow-lg text-sm font-medium z-50 min-w-[250px] max-w-sm"
           :class="{
-            'bg-green-500 text-white': toastType === 'success',
             'bg-red-500 text-white': toastType === 'error',
+            // Add other types if needed, e.g., bg-blue-500 for info
           }"
         >
-          {{ toastMessage }}
+          <span>{{ toastMessage }}</span>
+          <button
+            @click="store.hideToast"
+            class="absolute top-1/2 right-2 transform -translate-y-1/2 text-white/70 hover:text-white focus:outline-none"
+          >
+            <XIcon class="h-4 w-4" />
+          </button>
         </div>
       </Transition>
     </template>
@@ -69,12 +75,8 @@ declare global {
 }
 
 // 导入 shadcn/vue 组件
-import Button from './components/ui/button.vue';
-import Card from './components/ui/card.vue';
-import CardHeader from './components/ui/card-header.vue';
-import CardTitle from './components/ui/card-title.vue';
-import CardDescription from './components/ui/card-description.vue';
-import CardContent from './components/ui/card-content.vue';
+import { Button } from './components/ui/button';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './components/ui/card';
 
 const store = useEspansoStore();
 const isLoading = ref(true);
@@ -356,12 +358,12 @@ const selectConfigFolder = async () => {
 .toast-fade-enter-from,
 .toast-fade-leave-to {
   opacity: 0;
-  transform: translate(-50%, -20px); /* Start above */
+  transform: translate(100%, 0); /* Start from the right */
 }
 
 .toast-fade-enter-to,
 .toast-fade-leave-from {
   opacity: 1;
-  transform: translate(-50%, 0); /* End at final position */
+  transform: translate(0, 0); /* End at final position */
 }
 </style>
