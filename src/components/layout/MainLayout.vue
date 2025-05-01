@@ -1,5 +1,5 @@
 <template>
-  <div :class="['main-layout', 'flex', 'h-screen', 'overflow-hidden', 'bg-background']">
+  <div :class="['main-layout', 'flex', 'h-screen', 'overflow-hidden', 'bg-main-bg']">
     <!-- 左侧固定宽度导航栏 -->
     <div class="w-[75px] flex-shrink-0 h-full">
       <LeftPane />
@@ -8,8 +8,9 @@
     <!-- Main Content Area -->
     <!-- Revert to static class temporarily -->
     <!-- TODO: Restore dynamic class binding based on platform and fullscreen state once store issues are resolved -->
-    <div class="main-content-area flex flex-1 overflow-hidden bg-card">
-      <MiddlePane class="w-[350px] overflow-y-auto border-r border-border bg-card" />
+    <!-- MiddlePane and RightPane now use bg-card for their own background, inherited from theme -->
+    <div class="main-content-area flex flex-1 overflow-hidden">
+      <MiddlePane class="w-[350px] overflow-y-auto border-r border-border-color bg-main-bg" />
       <RightPane class="flex-1 overflow-y-auto bg-card" />
     </div>
   </div>
@@ -37,11 +38,12 @@ import RightPane from '../panels/RightPane.vue';
   position: relative;
   /* Apply static padding for macOS temporarily */
   /* TODO: Make this padding conditional based on platform and fullscreen state */
-  padding-top: 36px; /* Increased padding */
+  padding-top: 28px; /* Adjust based on actual native title bar height */
 }
 
 /* 在 macOS 上应用特定样式 */
-@media screen and (min-width: 768px) {
+/* Keep or remove these media queries based on whether you need specific OS padding */
+@media screen and (min-width: 768px) { 
   .main-content-area {
     padding-top: 28px; /* macOS 标题栏高度 */
   }

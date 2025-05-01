@@ -9,11 +9,18 @@
       <div class="space-y-1.5">
         <div class="flex items-center">
           <label for="trigger" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mr-2">
-            触发词 (多个请用英文逗号或换行分隔)
+            触发词
           </label>
-          <Tooltip content="输入规则的触发词，支持多个。按下空格后将被替换为指定内容。" position="right" class="flex items-center">
-            <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-          </Tooltip>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>输入规则的触发词，多个请用英文逗号或换行分隔。</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <textarea
           id="trigger"
@@ -30,9 +37,16 @@
         <div class="flex items-center justify-between mb-2">
           <div class="flex items-center">
             <label class="text-sm font-medium leading-none mr-2">内容类型</label>
-            <Tooltip content="选择替换内容的类型，如纯文本、Markdown等" position="right" class="flex items-center">
-              <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>选择替换内容的类型，如纯文本、Markdown等</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
            <Select v-model="currentContentType">
              <SelectTrigger class="h-7 text-sm px-2 py-1 w-auto focus:ring-1 focus:ring-ring">
@@ -93,9 +107,16 @@
             <div v-else-if="currentContentType === 'form'" class="relative">
                <div class="flex items-center px-3 pt-2">
                  <p class="text-sm text-muted-foreground mr-2">表单功能</p>
-                 <Tooltip content="表单功能允许创建交互式表单，用户可以在使用片段时输入内容" position="right" class="flex items-center">
-                   <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-                 </Tooltip>
+                 <TooltipProvider>
+                   <Tooltip>
+                     <TooltipTrigger as-child>
+                       <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                     </TooltipTrigger>
+                     <TooltipContent>
+                       <p>表单功能允许创建交互式表单，用户可以在使用片段时输入内容</p>
+                     </TooltipContent>
+                   </Tooltip>
+                 </TooltipProvider>
                </div>
                <textarea
                 v-model="formState.content"
@@ -172,9 +193,16 @@
           <label for="label" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 mr-2">
             标签 (描述)
           </label>
-          <Tooltip content="为规则添加简短描述，方便识别和管理" position="right" class="flex items-center">
-            <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-          </Tooltip>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>为规则添加简短描述，方便识别和管理</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <Input
           id="label"
@@ -188,9 +216,16 @@
       <div class="space-y-2">
         <div class="flex items-center">
           <h4 class="text-sm font-medium mr-2">词边界设置</h4>
-          <Tooltip content="控制触发词在什么情况下被识别，例如是否需要在单词边界处" position="right" class="flex items-center">
-            <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-          </Tooltip>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger as-child>
+                <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>控制触发词在什么情况下被识别，例如是否需要在单词边界处</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
           <div class="flex items-center space-x-1.5">
@@ -236,9 +271,16 @@
         <div class="space-y-2">
           <div class="flex items-center">
             <h4 class="text-sm font-medium mr-2">大小写处理</h4>
-            <Tooltip content="控制替换内容的大小写处理方式" position="right" class="flex items-center">
-              <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>控制替换内容的大小写处理方式</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
             <div class="flex items-center space-x-1.5">
@@ -268,9 +310,16 @@
         <div class="space-y-2">
            <div class="flex items-center">
              <h4 class="text-sm font-medium mr-2">插入模式</h4>
-             <Tooltip content="控制内容如何被插入，通过剪贴板或模拟按键" position="right" class="flex items-center">
-               <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-             </Tooltip>
+             <TooltipProvider>
+               <Tooltip>
+                 <TooltipTrigger as-child>
+                   <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                 </TooltipTrigger>
+                 <TooltipContent>
+                   <p>控制内容如何被插入，通过剪贴板或模拟按键</p>
+                 </TooltipContent>
+               </Tooltip>
+             </TooltipProvider>
            </div>
            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
              <div class="space-y-1">
@@ -296,9 +345,16 @@
         <div class="space-y-2">
           <div class="flex items-center">
             <h4 class="text-sm font-medium mr-2">应用限制</h4>
-            <Tooltip content="限制片段在哪些应用中生效或不生效" position="right" class="flex items-center">
-              <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>限制片段在哪些应用中生效或不生效</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div class="grid grid-cols-1 gap-3">
             <div class="space-y-1">
@@ -331,9 +387,16 @@
         <div class="space-y-2">
           <div class="flex items-center">
             <h4 class="text-sm font-medium mr-2">搜索设置</h4>
-            <Tooltip content="添加额外的关键词，用于在搜索时匹配此片段" position="right" class="flex items-center">
-              <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-            </Tooltip>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>添加额外的关键词，用于在搜索时匹配此片段</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
           <div class="space-y-1 pt-1">
             <label class="text-sm font-medium leading-none">
@@ -355,9 +418,16 @@
               <label for="priority" class="text-sm font-medium leading-none mr-2">
                 优先级 (priority)
               </label>
-              <Tooltip content="当多个片段可能匹配时，优先级高的会被优先使用" position="right" class="flex items-center">
-                <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-              </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>当多个片段可能匹配时，优先级高的会被优先使用</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <Input
               id="priority"
@@ -373,9 +443,16 @@
               <label for="hotkey" class="text-sm font-medium leading-none mr-2">
                 快捷键 (hotkey)
               </label>
-              <Tooltip content="设置快捷键来触发此片段，例如 alt+h" position="right" class="flex items-center">
-                <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors" />
-              </Tooltip>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger as-child>
+                    <HelpCircleIcon class="h-4 w-4 text-muted-foreground hover:text-foreground transition-colors cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>设置快捷键来触发此片段，例如 alt+h</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </div>
             <Input
               id="hotkey"
@@ -798,7 +875,7 @@ const onSubmit = () => {
   const triggerValue = formState.value.trigger || '';
   // 确保同时处理换行符和逗号作为分隔符
   const triggersArray = triggerValue
-    .split(/[,\n]/) // Split by comma or newline
+    .split(/[,\n]/) // Split by comma or newline, 确保同时处理换行符和逗号作为分隔符
     .map(t => t.trim()) // Trim whitespace
     .filter(t => t !== ''); // Remove empty strings
 

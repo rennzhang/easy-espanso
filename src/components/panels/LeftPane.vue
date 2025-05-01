@@ -1,11 +1,14 @@
 <template>
-  <div class="left-pane flex flex-col h-full bg-[#353535] text-white w-[75px]">
+  <div class="left-pane flex flex-col h-full bg-sidebar-bg text-sidebar-text w-[75px]">
     <!-- 导航按钮 -->
     <div class="flex flex-col items-center">
       <!-- 片段按钮 -->
       <div
-        class="w-full flex flex-col items-center justify-center py-4 cursor-pointer"
-        :class="{ 'bg-[#4a4a4a]': activeSection === 'rules' }"
+        class="w-full flex flex-col items-center justify-center py-4 cursor-pointer transition-colors"
+        :class="{
+          'bg-sidebar-selected': activeSection === 'rules',
+          'hover:bg-sidebar-hover': activeSection !== 'rules'
+        }"
         @click="setActiveSection('rules')"
       >
         <FileTextIcon class="h-6 w-6 mb-1" />
@@ -14,8 +17,11 @@
 
       <!-- 设置按钮 -->
       <div
-        class="w-full flex flex-col items-center justify-center py-4 cursor-pointer"
-        :class="{ 'bg-[#4a4a4a]': activeSection === 'settings' }"
+        class="w-full flex flex-col items-center justify-center py-4 cursor-pointer transition-colors"
+        :class="{
+          'bg-sidebar-selected': activeSection === 'settings',
+          'hover:bg-sidebar-hover': activeSection !== 'settings'
+        }"
         @click="setActiveSection('settings')"
       >
         <SettingsIcon class="h-6 w-6 mb-1" />
