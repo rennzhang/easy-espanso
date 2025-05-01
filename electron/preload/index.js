@@ -401,7 +401,9 @@ try {
     scanDirectory,
 
     // 系统操作
-    platform: () => process.platform,
+    getPlatform: () => process.platform,
+    getHomeDir: () => osModule.homedir(),
+    joinPath: (...args) => pathModule.join(...args),
 
     // 通知
     showNotification,
@@ -409,8 +411,7 @@ try {
     // 环境信息
     isElectron: true
   });
-  console.log('preloadApi成功暴露到window对象');
-  // You can add a check here:
+  console.log('[Preload] preloadApi exposed successfully.');
   if (window.preloadApi) {
     console.log('[Preload] Verified: window.preloadApi exists after exposeInMainWorld.');
     console.log('[Preload] Available methods:', Object.keys(window.preloadApi).join(', '));

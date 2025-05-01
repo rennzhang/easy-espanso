@@ -123,11 +123,9 @@ watch(() => props.searchQuery, (newQuery) => {
 // 切换文件夹展开/折叠状态
 const toggleFolder = () => {
   isOpen.value = !isOpen.value;
-  console.log(`切换节点 ${props.node.name} 的展开状态:`, isOpen.value);
 };
 
 const selectNode = () => {
-  console.log("选择节点:", props.node);
   emit("select", props.node);
 };
 
@@ -165,7 +163,6 @@ function escapeRegex(string: string): string {
 // Computed: Check if this node's own data matches the search query
 const selfMatchesSearch = computed(() => {
   const query = props.searchQuery?.trim();
-  console.log("selfMatchesSearch", query);
 
   if (!query) return false;
 
@@ -177,18 +174,8 @@ const selfMatchesSearch = computed(() => {
     const nodeName = props.node.name; // Get name once
     const nodeType = props.node.type; // Get type once
 
-    // --- DETAILED LOGGING ---
-    // Uncomment below for debugging
-    console.log(`--------------------------------
-[${nodeType}] '${nodeName}' (ID: ${props.node.id})
-Checking self match for query: '${query}' (Regex: /${escapedQuery}/i)`);
-
     // Always check the node name (covers name for folder/file/group, and trigger for match)
     const nameMatchResult = checkMatch(nodeName, regex);
-
-    // --- DETAILED LOGGING ---
-    // Uncomment below for debugging
-    console.log(`  -> Name check ('${nodeName}') result: ${nameMatchResult}`);
 
     if (nameMatchResult) {
       matches = true;
@@ -196,14 +183,10 @@ Checking self match for query: '${query}' (Regex: /${escapedQuery}/i)`);
 
     // If name didn't match AND it's a match node, check additional match-specific fields
     if (!matches && nodeType === "match" && props.node.match) {
-      // --- DETAILED LOGGING ---
-      // Uncomment below for debugging
-       console.log(`  -> Name didn't match, checking match-specific fields...`);
       const match = props.node.match;
       const labelMatch = checkMatch(match.label, regex);
       const descriptionMatch = checkMatch(match.description, regex);
       const replaceMatch = checkMatch(match.replace?.toString(), regex);
-      // ... add other checks if needed for logging
       const tagsMatch = match.tags?.some((tag: string) =>
         checkMatch(tag, regex)
       );
@@ -211,35 +194,16 @@ Checking self match for query: '${query}' (Regex: /${escapedQuery}/i)`);
         checkMatch(term, regex)
       );
 
-      // --- DETAILED LOGGING ---
-      // Uncomment below for debugging
-      console.log(`     Label ('${match.label}'): ${labelMatch}`);
-      console.log(`     Description ('${match.description}'): ${descriptionMatch}`);
-      console.log(`     Replace: ${replaceMatch}`);
-      console.log(`     Tags: ${tagsMatch}`);
-      console.log(`     Terms: ${termsMatch}`);
-
       if (
         labelMatch ||
         descriptionMatch ||
         replaceMatch ||
-        // checkMatch(match.content?.toString(), regex) || // Add these back if needed
-        // checkMatch(match.markdown?.toString(), regex) ||
-        // checkMatch(match.html?.toString(), regex) ||
         tagsMatch ||
         termsMatch
       ) {
         matches = true;
-        // --- DETAILED LOGGING ---
-        // Uncomment below for debugging
-         console.log(`  -> Match-specific field matched!`);
       }
     }
-
-    // --- DETAILED LOGGING ---
-    // Uncomment below for debugging
-    console.log(`  => Final self match result: ${matches}
---------------------------------`);
 
     return matches;
   } catch (e) {
@@ -274,7 +238,6 @@ const descendantMatchesSearch = computed(() => {
         ) {
           const match = childNode.match;
           if (
-            // No need to re-check trigger
             checkMatch(match.label, regex) ||
             checkMatch(match.description, regex) ||
             checkMatch(match.replace?.toString(), regex) ||

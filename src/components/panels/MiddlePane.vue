@@ -1,5 +1,5 @@
 <template>
-  <div class="flex flex-col h-full bg-card">
+  <div class="middle-pane flex flex-col h-full bg-card">
     <div class="flex flex-col py-2 px-4 border-b border-border">
       <div class="flex items-center justify-between">
         <div class="flex items-center">
@@ -159,7 +159,7 @@
         </div>
 
         <!-- 树视图 -->
-        <div v-if="viewMode === 'tree'" class="h-full px-2 pt-2 m-0">
+        <div v-if="viewMode === 'tree'" class="h-full m-0">
           <ConfigTree
             :selected-id="selectedItemId"
             :searchQuery="searchQuery.trim()"
@@ -168,8 +168,8 @@
         </div>
 
         <!-- 列表视图 -->
-        <div v-else class="p-4">
-          <div class="flex flex-col gap-3">
+        <div v-else class="p-0">
+          <div class="flex flex-col gap-2">
             <Card
               v-for="item in filteredItems"
               :key="item.id"
@@ -295,7 +295,6 @@ onMounted(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // 检查Ctrl+F或Command+F快捷键
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-        console.log("检测到搜索快捷键: Ctrl/Cmd + F");
         e.preventDefault(); // 阻止浏览器默认的搜索行为
 
         // 显示搜索栏并聚焦
@@ -310,7 +309,6 @@ onMounted(() => {
 
       // 检查ESC键 - 如果搜索栏显示，则隐藏搜索栏
       if (e.key === "Escape" && showSearchBar.value) {
-        console.log("检测到ESC键，隐藏搜索栏");
         hideSearchBar();
       }
     };
@@ -350,7 +348,8 @@ onMounted(() => {
   }
 
   // 如果是从URL加载配置，在加载完成后显示列表
-  const unwatch = watch(
+  let unwatchConfig: Function | null = null; // Declare unwatch outside
+  unwatchConfig = watch(
     () => store.state.config,
     (newConfig) => {
       if (newConfig && store.getAllMatchesFromTree) {
@@ -358,16 +357,27 @@ onMounted(() => {
         if (matches.length > 0 && !store.state.selectedItemId) {
           selectItem(matches[0].id);
         }
-        unwatch();
+        // Check if unwatchConfig has been assigned before calling
+        if (unwatchConfig) {
+          unwatchConfig();
+        }
       }
     },
     { immediate: true }
   );
+
+  // Ensure cleanup on unmount
+  onUnmounted(() => {
+    if (unwatchConfig) {
+      unwatchConfig();
+    }
+    cleanup(); // Also call the keyboard shortcut cleanup
+  });
 });
 
 // 聚焦搜索框的函数
 const focusSearchInput = () => {
-  console.log("尝试聚焦中间面板搜索框...");
+  // console.log("尝试聚焦中间面板搜索框..."); // Removed log
 
   // 使用嵌套的setTimeout确保多次尝试聚焦
   const attemptFocus = (attempts = 0) => {
@@ -375,7 +385,7 @@ const focusSearchInput = () => {
 
     // 方法1: 使用ref
     if (searchInputRef.value) {
-      console.log(`第${attempts + 1}次尝试: 通过ref聚焦搜索框`);
+      // console.log(`第${attempts + 1}次尝试: 通过ref聚焦搜索框`); // Removed log
       searchInputRef.value.focus();
       return;
     }
@@ -383,7 +393,7 @@ const focusSearchInput = () => {
     // 方法2: 使用DOM ID
     const searchInput = document.getElementById("search-input");
     if (searchInput) {
-      console.log(`第${attempts + 1}次尝试: 通过DOM ID聚焦搜索框`);
+      // console.log(`第${attempts + 1}次尝试: 通过DOM ID聚焦搜索框`); // Removed log
       // 1. 尝试直接聚焦
       searchInput.focus();
 
@@ -393,7 +403,7 @@ const focusSearchInput = () => {
           (searchInput as HTMLElement).click();
           (searchInput as HTMLInputElement).focus();
         } catch (e) {
-          console.error("聚焦点击失败:", e);
+          // console.error("聚焦点击失败:", e); // Keep potential error log?
         }
       }, 10);
 
@@ -412,7 +422,7 @@ const focusSearchInput = () => {
     setTimeout(() => {
       const input = document.querySelector("#search-input") as HTMLInputElement;
       if (input) {
-        console.log("尝试使用querySelector聚焦搜索框");
+        // console.log("尝试使用querySelector聚焦搜索框"); // Removed log
         input.focus();
         // 尝试模拟用户点击
         try {
@@ -424,7 +434,7 @@ const focusSearchInput = () => {
           input.dispatchEvent(evt);
           input.focus();
         } catch (e) {
-          console.error("模拟点击失败:", e);
+          // console.error("模拟点击失败:", e); // Keep potential error log?
         }
       }
     }, 150);
@@ -434,7 +444,7 @@ const focusSearchInput = () => {
 // 监听showSearchBar的变化
 watch(showSearchBar, (newVal) => {
   if (newVal) {
-    console.log("搜索栏显示，准备聚焦");
+    // console.log("搜索栏显示，准备聚焦"); // Removed log
     focusSearchInput();
   } else {
     searchQuery.value = "";
@@ -612,7 +622,16 @@ const formatDate = (dateString: string) => {
 
 // 选择项目
 const selectItem = (id: string) => {
-  store.state.selectedItemId = id;
+  // 检查是否有未保存的修改
+  if (store.state.hasUnsavedChanges) {
+    if (confirm('您有未保存的修改，确定要切换到其他项目吗？这将丢失当前的修改。')) {
+      // 用户确认切换，重置修改状态
+      store.state.hasUnsavedChanges = false;
+      store.state.selectedItemId = id;
+    }
+  } else {
+    store.state.selectedItemId = id;
+  }
 };
 
 // 标签筛选
@@ -640,13 +659,13 @@ const clearFilters = () => {
 // 切换视图模式
 const toggleViewMode = () => {
   viewMode.value = viewMode.value === "tree" ? "list" : "tree";
-  console.log("切换视图模式:", viewMode.value);
+  // console.log("切换视图模式:", viewMode.value); // Removed log
 };
 
 // 切换搜索栏显示
 const toggleSearchBar = () => {
   showSearchBar.value = !showSearchBar.value;
-  console.log("切换搜索栏:", showSearchBar.value);
+  // console.log("切换搜索栏:", showSearchBar.value); // Removed log
 
   if (showSearchBar.value) {
     // 使用改进的聚焦方法
@@ -659,7 +678,7 @@ const toggleSearchBar = () => {
 
 // 隐藏搜索栏
 const hideSearchBar = () => {
-  console.log("按下ESC键，隐藏搜索栏");
+  // console.log("按下ESC键，隐藏搜索栏"); // Removed log
   showSearchBar.value = false;
   searchQuery.value = "";
 };
@@ -672,7 +691,7 @@ const hideListViewTip = () => {
 
 // 处理树节点选择
 const handleTreeItemSelect = (item: Match | Group) => {
-  console.log("选择树节点:", item);
+  // console.log("选择树节点:", item); // Removed log
   selectItem(item.id);
 };
 

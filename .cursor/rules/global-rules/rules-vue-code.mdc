@@ -81,4 +81,5 @@ src/
 1. 保留 CSS 中原有的 !important 关键字
 2. 保留原有的代码注释和 console.log
 3. 请勿将文案和注释中的全角引号（“”）改为半角引号（""）
-4. !!!每次对话结束后运行 pnpm run build
+
+!!!每次对话结束后都要运行命令 pnpm run build

@@ -31,10 +31,10 @@ const originalConsoleWarn = console.warn;
 
 console.log = function() {
   const args = Array.from(arguments);
-  const message = args.map(arg => 
+  const message = args.map(arg =>
     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
   ).join(' ');
-  
+
   if (logStream && logStream.writable) {
     try {
       logStream.write(`[INFO][${new Date().toISOString()}] ${message}\n`);
@@ -47,10 +47,10 @@ console.log = function() {
 
 console.error = function() {
   const args = Array.from(arguments);
-  const message = args.map(arg => 
+  const message = args.map(arg =>
     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
   ).join(' ');
-  
+
   if (logStream && logStream.writable) {
     try {
       logStream.write(`[ERROR][${new Date().toISOString()}] ${message}\n`);
@@ -63,10 +63,10 @@ console.error = function() {
 
 console.warn = function() {
   const args = Array.from(arguments);
-  const message = args.map(arg => 
+  const message = args.map(arg =>
     typeof arg === 'object' ? JSON.stringify(arg, null, 2) : arg
   ).join(' ');
-  
+
   if (logStream && logStream.writable) {
     try {
       logStream.write(`[WARN][${new Date().toISOString()}] ${message}\n`);
@@ -89,11 +89,29 @@ console.log('应用路径:', app.getAppPath());
 // 垃圾回收的时候，window对象将会自动的关闭
 let mainWindow;
 
+// --- Define App Icon Path --- 
+// TODO: Update this path to your actual application icon file
+const appIconPath = path.join(__dirname, '../../build/icon.png'); 
+const appIcon = fs.existsSync(appIconPath) ? appIconPath : undefined;
+if (!appIcon) {
+  console.warn(`App icon not found at expected path: ${appIconPath}. Default icon will be used.`);
+}
+// --- End Define App Icon Path ---
+
 function createWindow() {
   // 创建浏览器窗口
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
+    autoHideMenuBar: true,
+    ...(process.platform === 'darwin' ? {
+      titleBarStyle: 'hiddenInset', // Recommended for macOS immersive
+      // transparent: true, // Optional: Uncomment for full transparency, might need more CSS adjustments
+      // vibrancy: 'under-window', // Optional: Alternative macOS effect
+    } : {
+      frame: false // Remove frame on Windows/Linux (Requires custom controls)
+    }),
+    ...(process.platform === 'darwin' ? { appIcon } : {}),
     webPreferences: {
       preload: path.join(__dirname, '../preload/index.js'),
       nodeIntegration: true, // 开启节点集成以允许使用Node.js模块
@@ -103,14 +121,25 @@ function createWindow() {
       sandbox: false // 禁用沙箱以允许访问Node.js模块
     }
   });
-  
+
   // 打开开发者工具，便于调试
   mainWindow.webContents.openDevTools();
+
+  // --- Fullscreen State IPC --- 
+  mainWindow.on('enter-full-screen', () => {
+    console.log('Entered fullscreen');
+    mainWindow.webContents.send('fullscreen-changed', true);
+  });
+  mainWindow.on('leave-full-screen', () => {
+    console.log('Left fullscreen');
+    mainWindow.webContents.send('fullscreen-changed', false);
+  });
+  // --- End Fullscreen State IPC ---
 
   // 监听页面加载错误
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
     console.error('页面加载失败:', errorCode, errorDescription);
-    
+
     // 如果所有备用路径都失败，显示错误页面
     mainWindow.webContents.loadURL(`data:text/html;charset=utf-8,
       <html>
@@ -142,12 +171,12 @@ function createWindow() {
       </html>
     `);
   });
-  
+
   // 监听DOM就绪状态
   mainWindow.webContents.on('dom-ready', () => {
     console.log('DOM已就绪');
   });
-  
+
   // 监听渲染过程的日志消息
   mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
     const levels = ['debug', 'info', 'warning', 'error', 'log'];
@@ -161,17 +190,17 @@ function createWindow() {
   } else {
     // 在生产模式下加载打包好的应用
     console.log('生产模式：加载本地文件');
-    
+
     const rendererPath = path.join(__dirname, '../renderer/index.html');
     console.log('尝试加载路径:', rendererPath);
-    
+
     // 检查文件是否存在
     if (fs.existsSync(rendererPath)) {
       console.log('文件存在，开始加载');
       mainWindow.loadFile(rendererPath);
     } else {
       console.error('文件不存在:', rendererPath);
-      
+
       // 尝试查找可能的备选路径
       const possiblePaths = [
         path.join(__dirname, '../../dist/electron/renderer/index.html'),
@@ -180,7 +209,7 @@ function createWindow() {
         path.join(__dirname, '../../../dist/index.html'),
         path.join(app.getAppPath(), 'dist/electron/renderer/index.html')
       ];
-      
+
       let found = false;
       for (const tryPath of possiblePaths) {
         console.log('尝试备选路径:', tryPath);
@@ -191,7 +220,7 @@ function createWindow() {
           break;
         }
       }
-      
+
       if (!found) {
         console.error('无法找到任何可用的index.html文件');
         mainWindow.loadURL(`data:text/html;charset=utf-8,
@@ -273,7 +302,7 @@ function setupIpcHandlers() {
 // 部分 API 在 ready 事件触发后才能使用。
 app.whenReady().then(async () => {
   console.log('Electron就绪，创建窗口...');
-  
+
   // 安装Vue开发者工具
   try {
     await installExtension(VUE_DEVTOOLS);
@@ -281,7 +310,7 @@ app.whenReady().then(async () => {
   } catch (err) {
     console.error('Vue Devtools安装失败:', err);
   }
-  
+
   setupIpcHandlers();
   createWindow();
 
@@ -300,4 +329,4 @@ app.on('window-all-closed', function () {
 });
 
 // 在这个文件中，你可以续写应用剩下主进程代码。
-// 也可以拆分成几个文件，然后用 require 导入。 
+// 也可以拆分成几个文件，然后用 require 导入。

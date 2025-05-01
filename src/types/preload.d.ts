@@ -19,6 +19,9 @@ export interface MessageBoxOptions {
 export interface PreloadApi {
   showOpenDialog: (options: OpenDialogOptions) => Promise<OpenDialogResult>;
   showMessageBox: (options: MessageBoxOptions) => Promise<void>;
+  showNotification: (options: { title: string; body: string }) => void;
+  onFullScreenChange: (callback: (isFullscreen: boolean) => void) => () => void;
+  getPlatform: () => 'darwin' | 'win32' | 'linux';
 }
 
 declare global {
@@ -27,4 +30,4 @@ declare global {
   }
 }
 
-export {}; 
+export {};

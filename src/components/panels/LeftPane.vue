@@ -1,7 +1,7 @@
 <template>
-  <div class="flex flex-col h-full bg-[#353535] text-white w-16">
+  <div class="left-pane flex flex-col h-full bg-[#353535] text-white w-[75px]">
     <!-- 导航按钮 -->
-    <div class="flex flex-col items-center mt-4">
+    <div class="flex flex-col items-center">
       <!-- 片段按钮 -->
       <div
         class="w-full flex flex-col items-center justify-center py-4 cursor-pointer"

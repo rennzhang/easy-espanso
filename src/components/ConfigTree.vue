@@ -86,7 +86,6 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
 
   // --- Special Handling for top-level 'packages' folder ---
   if (isTopLevel && node.type === 'folder' && node.name === 'packages') {
-    console.log("Processing special 'packages' folder");
     const packagesNode: TreeNodeItem = {
       id: node.id || `folder-${node.path || 'packages'}`,
       type: 'folder',
@@ -111,7 +110,6 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
           const packageYml = packageSubDir.children?.find((f: any) => f.type === 'file' && f.name === 'package.yml');
 
           if (packageYml) {
-             console.log(`Found package.yml for ${packageSubDir.name}`);
             // Add matches from package.yml directly to the package node
             if (packageYml.matches && Array.isArray(packageYml.matches)) {
                packageNode.children.push(...packageYml.matches.map(createMatchNode));
@@ -141,7 +139,6 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
   // This prevents showing the raw structure like package.yml if special handling missed it.
   // Note: This assumes paths are correctly set during store build.
   if (node.path && node.path.startsWith('packages/') && node.name !== 'packages') {
-      console.log("Skipping node inside handled 'packages' structure:", node.path)
       return null;
   }
 
@@ -189,14 +186,12 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
 // 构建树结构 - SIMPLIFIED
 const treeData = computed(() => {
   const configTree = store.state.configTree || [];
-  console.log("ConfigTree: Building treeData from store.state.configTree", configTree);
   const tree = configTree
     // Pass true for isTopLevel for the root nodes
     .map((node: any) => convertStoreNodeToTreeNodeItem(node, true))
     .filter((item: TreeNodeItem | null): item is TreeNodeItem => item !== null) // Filter out null results
     // Filter top-level 'config' folder (moved here to happen *after* conversion)
     .filter(node => !(node.type === 'folder' && node.name === 'config'));
-  console.log("ConfigTree: Final treeData:", tree);
   return tree;
 });
 
@@ -216,15 +211,14 @@ const handleSelect = (item: TreeNodeItem) => {
 // 监听选中ID的变化
 watch(() => props.selectedId, (newId) => {
   if (newId) {
-    console.log('选中ID变化:', newId);
     // 可以在这里实现自动展开到选中项的逻辑
   }
 });
 
 // 在组件挂载后输出树结构
 onMounted(() => {
-  console.log('ConfigTree组件挂载完成');
-  console.log('当前树结构:', treeData.value);
+  // console.log('ConfigTree组件挂载完成');
+  // console.log('当前树结构:', treeData.value);
 });
 </script>
 
@@ -238,7 +232,7 @@ onMounted(() => {
 }
 
 .tree-container {
-  padding: 0;
+  padding: 0.75rem;
   margin: 0;
   width: 100%;
 }

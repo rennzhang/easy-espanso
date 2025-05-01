@@ -580,3 +580,65 @@ input[type="checkbox"], input[type="radio"] {
   visibility: visible;
   opacity: 1;
 }
+
+/* 标题栏空间样式 */
+.middle-pane,
+.right-pane {
+  /* 为标题栏留出空间 */
+  padding-top: 0; /* 默认值，会被媒体查询覆盖 */
+}
+
+/* 在 macOS 上应用特定样式 */
+@media screen and (min-width: 768px) {
+  .middle-pane,
+  .right-pane {
+    padding-top: 0; /* macOS 标题栏高度已在主布局中处理 */
+  }
+}
+
+/* 在 Windows/Linux 上应用特定样式 */
+@media screen and (max-width: 767px) {
+  .middle-pane,
+  .right-pane {
+    padding-top: 0; /* Windows/Linux 标题栏高度已在主布局中处理 */
+  }
+}
+
+/* 自定义滚动条样式 */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-color);
+}
+
+/* 针对Firefox的滚动条样式 */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
+}
+
+/* 针对规则列表的滚动条样式 */
+.config-tree::-webkit-scrollbar {
+  width: 6px;
+}
+
+.config-tree::-webkit-scrollbar-thumb {
+  background: var(--border-hover);
+  border-radius: 3px;
+}
+
+.config-tree::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-color);
+}

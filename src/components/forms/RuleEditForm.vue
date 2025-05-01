@@ -280,8 +280,8 @@
                 排除的应用
               </label>
               <TagInput
-                :modelValue="formState.excludeApps || []"
-                @update:modelValue="val => formState.excludeApps = val"
+                :modelValue="formState.exclude_apps || []"
+                @update:modelValue="val => formState.exclude_apps = val"
                 placeholder="添加应用名称，回车确认"
               />
             </div>
@@ -301,8 +301,8 @@
               额外搜索词
             </label>
             <TagInput
-              :modelValue="formState.searchTerms || []"
-              @update:modelValue="val => formState.searchTerms = val"
+              :modelValue="formState.search_terms || []"
+              @update:modelValue="val => formState.search_terms = val"
               placeholder="添加搜索词，回车确认"
             />
           </div>
@@ -365,17 +365,14 @@
       </div>
     </div>
 
-    <!-- 表单按钮 -->
-    <div class="flex gap-2 mt-6">
-      <Button type="submit" variant="default">保存</Button>
-      <Button type="button" variant="outline" @click="onCancel">取消</Button>
-    </div>
+    <!-- 不再需要底部保存按钮 -->
   </form>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue';
+import { ref, watch, onMounted, computed, onBeforeUnmount } from 'vue';
 import { EspansoRule } from '../../types/espanso-config';
+import { useEspansoStore } from '../../store/useEspansoStore';
 import Button from '../ui/button.vue';
 import Input from '../ui/input.vue';
 import Checkbox from '../ui/checkbox.vue';
@@ -393,37 +390,44 @@ import {
   XIcon,
   HelpCircleIcon
 } from 'lucide-vue-next';
+import type { Match } from '../../types/espanso'; // Import Match type
 
 // 定义props
 const props = defineProps<{
-  rule: EspansoRule
+  rule: Match // Use Match type for props
 }>();
 
 // 定义事件
 const emit = defineEmits<{
-  save: [id: string, updatedRule: Partial<EspansoRule>]
+  save: [id: string, updatedRule: Partial<Match>]
   cancel: []
   delete: [id: string]
 }>();
 
-// 扩展表单状态类型，添加更多字段
+// 获取 store
+const store = useEspansoStore();
+
+// 表单状态接口 - 基于 Match 的字段
 interface RuleFormState {
-  trigger?: string;
+  trigger: string;
   label?: string;
-  content?: string;
-  contentType?: 'plain' | 'markdown' | 'html' | 'image' | 'form';
-  caseSensitive?: boolean;
+  content?: string; // 通用内容字段，根据 contentType 映射到 Match 字段
+  markdown?: string;
+  html?: string;
+  image_path?: string;
   word?: boolean;
   leftWord?: boolean;
   rightWord?: boolean;
   propagateCase?: boolean;
-  uppercaseStyle?: '' | 'capitalize_words' | 'uppercase_first';
-  forceMode?: '' | 'clipboard' | 'keys';
+  uppercaseStyle?: 'capitalize_words' | 'uppercase_first' | ''; // 对应 uppercase_style
+  forceMode?: 'clipboard' | 'keys' | ''; // 对应 force_mode
   apps?: string[];
-  excludeApps?: string[];
-  searchTerms?: string[];
+  exclude_apps?: string[];
+  search_terms?: string[];
   priority?: number;
   hotkey?: string;
+  vars?: { name: string; params?: Record<string, any> }[];
+  contentType?: string; // 用于管理UI，不直接保存到Match
 }
 
 // 表单状态
@@ -432,7 +436,6 @@ const formState = ref<RuleFormState>({
   label: '',
   content: '',
   contentType: 'plain',
-  caseSensitive: false,
   word: false,
   leftWord: false,
   rightWord: false,
@@ -440,8 +443,8 @@ const formState = ref<RuleFormState>({
   uppercaseStyle: '',
   forceMode: '',
   apps: [],
-  excludeApps: [],
-  searchTerms: [],
+  exclude_apps: [],
+  search_terms: [],
   priority: 0,
   hotkey: ''
 });
@@ -468,7 +471,15 @@ const showAdvancedOptions = ref(false);
 const showPreviewModal = ref(false);
 const previewContent = ref('');
 
-// 不再需要内容类型图标
+// 表单是否已修改
+const isFormModified = ref(false);
+// 原始表单数据，用于比较是否有修改
+const originalFormData = ref<RuleFormState | null>(null);
+
+// Expose a method to get the current form data
+defineExpose({
+  getFormData: () => formState.value
+});
 
 // 初始化表单
 onMounted(() => {
@@ -501,22 +512,31 @@ onMounted(() => {
 
   formState.value = {
     trigger: ruleData.trigger || '',
-    label: ruleData.label || ruleData.description || '',
-    content: content,
-    contentType: contentType,
-    caseSensitive: ruleData.caseSensitive || false,
+    label: ruleData.label || '',
+    content: determineInitialContent(ruleData),
     word: ruleData.word || false,
-    leftWord: ruleData.left_word || false,
-    rightWord: ruleData.right_word || false,
-    propagateCase: ruleData.propagate_case || false,
-    uppercaseStyle: ruleData.uppercase_style || '',
-    forceMode: ruleData.force_mode || '',
-    apps: ruleData.apps || [],
-    excludeApps: ruleData.exclude_apps || [],
-    searchTerms: ruleData.search_terms || [],
+    leftWord: ruleData.leftWord || ruleData.left_word || false,
+    rightWord: ruleData.rightWord || ruleData.right_word || false,
+    propagateCase: ruleData.propagateCase || ruleData.propagate_case || false,
+    uppercaseStyle: ruleData.uppercaseStyle || ruleData.uppercase_style || '',
+    forceMode: ruleData.forceMode || ruleData.force_mode || '',
+    apps: Array.isArray(ruleData.apps) ? [...ruleData.apps] : [],
+    exclude_apps: Array.isArray(ruleData.exclude_apps) ? [...ruleData.exclude_apps] : [],
+    search_terms: Array.isArray(ruleData.search_terms) ? [...ruleData.search_terms] : [],
     priority: ruleData.priority || 0,
-    hotkey: ruleData.hotkey || ''
+    hotkey: ruleData.hotkey || '',
+    vars: Array.isArray(ruleData.vars) ? [...ruleData.vars] : [],
+    contentType: determineInitialContentType(ruleData)
   };
+
+  // 保存原始表单数据
+  originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+
+  // 重置表单修改状态
+  isFormModified.value = false;
+
+  // 更新 store 中的表单修改状态
+  store.state.hasUnsavedChanges = false;
 
   currentContentType.value = contentType as 'plain' | 'markdown' | 'html' | 'image' | 'form';
 
@@ -528,8 +548,8 @@ onMounted(() => {
     formState.value.uppercaseStyle ||
     formState.value.forceMode ||
     (formState.value.apps && formState.value.apps.length > 0) ||
-    (formState.value.excludeApps && formState.value.excludeApps.length > 0) ||
-    (formState.value.searchTerms && formState.value.searchTerms.length > 0)
+    (formState.value.exclude_apps && formState.value.exclude_apps.length > 0) ||
+    (formState.value.search_terms && formState.value.search_terms.length > 0)
   ) {
     showAdvancedOptions.value = true;
   }
@@ -565,32 +585,59 @@ watch(() => props.rule, (newRule) => {
 
   formState.value = {
     trigger: ruleData.trigger || '',
-    label: ruleData.label || ruleData.description || '',
-    content: content,
-    contentType: contentType,
-    caseSensitive: ruleData.caseSensitive || false,
+    label: ruleData.label || '',
+    content: determineInitialContent(ruleData),
     word: ruleData.word || false,
-    leftWord: ruleData.left_word || false,
-    rightWord: ruleData.right_word || false,
-    propagateCase: ruleData.propagate_case || false,
-    uppercaseStyle: ruleData.uppercase_style || '',
-    forceMode: ruleData.force_mode || '',
-    apps: ruleData.apps || [],
-    excludeApps: ruleData.exclude_apps || [],
-    searchTerms: ruleData.search_terms || [],
+    leftWord: ruleData.leftWord || ruleData.left_word || false,
+    rightWord: ruleData.rightWord || ruleData.right_word || false,
+    propagateCase: ruleData.propagateCase || ruleData.propagate_case || false,
+    uppercaseStyle: ruleData.uppercaseStyle || ruleData.uppercase_style || '',
+    forceMode: ruleData.forceMode || ruleData.force_mode || '',
+    apps: Array.isArray(ruleData.apps) ? [...ruleData.apps] : [],
+    exclude_apps: Array.isArray(ruleData.exclude_apps) ? [...ruleData.exclude_apps] : [],
+    search_terms: Array.isArray(ruleData.search_terms) ? [...ruleData.search_terms] : [],
     priority: ruleData.priority || 0,
-    hotkey: ruleData.hotkey || ''
+    hotkey: ruleData.hotkey || '',
+    vars: Array.isArray(ruleData.vars) ? [...ruleData.vars] : [],
+    contentType: determineInitialContentType(ruleData)
   };
 
   currentContentType.value = contentType;
+
+  // 保存原始表单数据
+  originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+
+  // 重置表单修改状态
+  isFormModified.value = false;
+  store.state.hasUnsavedChanges = false;
 }, { deep: true });
 
 // 监听内容类型变化
 watch(currentContentType, (newType) => {
   formState.value.contentType = newType;
+  checkFormModified();
 });
 
-// 不再需要设置内容类型的函数，因为我们使用了 v-model
+// 监听表单变化
+watch(formState, () => {
+  checkFormModified();
+}, { deep: true });
+
+// 检查表单是否被修改
+const checkFormModified = () => {
+  const currentFormData = JSON.stringify({
+    ...formState.value,
+    contentType: undefined
+  });
+  // Ensure originalFormData is an object before spreading
+  const originalDataForComparison = JSON.stringify({
+    ...(originalFormData.value || {}), // Safely spread originalFormData
+    contentType: undefined
+  });
+
+  isFormModified.value = currentFormData !== originalDataForComparison;
+  store.state.hasUnsavedChanges = isFormModified.value;
+};
 
 // 处理图片上传
 const handleImageUpload = (event: Event) => {
@@ -639,8 +686,6 @@ const insertCommonVariable = (variableId: string) => {
   insertVariable({ id: variableId, name: variableId, description: '' });
 };
 
-// 不再需要高亮变量的函数，因为我们不再显示预览
-
 // 显示预览
 const showPreview = () => {
   if (!formState.value.content) return;
@@ -679,29 +724,96 @@ const showPreview = () => {
 
 // 提交表单
 const onSubmit = () => {
-  if (!formState.value.trigger || !formState.value.content) {
-    return; // 简单验证
-  }
+  console.log('Form submitted', formState.value);
 
-  // 转换表单数据为 EspansoRule 格式
-  const ruleData: Partial<EspansoRule> = {
-    ...formState.value,
-    // 转换字段名称以匹配 Espanso 格式
-    left_word: formState.value.leftWord,
-    right_word: formState.value.rightWord,
-    propagate_case: formState.value.propagateCase,
-    uppercase_style: formState.value.uppercaseStyle || undefined,
-    force_mode: formState.value.forceMode || undefined,
-    search_terms: formState.value.searchTerms
+  // 创建要保存的数据对象，仅包含 Match 类型定义的字段
+  const saveData: Partial<Match> = {
+    trigger: formState.value.trigger,
+    label: formState.value.label,
+    // Map content back based on contentType
+    ...(mapContentToMatchFields(formState.value.content, formState.value.contentType)),
+    word: formState.value.word,
+    left_word: formState.value.leftWord, // Use left_word
+    right_word: formState.value.rightWord, // Use right_word
+    propagate_case: formState.value.propagateCase, // Use propagate_case
+    uppercase_style: formState.value.uppercaseStyle || undefined, // Use uppercase_style, ensure empty string becomes undefined
+    force_mode: formState.value.forceMode || undefined, // Use force_mode, ensure empty string becomes undefined
+    apps: formState.value.apps,
+    exclude_apps: formState.value.exclude_apps, // Use exclude_apps
+    search_terms: formState.value.search_terms, // Use search_terms
+    priority: formState.value.priority,
+    hotkey: formState.value.hotkey,
+    vars: formState.value.vars,
   };
 
-  emit('save', props.rule.id, ruleData);
+  console.log('Data prepared for saving:', JSON.parse(JSON.stringify(saveData)));
+
+  // 保存后更新原始表单数据
+  originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+  isFormModified.value = false;
+  store.state.hasUnsavedChanges = false;
+
+  emit('save', props.rule.id, saveData);
 };
 
 // 取消编辑
 const onCancel = () => {
-  emit('cancel');
+  // 如果表单已修改，提示用户
+  if (isFormModified.value) {
+    if (confirm('您有未保存的修改，确定要放弃这些修改吗？')) {
+      // 重置表单状态
+      isFormModified.value = false;
+      store.state.hasUnsavedChanges = false;
+      emit('cancel');
+    }
+  } else {
+    emit('cancel');
+  }
 };
 
+// 组件卸载前检查未保存的修改
+onBeforeUnmount(() => {
+  // 确保组件卸载时重置全局状态
+  store.state.hasUnsavedChanges = false;
+});
+
 // 不再需要删除规则的函数，因为我们移除了删除按钮
+
+// Helper function to map content to appropriate Match field
+const mapContentToMatchFields = (content?: string, contentType?: string): Partial<Match> => {
+  if (content === undefined || content === null) return {};
+  switch (contentType) {
+    case 'markdown':
+      return { markdown: content, replace: undefined, html: undefined, image_path: undefined };
+    case 'html':
+      return { html: content, replace: undefined, markdown: undefined, image_path: undefined };
+    case 'image':
+      return { image_path: content, replace: undefined, markdown: undefined, html: undefined };
+    case 'form': // Assuming form definition stored in 'replace' for now?
+      return { replace: content, markdown: undefined, html: undefined, image_path: undefined };
+    case 'plain':
+    default:
+      return { replace: content, markdown: undefined, html: undefined, image_path: undefined };
+  }
+};
+
+// Helper function to determine initial content based on Match fields
+const determineInitialContent = (rule: Match): string | undefined => {
+  if (rule.replace !== undefined) return rule.replace.toString(); // Default to replace
+  if (rule.markdown !== undefined) return rule.markdown;
+  if (rule.html !== undefined) return rule.html;
+  if (rule.image_path !== undefined) return rule.image_path;
+  if (rule.content !== undefined) return rule.content.toString(); // Fallback to generic content if needed
+  return '';
+};
+
+// Helper function to determine initial content type
+const determineInitialContentType = (rule: Match): string => {
+  if (rule.markdown !== undefined) return 'markdown';
+  if (rule.html !== undefined) return 'html';
+  if (rule.image_path !== undefined) return 'image';
+  // Add check for 'form' if applicable (e.g., based on presence of `vars` or a specific structure in `replace`)
+  // if (rule.vars && rule.vars.length > 0) return 'form';
+  return 'plain'; // Default to plain text
+};
 </script>
