@@ -40,6 +40,7 @@
           ref="searchInputRef"
           id="search-input"
           autofocus
+          @keydown.esc="hideSearchBar"
         />
       </div>
     </div>
@@ -220,7 +221,7 @@ onMounted(() => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         console.log('检测到搜索快捷键: Ctrl/Cmd + F');
         e.preventDefault(); // 阻止浏览器默认的搜索行为
-        
+
         // 显示搜索栏并聚焦
         if (!showSearchBar.value) {
           showSearchBar.value = true;
@@ -230,25 +231,31 @@ onMounted(() => {
           focusSearchInput();
         }
       }
+
+      // 检查ESC键 - 如果搜索栏显示，则隐藏搜索栏
+      if (e.key === 'Escape' && showSearchBar.value) {
+        console.log('检测到ESC键，隐藏搜索栏');
+        hideSearchBar();
+      }
     };
-    
+
     // 添加全局事件监听器
     window.addEventListener('keydown', handleKeyDown);
-    
+
     // 返回清理函数
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
     };
   };
-  
+
   // 初始化键盘快捷键
   const cleanup = setupKeyboardShortcuts();
-  
+
   // 组件卸载时清理监听器
   onUnmounted(() => {
     cleanup();
   });
-  
+
   // 其他现有的onMounted逻辑...
   const savedHideListViewTip = localStorage.getItem('hideListViewTip')
   if (savedHideListViewTip === 'true') {
@@ -281,25 +288,25 @@ onMounted(() => {
 // 聚焦搜索框的函数
 const focusSearchInput = () => {
   console.log('尝试聚焦中间面板搜索框...');
-  
+
   // 使用嵌套的setTimeout确保多次尝试聚焦
   const attemptFocus = (attempts = 0) => {
     if (attempts > 5) return; // 最多尝试5次
-    
+
     // 方法1: 使用ref
     if (searchInputRef.value) {
       console.log(`第${attempts+1}次尝试: 通过ref聚焦搜索框`);
       searchInputRef.value.focus();
       return;
     }
-    
+
     // 方法2: 使用DOM ID
     const searchInput = document.getElementById('search-input');
     if (searchInput) {
       console.log(`第${attempts+1}次尝试: 通过DOM ID聚焦搜索框`);
       // 1. 尝试直接聚焦
       searchInput.focus();
-      
+
       // 2. 尝试使用click事件聚焦
       setTimeout(() => {
         try {
@@ -309,18 +316,18 @@ const focusSearchInput = () => {
           console.error('聚焦点击失败:', e);
         }
       }, 10);
-      
+
       return;
     }
-    
+
     // 如果以上方法都失败，则递增延迟重试
     setTimeout(() => attemptFocus(attempts + 1), 100 * (attempts + 1));
   };
-  
+
   // 在下一个tick和短暂延迟后尝试聚焦
   nextTick(() => {
     setTimeout(() => attemptFocus(), 50);
-    
+
     // 额外尝试，使用直接的DOM操作
     setTimeout(() => {
       const input = document.querySelector('#search-input') as HTMLInputElement;
@@ -518,6 +525,13 @@ const toggleSearchBar = () => {
     // 如果关闭搜索栏，清空搜索内容
     searchQuery.value = '';
   }
+};
+
+// 隐藏搜索栏
+const hideSearchBar = () => {
+  console.log('按下ESC键，隐藏搜索栏');
+  showSearchBar.value = false;
+  searchQuery.value = '';
 };
 
 // 隐藏列表视图提示
