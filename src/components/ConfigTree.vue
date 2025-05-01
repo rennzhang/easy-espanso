@@ -14,6 +14,7 @@
         :node="node"
         :selected-id="selectedId"
         :searchQuery="searchQuery"
+        :parentMatches="false"
         @select="handleSelect"
       />
     </div>
@@ -105,10 +106,10 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
             path: packageSubDir.path,
             children: []
           };
-          
+
           // Find package.yml within the sub-directory
           const packageYml = packageSubDir.children?.find((f: any) => f.type === 'file' && f.name === 'package.yml');
-          
+
           if (packageYml) {
              console.log(`Found package.yml for ${packageSubDir.name}`);
             // Add matches from package.yml directly to the package node
@@ -120,7 +121,7 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
                packageNode.children.push(...packageYml.groups.map((g: Group) => createGroupNode(g)));
             }
           }
-          
+
           // Only add the package node if it has children (matches/groups from package.yml)
           if (packageNode.children.length > 0) {
              packagesNode.children.push(packageNode);
@@ -129,19 +130,19 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
          // Ignore other files/folders directly under 'packages' if any
       });
     }
-    
+
      // Only return the 'Packages' node if it has any valid package sub-nodes
      return packagesNode.children.length > 0 ? packagesNode : null;
   }
   // --- End Special Handling ---
-  
-   // --- Standard Node Processing --- 
+
+   // --- Standard Node Processing ---
   // Skip processing other nodes inside 'packages' that weren't handled above
   // This prevents showing the raw structure like package.yml if special handling missed it.
   // Note: This assumes paths are correctly set during store build.
   if (node.path && node.path.startsWith('packages/') && node.name !== 'packages') {
       console.log("Skipping node inside handled 'packages' structure:", node.path)
-      return null; 
+      return null;
   }
 
 
@@ -191,10 +192,10 @@ const treeData = computed(() => {
   console.log("ConfigTree: Building treeData from store.state.configTree", configTree);
   const tree = configTree
     // Pass true for isTopLevel for the root nodes
-    .map((node: any) => convertStoreNodeToTreeNodeItem(node, true)) 
+    .map((node: any) => convertStoreNodeToTreeNodeItem(node, true))
     .filter((item: TreeNodeItem | null): item is TreeNodeItem => item !== null) // Filter out null results
     // Filter top-level 'config' folder (moved here to happen *after* conversion)
-    .filter(node => !(node.type === 'folder' && node.name === 'config')); 
+    .filter(node => !(node.type === 'folder' && node.name === 'config'));
   console.log("ConfigTree: Final treeData:", tree);
   return tree;
 });
@@ -205,7 +206,7 @@ const handleSelect = (item: TreeNodeItem) => {
     emit('select', item.match);
   } else if (item.type === 'group' && item.group) {
     emit('select', item.group);
-  } 
+  }
   // Optionally handle selection of file/folder nodes if needed
   // else if (item.type === 'file' || item.type === 'folder') {
   //   console.log('Selected folder/file:', item);

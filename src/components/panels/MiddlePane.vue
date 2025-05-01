@@ -32,7 +32,7 @@
         </div>
       </div>
 
-      <div v-if="showSearchBar" class="mt-2">
+      <div v-show="showSearchBar" class="mt-2">
         <Input
           v-model="searchQuery"
           placeholder="搜索规则..."
@@ -65,32 +65,69 @@
             </button>
           </Badge>
         </div>
-        <Button variant="ghost" size="sm" class="h-6 text-xs border-none focus:ring-0 focus:ring-offset-0" @click="clearFilters">
+        <Button
+          variant="ghost"
+          size="sm"
+          class="h-6 text-xs border-none focus:ring-0 focus:ring-offset-0"
+          @click="clearFilters"
+        >
           清除全部
         </Button>
       </div>
     </div>
 
     <div class="flex-1 overflow-y-auto">
-      <div v-if="loading" class="flex flex-col justify-center items-center h-full gap-4">
-        <div class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
+      <div
+        v-if="loading"
+        class="flex flex-col justify-center items-center h-full gap-4"
+      >
+        <div
+          class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"
+        ></div>
         <div class="text-primary font-medium">加载中...</div>
       </div>
-      <div v-else-if="!config" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+      <div
+        v-else-if="!config"
+        class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
+      >
         <FolderIcon class="h-12 w-12 mb-4" />
-        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未加载配置</h4>
-        <p class="mb-6 text-muted-foreground max-w-md">请点击顶部的"打开配置"按钮加载Espanso配置文件</p>
+        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
+          未加载配置
+        </h4>
+        <p class="mb-6 text-muted-foreground max-w-md">
+          请点击顶部的"打开配置"按钮加载Espanso配置文件
+        </p>
       </div>
-      <div v-else-if="store.getAllMatchesFromTree().length === 0 && store.getAllGroupsFromTree().length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+      <div
+        v-else-if="
+          store.getAllMatchesFromTree().length === 0 &&
+          store.getAllGroupsFromTree().length === 0
+        "
+        class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
+      >
         <FileTextIcon class="h-12 w-12 mb-4" />
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
-        <p class="mb-6 text-muted-foreground max-w-md">请在右侧面板添加新规则</p>
+        <p class="mb-6 text-muted-foreground max-w-md">
+          请在右侧面板添加新规则
+        </p>
       </div>
-      <div v-else-if="filteredItems.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+      <div
+        v-else-if="filteredItems.length === 0"
+        class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
+      >
         <SearchIcon class="h-12 w-12 mb-4" />
-        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未找到匹配项</h4>
-        <p class="mb-6 text-muted-foreground max-w-md">尝试使用不同的搜索词或标签过滤器</p>
-        <Button variant="ghost" class="border-none focus:ring-0 focus:ring-offset-0" @click="clearFilters">清除过滤器</Button>
+        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
+          未找到匹配项
+        </h4>
+        <p class="mb-6 text-muted-foreground max-w-md">
+          尝试使用不同的搜索词或标签过滤器
+        </p>
+        <Button
+          variant="ghost"
+          class="border-none focus:ring-0 focus:ring-offset-0"
+          @click="clearFilters"
+          >清除过滤器</Button
+        >
       </div>
       <div v-else class="h-full">
         <!-- 提示气泡 -->
@@ -98,7 +135,9 @@
           v-if="showListViewTip && viewMode === 'tree'"
           class="fixed right-4 top-16 mt-2 p-2 bg-popover text-popover-foreground rounded shadow-md z-10 w-48"
         >
-          <p class="text-xs mb-2">点击可切换到列表视图，以平铺方式查看所有片段</p>
+          <p class="text-xs mb-2">
+            点击可切换到列表视图，以平铺方式查看所有片段
+          </p>
           <div class="flex justify-between">
             <Button
               @click="hideListViewTip"
@@ -134,7 +173,10 @@
             <Card
               v-for="item in filteredItems"
               :key="item.id"
-              :class="{ 'border-primary shadow-[0_0_0_1px] shadow-primary': selectedItemId === item.id }"
+              :class="{
+                'border-primary shadow-[0_0_0_1px] shadow-primary':
+                  selectedItemId === item.id,
+              }"
               class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md"
               @click="selectItem(item.id)"
             >
@@ -142,10 +184,17 @@
                 <div v-if="item.type === 'match'">
                   <div class="flex justify-between items-start">
                     <span class="font-semibold text-foreground">
-                      <HighlightText v-if="searchQuery.trim()" :text="(item as Match).trigger" :searchQuery="searchQuery.trim()" />
+                      <HighlightText
+                        v-if="searchQuery.trim()"
+                        :text="(item as Match).trigger"
+                        :searchQuery="searchQuery.trim()"
+                      />
                       <template v-else>{{ (item as Match).trigger }}</template>
                     </span>
-                    <div class="flex flex-wrap gap-1" v-if="(item as Match).tags && (item as Match).tags.length > 0">
+                    <div
+                      class="flex flex-wrap gap-1"
+                      v-if="(item as Match).tags && (item as Match).tags.length > 0"
+                    >
                       <Badge
                         v-for="tag in (item as Match).tags"
                         :key="tag"
@@ -155,26 +204,50 @@
                       </Badge>
                     </div>
                   </div>
-                  <div class="text-sm text-muted-foreground my-1 whitespace-pre-line">
-                    <HighlightText v-if="searchQuery.trim()" :text="getContentPreview(item as Match)" :searchQuery="searchQuery.trim()" />
-                    <template v-else>{{ getContentPreview(item as Match) }}</template>
+                  <div
+                    class="text-sm text-muted-foreground my-1 whitespace-pre-line"
+                  >
+                    <HighlightText
+                      v-if="searchQuery.trim()"
+                      :text="getContentPreview(item as Match)"
+                      :searchQuery="searchQuery.trim()"
+                    />
+                    <template v-else>{{
+                      getContentPreview(item as Match)
+                    }}</template>
                   </div>
-                  <div class="flex justify-between text-xs text-muted-foreground mt-1">
-                    <Badge variant="outline" class="bg-muted">{{ getContentTypeLabel((item as Match).contentType) }}</Badge>
-                    <span v-if="(item as Match).updatedAt">{{ formatDate((item as Match).updatedAt) }}</span>
+                  <div
+                    class="flex justify-between text-xs text-muted-foreground mt-1"
+                  >
+                    <Badge variant="outline" class="bg-muted">{{
+                      getContentTypeLabel((item as Match).contentType)
+                    }}</Badge>
+                    <span v-if="(item as Match).updatedAt">{{
+                      formatDate((item as Match).updatedAt)
+                    }}</span>
                   </div>
                 </div>
                 <div v-else-if="item.type === 'group'">
                   <div class="flex justify-between items-start">
                     <span class="font-semibold text-foreground">
-                      <HighlightText v-if="searchQuery.trim()" :text="(item as Group).name" :searchQuery="searchQuery.trim()" />
+                      <HighlightText
+                        v-if="searchQuery.trim()"
+                        :text="(item as Group).name"
+                        :searchQuery="searchQuery.trim()"
+                      />
                       <template v-else>{{ (item as Group).name }}</template>
                     </span>
-                    <Badge variant="secondary" v-if="(item as Group).matches">{{ (item as Group).matches?.length || 0 }} 项</Badge>
+                    <Badge variant="secondary" v-if="(item as Group).matches"
+                      >{{ (item as Group).matches?.length || 0 }} 项</Badge
+                    >
                   </div>
-                  <div class="flex justify-between text-xs text-muted-foreground mt-1">
+                  <div
+                    class="flex justify-between text-xs text-muted-foreground mt-1"
+                  >
                     <Badge variant="outline" class="bg-muted">分组</Badge>
-                    <span v-if="(item as Group).updatedAt">{{ formatDate((item as Group).updatedAt) }}</span>
+                    <span v-if="(item as Group).updatedAt">{{
+                      formatDate((item as Group).updatedAt)
+                    }}</span>
                   </div>
                 </div>
               </CardContent>
@@ -187,33 +260,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, nextTick, watch, onUnmounted } from 'vue'
-import { useEspansoStore } from '../../store/useEspansoStore'
-import Button from '@/components/ui/button.vue'
-import Input from '@/components/ui/input.vue'
-import Badge from '@/components/ui/badge.vue'
-import Card from '@/components/ui/card.vue'
-import CardContent from '@/components/ui/card-content.vue'
-import ConfigTree from '@/components/ConfigTree.vue'
-import HighlightText from '@/components/common/HighlightText.vue'
+import { ref, computed, onMounted, nextTick, watch, onUnmounted } from "vue";
+import { useEspansoStore } from "../../store/useEspansoStore";
+import Button from "@/components/ui/button.vue";
+import Input from "@/components/ui/input.vue";
+import Badge from "@/components/ui/badge.vue";
+import Card from "@/components/ui/card.vue";
+import CardContent from "@/components/ui/card-content.vue";
+import ConfigTree from "@/components/ConfigTree.vue";
+import HighlightText from "@/components/common/HighlightText.vue";
 import {
   SearchIcon,
   FolderIcon,
   FileTextIcon,
   XIcon,
   ListIcon,
-  FolderTreeIcon
-} from 'lucide-vue-next'
-import { Match, Group } from '../../types/espanso'
+  FolderTreeIcon,
+} from "lucide-vue-next";
+import { Match, Group } from "../../types/espanso";
 
-const store = useEspansoStore()
-const searchQuery = ref('')
-const viewMode = ref<'tree' | 'list'>('tree')
-const showSearchBar = ref(false)
-const searchInputRef = ref<HTMLInputElement | null>(null)
+const store = useEspansoStore();
+const searchQuery = ref("");
+const viewMode = ref<"tree" | "list">("tree");
+const showSearchBar = ref(false);
+const searchInputRef = ref<HTMLInputElement | null>(null);
 
 // 从本地存储中读取提示显示状态
-const showListViewTip = ref(false)
+const showListViewTip = ref(false);
 
 // 设置键盘快捷键来打开搜索
 onMounted(() => {
@@ -221,8 +294,8 @@ onMounted(() => {
   const setupKeyboardShortcuts = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // 检查Ctrl+F或Command+F快捷键
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
-        console.log('检测到搜索快捷键: Ctrl/Cmd + F');
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        console.log("检测到搜索快捷键: Ctrl/Cmd + F");
         e.preventDefault(); // 阻止浏览器默认的搜索行为
 
         // 显示搜索栏并聚焦
@@ -236,18 +309,18 @@ onMounted(() => {
       }
 
       // 检查ESC键 - 如果搜索栏显示，则隐藏搜索栏
-      if (e.key === 'Escape' && showSearchBar.value) {
-        console.log('检测到ESC键，隐藏搜索栏');
+      if (e.key === "Escape" && showSearchBar.value) {
+        console.log("检测到ESC键，隐藏搜索栏");
         hideSearchBar();
       }
     };
 
     // 添加全局事件监听器
-    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown);
 
     // 返回清理函数
     return () => {
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener("keydown", handleKeyDown);
     };
   };
 
@@ -260,37 +333,41 @@ onMounted(() => {
   });
 
   // 其他现有的onMounted逻辑...
-  const savedHideListViewTip = localStorage.getItem('hideListViewTip')
-  if (savedHideListViewTip === 'true') {
-    showListViewTip.value = false
+  const savedHideListViewTip = localStorage.getItem("hideListViewTip");
+  if (savedHideListViewTip === "true") {
+    showListViewTip.value = false;
   } else {
-    showListViewTip.value = true
+    showListViewTip.value = true;
   }
 
   // 检查是否有预加载的配置
   if (store.state.config && store.getAllMatchesFromTree) {
-    const matches = store.getAllMatchesFromTree()
+    const matches = store.getAllMatchesFromTree();
     if (matches.length > 0) {
       // 如果有匹配项，选择第一个
-      selectItem(matches[0].id)
+      selectItem(matches[0].id);
     }
   }
 
   // 如果是从URL加载配置，在加载完成后显示列表
-  const unwatch = watch(() => store.state.config, (newConfig) => {
-    if (newConfig && store.getAllMatchesFromTree) {
-      const matches = store.getAllMatchesFromTree()
-      if (matches.length > 0 && !store.state.selectedItemId) {
-        selectItem(matches[0].id)
+  const unwatch = watch(
+    () => store.state.config,
+    (newConfig) => {
+      if (newConfig && store.getAllMatchesFromTree) {
+        const matches = store.getAllMatchesFromTree();
+        if (matches.length > 0 && !store.state.selectedItemId) {
+          selectItem(matches[0].id);
+        }
+        unwatch();
       }
-      unwatch()
-    }
-  }, { immediate: true })
-})
+    },
+    { immediate: true }
+  );
+});
 
 // 聚焦搜索框的函数
 const focusSearchInput = () => {
-  console.log('尝试聚焦中间面板搜索框...');
+  console.log("尝试聚焦中间面板搜索框...");
 
   // 使用嵌套的setTimeout确保多次尝试聚焦
   const attemptFocus = (attempts = 0) => {
@@ -298,15 +375,15 @@ const focusSearchInput = () => {
 
     // 方法1: 使用ref
     if (searchInputRef.value) {
-      console.log(`第${attempts+1}次尝试: 通过ref聚焦搜索框`);
+      console.log(`第${attempts + 1}次尝试: 通过ref聚焦搜索框`);
       searchInputRef.value.focus();
       return;
     }
 
     // 方法2: 使用DOM ID
-    const searchInput = document.getElementById('search-input');
+    const searchInput = document.getElementById("search-input");
     if (searchInput) {
-      console.log(`第${attempts+1}次尝试: 通过DOM ID聚焦搜索框`);
+      console.log(`第${attempts + 1}次尝试: 通过DOM ID聚焦搜索框`);
       // 1. 尝试直接聚焦
       searchInput.focus();
 
@@ -316,7 +393,7 @@ const focusSearchInput = () => {
           (searchInput as HTMLElement).click();
           (searchInput as HTMLInputElement).focus();
         } catch (e) {
-          console.error('聚焦点击失败:', e);
+          console.error("聚焦点击失败:", e);
         }
       }, 10);
 
@@ -333,21 +410,21 @@ const focusSearchInput = () => {
 
     // 额外尝试，使用直接的DOM操作
     setTimeout(() => {
-      const input = document.querySelector('#search-input') as HTMLInputElement;
+      const input = document.querySelector("#search-input") as HTMLInputElement;
       if (input) {
-        console.log('尝试使用querySelector聚焦搜索框');
+        console.log("尝试使用querySelector聚焦搜索框");
         input.focus();
         // 尝试模拟用户点击
         try {
-          const evt = new MouseEvent('click', {
+          const evt = new MouseEvent("click", {
             bubbles: true,
             cancelable: true,
-            view: window
+            view: window,
           });
           input.dispatchEvent(evt);
           input.focus();
         } catch (e) {
-          console.error('模拟点击失败:', e);
+          console.error("模拟点击失败:", e);
         }
       }
     }, 150);
@@ -357,137 +434,204 @@ const focusSearchInput = () => {
 // 监听showSearchBar的变化
 watch(showSearchBar, (newVal) => {
   if (newVal) {
-    console.log('搜索栏显示，准备聚焦');
+    console.log("搜索栏显示，准备聚焦");
     focusSearchInput();
   } else {
-    searchQuery.value = '';
+    searchQuery.value = "";
   }
 });
 
 // 使用计算属性直接从store获取数据
-const config = computed(() => store.state.config)
-const selectedItemId = computed(() => store.state.selectedItemId)
-const filterTags = computed(() => store.state.selectedTags)
-const loading = computed(() => store.state.config === null)
+const config = computed(() => store.state.config);
+const selectedItemId = computed(() => store.state.selectedItemId);
+const filterTags = computed(() => store.state.selectedTags);
+const loading = computed(() => store.state.config === null);
 
-// 过滤和排序项目
+// 过滤和排序项目 (Refactored for hierarchical inclusion in list view)
 const filteredItems = computed(() => {
-  if (!config.value || !store.getAllMatchesFromTree || !store.getAllGroupsFromTree) {
+  if (
+    !config.value ||
+    !store.getAllMatchesFromTree ||
+    !store.getAllGroupsFromTree
+  )
     return [];
-  }
-  let allItems = [
-      ...store.getAllMatchesFromTree(), 
-      ...store.getAllGroupsFromTree()
-  ];
+
+  let allMatches = store.getAllMatchesFromTree();
+  let allGroups = store.getAllGroupsFromTree();
+  let allItems = [...allMatches, ...allGroups];
 
   const query = searchQuery.value.trim().toLowerCase();
   const tags = filterTags.value || [];
 
-  if (query) {
-    allItems = allItems.filter(item => {
-      if (item.type === 'match') {
+  // Handle no query/tags case
+  if (!query && tags.length === 0) {
+    allItems.sort((a, b) => {
+      const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+      const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+      return dateB - dateA; // Newest first
+    });
+    return allItems;
+  }
+
+  // Helper function to check if a single item matches query or tags
+  const itemMatchesQueryOrTags = (
+    item: Match | Group,
+    query: string,
+    tags: string[],
+  ): boolean => {
+    let queryMatch = false;
+    if (query) {
+      if (item.type === "match") {
         const match = item as Match;
-        return (
+        queryMatch = (
           match.trigger?.toLowerCase().includes(query) ||
           match.label?.toLowerCase().includes(query) ||
           match.description?.toLowerCase().includes(query) ||
           match.replace?.toString().toLowerCase().includes(query) ||
-          match.tags?.some((tag: string) => tag.toLowerCase().includes(query))
-          // Add other searchable fields if needed for list view
+          match.tags?.some((tag: string) => tag.toLowerCase().includes(query)) ||
+          (match.filePath && match.filePath.toLowerCase().includes(query))
         );
-      } else if (item.type === 'group') {
-        return item.name?.toLowerCase().includes(query);
+      } else if (item.type === "group") {
+        queryMatch = (
+          item.name?.toLowerCase().includes(query) ||
+          (item.filePath && item.filePath.toLowerCase().includes(query))
+        );
       }
-      return false;
-    });
+    }
+    let tagMatch = false;
+    if (tags.length > 0) {
+      if (item.type === "match") {
+        const match = item as Match;
+        tagMatch = match.tags && tags.every((tag: string) => match.tags?.includes(tag));
+      }
+    }
+    return queryMatch || tagMatch;
+  };
+
+  // 1. Initial Filter & 2. Identify Matched Groups
+  const directlyMatchedItems: (Match | Group)[] = [];
+  const matchedGroups: Group[] = []; // Store the actual group objects
+
+  for (const item of allItems) {
+    if (itemMatchesQueryOrTags(item, query, tags)) {
+      directlyMatchedItems.push(item);
+      if (item.type === "group") {
+        matchedGroups.push(item as Group);
+      }
+    }
   }
 
-  if (tags.length > 0) {
-    allItems = allItems.filter(item => {
-      if (item.type === 'match') {
-        const match = item as Match;
-        return match.tags && tags.every((tag: string) => match.tags?.includes(tag));
-      }
-      return false; // Tags only apply to matches in this simple filter
-    });
+  // 3. Second Pass - Include Matches *under* the matched groups
+  const finalItemMap = new Map<string, Match | Group>();
+
+  // Add directly matched items first
+  for (const item of directlyMatchedItems) {
+    finalItemMap.set(item.id, item);
   }
-  
-  // Sort list items (optional)
-   allItems.sort((a, b) => {
+
+  // Function to recursively get all matches under a group
+  const getAllMatchesUnderGroup = (group: Group): Match[] => {
+    let matches: Match[] = [...(group.matches || [])];
+    if (group.groups) {
+      for (const subGroup of group.groups) {
+        matches = [...matches, ...getAllMatchesUnderGroup(subGroup)];
+      }
+    }
+    return matches;
+  };
+
+  // Add matches that are children of matched groups
+  if (matchedGroups.length > 0) {
+    for (const group of matchedGroups) {
+        const childMatches = getAllMatchesUnderGroup(group);
+        for (const match of childMatches) {
+            // Add child match only if it wasn't already directly matched
+            if (!finalItemMap.has(match.id)) {
+                finalItemMap.set(match.id, match);
+            }
+        }
+    }
+  }
+
+  // 4. Convert Map back to Array and Sort
+  let finalItems = Array.from(finalItemMap.values());
+
+  // Sort: Newest first
+  finalItems.sort((a, b) => {
     const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
     const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-    return dateB - dateA; // Newest first
+    return dateB - dateA;
   });
 
-
-  return allItems;
+  return finalItems;
 });
 
 // 内容预览
 const getContentPreview = (item: Match) => {
-  if (!item || item.type !== 'match') {
-    return ''
+  if (!item || item.type !== "match") {
+    return "";
   }
 
   if (!item.replace) {
-    return ''
+    return "";
   }
 
-  const text = typeof item.replace === 'string'
-    ? item.replace
-    : JSON.stringify(item.replace)
+  const text =
+    typeof item.replace === "string"
+      ? item.replace
+      : JSON.stringify(item.replace);
 
-  return text.length > 100 ? text.substring(0, 100) + '...' : text
-}
+  return text.length > 100 ? text.substring(0, 100) + "..." : text;
+};
 
 // 获取内容类型标签
 const getContentTypeLabel = (contentType?: string) => {
-  if (!contentType) return '纯文本'
+  if (!contentType) return "纯文本";
 
   const typeMap: Record<string, string> = {
-    'text': '纯文本',
-    'html': 'HTML',
-    'image': '图片',
-    'script': '脚本',
-    'keystroke': '按键',
-    'form': '表单'
-  }
+    text: "纯文本",
+    html: "HTML",
+    image: "图片",
+    script: "脚本",
+    keystroke: "按键",
+    form: "表单",
+  };
 
-  return typeMap[contentType] || contentType
-}
+  return typeMap[contentType] || contentType;
+};
 
 // 格式化日期
 const formatDate = (dateString: string) => {
-  const date = new Date(dateString)
-  return date.toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  })
-}
+  const date = new Date(dateString);
+  return date.toLocaleDateString("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+};
 
 // 选择项目
 const selectItem = (id: string) => {
-  store.state.selectedItemId = id
-}
+  store.state.selectedItemId = id;
+};
 
 // 标签筛选
 const addTagFilter = (tag: string) => {
   if (filterTags.value && !filterTags.value.includes(tag)) {
-    store.state.selectedTags = [...filterTags.value, tag]
+    store.state.selectedTags = [...filterTags.value, tag];
   }
-}
+};
 
 const removeTagFilter = (tag: string) => {
   if (filterTags.value) {
-    store.state.selectedTags = filterTags.value.filter(t => t !== tag)
+    store.state.selectedTags = filterTags.value.filter((t) => t !== tag);
   }
-}
+};
 
 const clearFilters = () => {
-  store.state.selectedTags = []
-  searchQuery.value = ''
-}
+  store.state.selectedTags = [];
+  searchQuery.value = "";
+};
 
 // 添加新规则功能已移至右侧面板
 
@@ -495,50 +639,53 @@ const clearFilters = () => {
 
 // 切换视图模式
 const toggleViewMode = () => {
-  viewMode.value = viewMode.value === 'tree' ? 'list' : 'tree';
-  console.log('切换视图模式:', viewMode.value);
+  viewMode.value = viewMode.value === "tree" ? "list" : "tree";
+  console.log("切换视图模式:", viewMode.value);
 };
 
 // 切换搜索栏显示
 const toggleSearchBar = () => {
   showSearchBar.value = !showSearchBar.value;
-  console.log('切换搜索栏:', showSearchBar.value);
+  console.log("切换搜索栏:", showSearchBar.value);
 
   if (showSearchBar.value) {
     // 使用改进的聚焦方法
     focusSearchInput();
   } else {
     // 如果关闭搜索栏，清空搜索内容
-    searchQuery.value = '';
+    searchQuery.value = "";
   }
 };
 
 // 隐藏搜索栏
 const hideSearchBar = () => {
-  console.log('按下ESC键，隐藏搜索栏');
+  console.log("按下ESC键，隐藏搜索栏");
   showSearchBar.value = false;
-  searchQuery.value = '';
+  searchQuery.value = "";
 };
 
 // 隐藏列表视图提示
 const hideListViewTip = () => {
   showListViewTip.value = false;
-  localStorage.setItem('hideListViewTip', 'true');
+  localStorage.setItem("hideListViewTip", "true");
 };
 
 // 处理树节点选择
 const handleTreeItemSelect = (item: Match | Group) => {
-  console.log('选择树节点:', item);
+  console.log("选择树节点:", item);
   selectItem(item.id);
-}
+};
 
-// --- Total Item Count --- 
+// --- Total Item Count ---
 const totalItemCount = computed(() => {
-  if (!config.value || !store.getAllMatchesFromTree || !store.getAllGroupsFromTree) return 0;
+  if (
+    !config.value ||
+    !store.getAllMatchesFromTree ||
+    !store.getAllGroupsFromTree
+  )
+    return 0;
   const matches = store.getAllMatchesFromTree();
   const groups = store.getAllGroupsFromTree();
   return matches.length + groups.length;
 });
 </script>
-
-
