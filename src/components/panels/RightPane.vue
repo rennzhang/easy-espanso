@@ -26,7 +26,6 @@
         <RuleEditForm
           ref="ruleFormRef"
           :rule="selectedItem"
-          @save="saveRule"
           @cancel="cancelEdit"
           @delete="deleteRule"
         />
@@ -35,7 +34,6 @@
         <GroupEditForm
           ref="groupFormRef"
           :group="selectedItem"
-          @save="saveGroup"
           @cancel="cancelEdit"
           @delete="deleteGroup"
         />
@@ -86,79 +84,74 @@ const saveItem = async () => {
   if (!selectedItem.value) return;
 
   let currentFormData: Partial<Match> | Partial<Group> | null = null;
+  let formType: 'match' | 'group' | null = null;
 
   // Get current data from the active form using refs
   if (selectedItem.value.type === 'match' && ruleFormRef.value) {
     currentFormData = ruleFormRef.value.getFormData();
+    formType = 'match';
   } else if (selectedItem.value.type === 'group' && groupFormRef.value) {
     currentFormData = groupFormRef.value.getFormData();
+    formType = 'group';
   }
 
-  if (!currentFormData) {
-    console.error('无法从表单组件获取当前数据!');
+  if (!currentFormData || !formType) {
+    console.error('无法从表单组件获取当前数据或类型!');
     alert('保存失败: 无法获取表单数据。');
     return;
   }
 
   try {
-    if (selectedItem.value.type === 'match') {
-      // Pass the fresh form data to saveRule
-      await saveRule(selectedItem.value.id, currentFormData as Partial<Match>);
-    } else if (selectedItem.value.type === 'group') {
-      // Pass the fresh form data to saveGroup
+    if (formType === 'match') {
+      await saveRule(selectedItem.value.id, currentFormData as Partial<Match> & { content?: string, contentType?: string });
+    } else if (formType === 'group') {
       await saveGroup(selectedItem.value.id, currentFormData as Partial<Group>);
     }
+    // Trigger global toast AFTER successful save
+    store.showToast('保存成功！', 'success');
+
   } catch (error: any) {
     console.error('保存项目失败 (saveItem): ', error);
-    alert(`保存失败: ${error.message || '未知错误'}`);
+    // Trigger global error toast
+    store.showToast(`保存失败: ${error.message || '未知错误'}`, 'error', 5000); // Show error longer
   }
 };
 
-// 不再需要删除项目函数
-
-// 保存规则 - Now receives the updated form data directly
+// 保存规则 - Now calls store actions and expects success/failure
 const saveRule = async (id: string, updatedRuleData: Partial<Match> & { content?: string, contentType?: string }) => {
+  // Map content/contentType back to specific Match fields
+  const mappedFields = mapContentToMatchFields(updatedRuleData.content, updatedRuleData.contentType);
+  const cleanedDataToMerge: Partial<Match> = {
+    ...updatedRuleData,
+    content: undefined,
+    contentType: undefined,
+    ...mappedFields,
+    left_word: updatedRuleData.leftWord,
+    right_word: updatedRuleData.rightWord,
+    propagate_case: updatedRuleData.propagateCase,
+    uppercase_style: updatedRuleData.uppercaseStyle || undefined,
+    force_mode: updatedRuleData.forceMode || undefined,
+  };
+  delete cleanedDataToMerge.leftWord;
+  delete cleanedDataToMerge.rightWord;
+  delete cleanedDataToMerge.propagateCase;
+  delete cleanedDataToMerge.uppercaseStyle;
+  delete cleanedDataToMerge.forceMode;
+
   try {
-    // Map content/contentType back to specific Match fields
-    const mappedFields = mapContentToMatchFields(updatedRuleData.content, updatedRuleData.contentType);
-
-    // Create the cleaned object to merge into state
-    const cleanedDataToMerge: Partial<Match> = {
-      ...updatedRuleData,
-      content: undefined,       // Ensure raw content is not merged
-      contentType: undefined,   // Ensure raw contentType is not merged
-      ...mappedFields,
-      // Map specific keys
-      left_word: updatedRuleData.leftWord,
-      right_word: updatedRuleData.rightWord,
-      propagate_case: updatedRuleData.propagateCase,
-      uppercase_style: updatedRuleData.uppercaseStyle || undefined,
-      force_mode: updatedRuleData.forceMode || undefined,
-    };
-    // Remove UI-specific keys before passing to store
-    delete cleanedDataToMerge.leftWord;
-    delete cleanedDataToMerge.rightWord;
-    delete cleanedDataToMerge.propagateCase;
-    delete cleanedDataToMerge.uppercaseStyle;
-    delete cleanedDataToMerge.forceMode;
-
-    // 1. Update state (mutates item in config and updates ref in configTree)
+    // 1. Update state
     store.updateConfigState(id, cleanedDataToMerge);
-
-    // 2. Get the fully updated item from the state (needed for filePath)
+    // 2. Get item for save
     const itemToSave = store.findItemById(id);
     if (!itemToSave || itemToSave.type !== 'match') {
-        throw new Error(`保存失败：无法在状态中找到ID为 ${id} 的规则。`);
+        throw new Error(`无法在状态中找到ID为 ${id} 的规则。`);
     }
-
-    // 3. Call the specific save action
+    // 3. Save to file
     await store.saveItemToFile(itemToSave);
-
-    alert('保存成功！'); // Show alert last
-
-  } catch (error: any) {
-    console.error('保存规则失败 (saveRule):', error);
-    throw error;
+    // Success! RightPane's saveItem will handle showing confirmation.
+  } catch (error) {
+      console.error('保存规则失败 (saveRule):', error);
+      throw error; // Re-throw error to be caught by saveItem
   }
 };
 
@@ -180,29 +173,23 @@ const mapContentToMatchFields = (content?: string, contentType?: string): Partia
   }
 };
 
-// 保存分组 - Now receives the updated form data directly
+// 保存分组 - Now calls store actions and expects success/failure
 const saveGroup = async (id: string, updatedGroupData: Partial<Group>) => {
+  const cleanedDataToMerge: Partial<Group> = { ...updatedGroupData };
   try {
-    // Create the cleaned object to merge into state (Group has less mapping needed)
-    const cleanedDataToMerge: Partial<Group> = { ...updatedGroupData };
-
-    // 1. Update state (mutates item in config and updates ref in configTree)
+    // 1. Update state
     store.updateConfigState(id, cleanedDataToMerge);
-
-    // 2. Get the fully updated item from the state (needed for filePath)
+    // 2. Get item for save
     const itemToSave = store.findItemById(id);
-     if (!itemToSave || itemToSave.type !== 'group') {
-        throw new Error(`保存失败：无法在状态中找到ID为 ${id} 的分组。`);
+    if (!itemToSave || itemToSave.type !== 'group') {
+        throw new Error(`无法在状态中找到ID为 ${id} 的分组。`);
     }
-
-    // 3. Call the specific save action
+    // 3. Save to file
     await store.saveItemToFile(itemToSave);
-
-    alert('保存成功！'); // Show alert last
-
-  } catch (error: any) {
-    console.error('保存分组失败 (saveGroup):', error);
-     throw error;
+    // Success! RightPane's saveItem will handle showing confirmation.
+  } catch (error) {
+      console.error('保存分组失败 (saveGroup):', error);
+      throw error; // Re-throw error to be caught by saveItem
   }
 };
 
@@ -213,27 +200,19 @@ const cancelEdit = () => {
 
 // 删除规则
 const deleteRule = (id: string) => {
-  store.deleteItem(id, 'match');
+  if (confirm('确定要删除这个规则吗？此操作无法撤销。')) {
+    store.deleteItem(id, 'match');
+    // TODO: Trigger save after deletion?
+    store.state.selectedItemId = null; // Clear selection after delete
+  }
 };
 
 // 删除分组
 const deleteGroup = (id: string) => {
-  store.deleteItem(id, 'group');
-};
-
-// 处理保存事件
-const handleSave = async (itemData: Match | Group) => {
-  try {
-    await store.updateItem(itemData);
-    // 可选: 显示保存成功提示
-    console.log('项目已更新');
-    // 清除选中状态可能不是期望行为，因为用户可能想继续编辑
-    // store.state.selectedItemId = null;
-  } catch (error) {
-    // Add type assertion for error
-    console.error('更新项目失败:', error as any);
-    // 显示错误提示
-    alert(`保存失败: ${(error as any).message || error}`);
+  if (confirm('确定要删除这个分组及其所有内容吗？此操作无法撤销。')) {
+    store.deleteItem(id, 'group');
+    // TODO: Trigger save after deletion?
+    store.state.selectedItemId = null; // Clear selection after delete
   }
 };
 </script>

@@ -364,8 +364,6 @@
         </div>
       </div>
     </div>
-
-    <!-- 不再需要底部保存按钮 -->
   </form>
 </template>
 
@@ -391,6 +389,7 @@ import {
   HelpCircleIcon
 } from 'lucide-vue-next';
 import type { Match } from '../../types/espanso'; // Import Match type
+import { Transition } from 'vue'; // Ensure Transition is imported
 
 // 定义props
 const props = defineProps<{
@@ -476,7 +475,7 @@ const isFormModified = ref(false);
 // 原始表单数据，用于比较是否有修改
 const originalFormData = ref<RuleFormState | null>(null);
 
-// Expose a method to get the current form data
+// Expose only the method to get the current form data
 defineExpose({
   getFormData: () => formState.value
 });

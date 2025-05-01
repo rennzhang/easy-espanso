@@ -35,23 +35,19 @@
       <!-- 主布局 -->
       <MainLayout />
 
-      <!-- 自动保存状态提示 -->
-      <div v-if="autoSaveStatus"
-           class="fixed bottom-4 right-4 p-4 rounded-lg shadow-lg transition-all duration-300"
-           :class="{
-             'bg-primary text-primary-foreground': autoSaveStatus === 'saving',
-             'bg-green-500 text-white': autoSaveStatus === 'saved',
-             'bg-destructive text-destructive-foreground': autoSaveStatus === 'error'
-           }">
-        <div class="flex items-center gap-2">
-          <LoaderIcon v-if="autoSaveStatus === 'saving'" class="h-4 w-4 animate-spin" />
-          <CheckIcon v-else-if="autoSaveStatus === 'saved'" class="h-4 w-4" />
-          <XIcon v-else-if="autoSaveStatus === 'error'" class="h-4 w-4" />
-          <span>
-            {{ autoSaveStatusText }}
-          </span>
+      <!-- Global Toast Notification -->
+      <Transition name="toast-fade">
+        <div
+          v-if="isToastVisible"
+          class="fixed top-5 left-1/2 transform -translate-x-1/2 py-2 px-5 rounded-md shadow-lg text-sm font-medium z-50"
+          :class="{
+            'bg-green-500 text-white': toastType === 'success',
+            'bg-red-500 text-white': toastType === 'error',
+          }"
+        >
+          {{ toastMessage }}
         </div>
-      </div>
+      </Transition>
     </template>
   </div>
 </template>
@@ -63,6 +59,7 @@ import { detectEnvironment, getEspansoConfigDir, showOpenDirectoryDialog, saveCo
 import MainLayout from './components/layout/MainLayout.vue';
 import { FolderIcon, LoaderIcon, CheckIcon, XIcon } from 'lucide-vue-next';
 import type { PreloadApi, FileSystemNode } from './types/preload';
+import { Transition } from 'vue';
 
 // 声明全局 window 对象的类型
 declare global {
@@ -85,20 +82,10 @@ const needsConfigSelection = ref(false);
 const environment = ref<'electron' | 'web'>('web');
 const configData = ref<FileSystemNode[]>([]);
 
-// 自动保存状态文本
-const autoSaveStatus = computed(() => store.state.autoSaveStatus);
-const autoSaveStatusText = computed(() => {
-  switch (store.state.autoSaveStatus) {
-    case 'saving':
-      return '正在保存...';
-    case 'saved':
-      return '已保存';
-    case 'error':
-      return '保存失败';
-    default:
-      return '';
-  }
-});
+// Global Toast computed properties
+const isToastVisible = computed(() => store.state.toastVisible);
+const toastMessage = computed(() => store.state.toastMessage);
+const toastType = computed(() => store.state.toastType);
 
 // 加载Electron默认配置
 const loadElectronDefaultConfig = async () => {
@@ -358,5 +345,23 @@ const selectConfigFolder = async () => {
 
 .config-selector {
   @apply h-full flex justify-center items-center p-5;
+}
+
+/* Toast Transition Styles */
+.toast-fade-enter-active,
+.toast-fade-leave-active {
+  transition: opacity 0.5s ease, transform 0.5s ease;
+}
+
+.toast-fade-enter-from,
+.toast-fade-leave-to {
+  opacity: 0;
+  transform: translate(-50%, -20px); /* Start above */
+}
+
+.toast-fade-enter-to,
+.toast-fade-leave-from {
+  opacity: 1;
+  transform: translate(-50%, 0); /* End at final position */
 }
 </style>

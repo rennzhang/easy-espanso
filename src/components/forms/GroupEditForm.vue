@@ -53,6 +53,7 @@ import { useEspansoStore } from '../../store/useEspansoStore';
 import Button from '../ui/button.vue';
 import Input from '../ui/input.vue';
 import type { Group } from '../../types/espanso';
+import { Transition } from 'vue';
 
 // 获取 store
 const store = useEspansoStore();
@@ -174,7 +175,7 @@ onBeforeUnmount(() => {
   store.state.hasUnsavedChanges = false;
 });
 
-// Expose a method to get the current form data
+// Expose only the method to get the current form data
 defineExpose({
   getFormData: () => formState.value
 });

@@ -70,6 +70,11 @@ interface State {
   autoSaveStatus: 'idle' | 'saving' | 'saved' | 'error';
   loading: boolean;
   error: string | null;
+  // Toast state
+  toastMessage: string | null;
+  toastType: 'success' | 'error' | null;
+  toastVisible: boolean;
+  toastTimeoutId: ReturnType<typeof setTimeout> | null;
   // --- Comment out fullscreen and platform state ---
   // isFullscreen: boolean;
   // platform: 'darwin' | 'win32' | 'linux' | null;
@@ -93,6 +98,11 @@ export const useEspansoStore = defineStore('espanso', () => {
     autoSaveStatus: 'idle',
     loading: false,
     error: null,
+    // Toast state initialization
+    toastMessage: null,
+    toastType: null,
+    toastVisible: false,
+    toastTimeoutId: null,
     // --- Comment out initialization ---
     // isFullscreen: false,
     // platform: null
@@ -844,6 +854,27 @@ export const useEspansoStore = defineStore('espanso', () => {
     }
   };
 
+  // Action to show toast
+  const showToast = (message: string, type: 'success' | 'error' = 'success', duration: number = 3000) => {
+    // Clear previous timeout if exists
+    if (state.value.toastTimeoutId) {
+      clearTimeout(state.value.toastTimeoutId);
+    }
+
+    state.value.toastMessage = message;
+    state.value.toastType = type;
+    state.value.toastVisible = true;
+
+    // Set new timeout to hide the toast
+    state.value.toastTimeoutId = setTimeout(() => {
+      state.value.toastVisible = false;
+      state.value.toastTimeoutId = null;
+      // Reset message and type after hiding for cleanliness
+      state.value.toastMessage = null;
+      state.value.toastType = null;
+    }, duration);
+  };
+
   return {
     state,
     allItems,
@@ -863,6 +894,7 @@ export const useEspansoStore = defineStore('espanso', () => {
     getConfigFileByPath: (path: string) => findFileNode(state.value.configTree, path),
     findFileNode,
     saveItemToFile,
+    showToast, // Expose the action
     // --- Comment out exposure --- 
     // initializePlatformAndFullscreenListener
     // --- End comment out --- 
