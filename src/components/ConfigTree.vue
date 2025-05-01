@@ -80,8 +80,70 @@ const createGroupNode = (group: Group): TreeNodeItem => {
 };
 
 // 递归转换 store 的 configTree 结构为 TreeNodeItem 结构
-const convertStoreNodeToTreeNodeItem = (node: any): TreeNodeItem | null => {
+const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false): TreeNodeItem | null => {
   if (!node) return null;
+
+  // --- Special Handling for top-level 'packages' folder ---
+  if (isTopLevel && node.type === 'folder' && node.name === 'packages') {
+    console.log("Processing special 'packages' folder");
+    const packagesNode: TreeNodeItem = {
+      id: node.id || `folder-${node.path || 'packages'}`,
+      type: 'folder',
+      name: 'Packages', // Rename to 'Packages'
+      path: node.path,
+      children: []
+    };
+
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach((packageSubDir: any) => {
+        // Expecting only folders directly under 'packages'
+        if (packageSubDir.type === 'folder') {
+          const packageNode: TreeNodeItem = {
+            id: packageSubDir.id || `folder-${packageSubDir.path}`,
+            type: 'folder', // Represent the package itself as a folder/group
+            name: packageSubDir.name,
+            path: packageSubDir.path,
+            children: []
+          };
+          
+          // Find package.yml within the sub-directory
+          const packageYml = packageSubDir.children?.find((f: any) => f.type === 'file' && f.name === 'package.yml');
+          
+          if (packageYml) {
+             console.log(`Found package.yml for ${packageSubDir.name}`);
+            // Add matches from package.yml directly to the package node
+            if (packageYml.matches && Array.isArray(packageYml.matches)) {
+               packageNode.children.push(...packageYml.matches.map(createMatchNode));
+            }
+            // Add groups from package.yml directly to the package node
+            if (packageYml.groups && Array.isArray(packageYml.groups)) {
+               packageNode.children.push(...packageYml.groups.map((g: Group) => createGroupNode(g)));
+            }
+          }
+          
+          // Only add the package node if it has children (matches/groups from package.yml)
+          if (packageNode.children.length > 0) {
+             packagesNode.children.push(packageNode);
+          }
+        }
+         // Ignore other files/folders directly under 'packages' if any
+      });
+    }
+    
+     // Only return the 'Packages' node if it has any valid package sub-nodes
+     return packagesNode.children.length > 0 ? packagesNode : null;
+  }
+  // --- End Special Handling ---
+  
+   // --- Standard Node Processing --- 
+  // Skip processing other nodes inside 'packages' that weren't handled above
+  // This prevents showing the raw structure like package.yml if special handling missed it.
+  // Note: This assumes paths are correctly set during store build.
+  if (node.path && node.path.startsWith('packages/') && node.name !== 'packages') {
+      console.log("Skipping node inside handled 'packages' structure:", node.path)
+      return null; 
+  }
+
 
   let children: TreeNodeItem[] = [];
 
@@ -128,8 +190,11 @@ const treeData = computed(() => {
   const configTree = store.state.configTree || [];
   console.log("ConfigTree: Building treeData from store.state.configTree", configTree);
   const tree = configTree
-    .map((node: any) => convertStoreNodeToTreeNodeItem(node))
-    .filter((item: TreeNodeItem | null): item is TreeNodeItem => item !== null); // Filter out null results
+    // Pass true for isTopLevel for the root nodes
+    .map((node: any) => convertStoreNodeToTreeNodeItem(node, true)) 
+    .filter((item: TreeNodeItem | null): item is TreeNodeItem => item !== null) // Filter out null results
+    // Filter top-level 'config' folder (moved here to happen *after* conversion)
+    .filter(node => !(node.type === 'folder' && node.name === 'config')); 
   console.log("ConfigTree: Final treeData:", tree);
   return tree;
 });

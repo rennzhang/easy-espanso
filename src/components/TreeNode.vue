@@ -21,8 +21,8 @@
           <span class="w-4 inline-block"></span>
         </span>
         <span class="text-sm font-medium">
-          <HighlightText v-if="searchQuery" :text="node.name" :searchQuery="searchQuery" />
-          <template v-else>{{ node.name }}</template>
+          <HighlightText v-if="searchQuery" :text="displayName" :searchQuery="searchQuery" />
+          <template v-else>{{ displayName }}</template>
         </span>
         <span v-if="visibleChildCount > 0" class="ml-2 text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full">
           {{ visibleChildCount }}
@@ -106,6 +106,16 @@ const selectNode = () => {
 
 const isSelected = computed(() => {
   return props.node.id === props.selectedId;
+});
+
+// Add/Modify displayName computed property
+const displayName = computed(() => {
+  if (props.node.type === 'file' && props.node.name) {
+    // Remove .yml or .yaml suffix
+    return props.node.name.replace(/\.(yml|yaml)$/i, '');
+  }
+  // Return original name for other types or if name is missing
+  return props.node.name || ''; 
 });
 
 const hasChildren = computed(() => {
