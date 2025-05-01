@@ -2,7 +2,7 @@
   <div class="right-pane flex flex-col h-full bg-card">
     <div class="py-2 px-4 border-b border-border">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-foreground m-0">{{ headerTitle }}</h3>
+        <h3 class="text-lg font-semibold text-foreground m-0" v-html="headerTitle"></h3>
         <div class="flex gap-2" v-if="selectedItem">
           <Button
             size="sm"
@@ -44,7 +44,7 @@
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未选择项目</h4>
         <p class="m-0 max-w-md">请从左侧列表选择一个规则或分组进行编辑</p>
       </div>
-      <div v-else-if="selectedItem.type === 'match'" class="max-w-2xl mx-auto">
+      <div v-else-if="selectedItem.type === 'match'" >
         <RuleEditForm
           ref="ruleFormRef"
           :rule="selectedItem"
@@ -52,7 +52,7 @@
           @delete="deleteRule"
         />
       </div>
-      <div v-else-if="selectedItem.type === 'group'" class="max-w-2xl mx-auto">
+      <div v-else-if="selectedItem.type === 'group'" >
         <GroupEditForm
           ref="groupFormRef"
           :group="selectedItem"
@@ -65,7 +65,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
 import { SaveIcon, Loader2Icon, CheckIcon, XIcon } from 'lucide-vue-next';
 import { Button } from '../ui/button';
@@ -96,15 +96,54 @@ const headerTitle = computed(() => {
   if (!selectedItem.value) return '详情';
 
   if (selectedItem.value.type === 'match') {
-    return `编辑规则: ${(selectedItem.value as Match).trigger}`;
+    const match = selectedItem.value as Match;
+    let displayTrigger = '';
+    
+    if (match.triggers && match.triggers.length > 0) {
+      if (match.triggers.length > 1) {
+        displayTrigger = match.triggers.slice(0, 3).join(', ') + (match.triggers.length > 3 ? '...' : '');
+      } else {
+        displayTrigger = match.triggers[0];
+      }
+    } else if (match.trigger) {
+      displayTrigger = match.trigger;
+    } else {
+      displayTrigger = '[无触发词]';
+    }
+    
+    // Return HTML string with span for styling
+    return `编辑规则 <span class="ml-2 text-sm text-muted-foreground">${displayTrigger}</span>`;
   } else if (selectedItem.value.type === 'group') {
-    return `编辑分组: ${(selectedItem.value as Group).name}`;
+    // For groups, just return plain text
+    return `编辑分组 ${(selectedItem.value as Group).name}`;
   }
 
   return '详情';
 });
 
-// 不再需要格式化日期函数
+// --- Keyboard Shortcut for Save --- 
+const handleKeyDown = (event: KeyboardEvent) => {
+  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
+    if (selectedItem.value) { // Only save if an item is selected
+      event.preventDefault();
+      console.log('Ctrl/Cmd+S detected, triggering save...');
+      saveItem();
+    }
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+  // Clear timeout on unmount as well
+  if (saveStateTimeout) {
+    clearTimeout(saveStateTimeout);
+  }
+});
+// --- End Keyboard Shortcut ---
 
 // 保存项目
 const saveItem = async () => {

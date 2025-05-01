@@ -79,7 +79,7 @@
     </div>
 
     <!-- 子节点 -->
-    <div v-if="hasChildren && isOpen" class="children pl-4 pr-0">
+    <div v-if="hasChildren && isOpen" class="children pl-2 pr-0">
       <TreeNode
         v-for="child in node.children"
         :key="child.id"

@@ -1,47 +1,41 @@
 <template>
   <form @submit.prevent="onSubmit" class="space-y-6">
-    <div class="space-y-2">
-      <label for="name" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-        分组名称
-      </label>
+    <FormSection
+      label="分组名称"
+      description="输入分组名称，用于标识和组织规则"
+      inputId="name"
+    >
       <Input
         id="name"
         v-model="formState.name"
         placeholder="例如: 常用短语"
         required
       />
-      <p class="text-sm text-muted-foreground">
-        输入分组名称，用于标识和组织规则
-      </p>
-    </div>
+    </FormSection>
 
-    <div class="space-y-2">
-      <label for="label" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-        描述
-      </label>
+    <FormSection
+      label="描述"
+      description="为分组添加简短描述，方便识别和管理"
+      inputId="label"
+    >
       <Input
         id="label"
         v-model="formState.label"
         placeholder="可选的分组描述"
       />
-      <p class="text-sm text-muted-foreground">
-        为分组添加简短描述，方便识别和管理
-      </p>
-    </div>
+    </FormSection>
 
-    <div class="space-y-2">
-      <label for="prefix" class="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-        公共前缀
-      </label>
+    <FormSection
+      label="公共前缀"
+      description="可选，将作为该分组内所有规则的前缀"
+      inputId="prefix"
+    >
       <Input
         id="prefix"
         v-model="formState.prefix"
         placeholder="例如: :common"
       />
-      <p class="text-sm text-muted-foreground">
-        可选，将作为该分组内所有规则的前缀
-      </p>
-    </div>
+    </FormSection>
 
     <!-- 不再需要底部保存按钮 -->
   </form>
@@ -52,6 +46,7 @@ import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import FormSection from '../common/FormSection.vue';
 import type { Group } from '../../types/espanso';
 import { Transition } from 'vue';
 
