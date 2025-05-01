@@ -5,14 +5,14 @@
   "main": "dist/electron/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
-    "build": "electron-vite build && afplay /System/Library/Sounds/Glass.aiff",
+    "build": "electron-vite build && bash scripts/play-build-sound.sh",
     "build:quiet": "electron-vite build",
     "preview": "electron-vite preview",
     "electron:dev": "electron-vite dev",
-    "electron:build": "electron-vite build && electron-builder --config electron/electron-builder.json && afplay /System/Library/Sounds/Glass.aiff",
-    "electron:build:mac": "electron-vite build && electron-builder --mac --config electron/electron-builder.json && afplay /System/Library/Sounds/Glass.aiff",
-    "electron:build:win": "electron-vite build && electron-builder --win --config electron/electron-builder.json && afplay /System/Library/Sounds/Glass.aiff",
-    "electron:build:linux": "electron-vite build && electron-builder --linux --config electron/electron-builder.json && afplay /System/Library/Sounds/Glass.aiff",
+    "electron:build": "electron-vite build && electron-builder --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
+    "electron:build:mac": "electron-vite build && electron-builder --mac --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
+    "electron:build:win": "electron-vite build && electron-builder --win --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
+    "electron:build:linux": "electron-vite build && electron-builder --linux --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
     "electron:build:quiet": "electron-vite build && electron-builder --config electron/electron-builder.json"
   },
   "dependencies": {

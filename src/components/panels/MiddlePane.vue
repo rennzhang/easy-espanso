@@ -5,7 +5,7 @@
         <div class="flex items-center">
           <h3 class="text-lg font-semibold text-foreground m-0">规则列表</h3>
           <Badge variant="outline" class="ml-2" v-if="config">
-            {{ filteredItems.length }} 项
+            {{ totalItemCount }} 项
           </Badge>
         </div>
         <div class="flex items-center gap-2">
@@ -121,16 +121,9 @@
 
         <!-- 树视图 -->
         <div v-if="viewMode === 'tree'" class="h-full px-2 pt-2 m-0">
-          <div v-if="searchQuery && filteredItems.length === 0" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
-            <SearchIcon class="h-12 w-12 mb-4" />
-            <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未找到匹配项</h4>
-            <p class="mb-6 text-muted-foreground max-w-md">尝试使用不同的搜索词或标签过滤器</p>
-            <Button variant="ghost" class="border-none focus:ring-0 focus:ring-offset-0" @click="clearFilters">清除过滤器</Button>
-          </div>
           <ConfigTree
-            v-else
             :selected-id="selectedItemId"
-            :filtered-items="searchQuery.trim() ? filteredItems : []"
+            :searchQuery="searchQuery.trim()"
             @select="handleTreeItemSelect"
           />
         </div>
@@ -148,7 +141,10 @@
               <CardContent class="p-4">
                 <div v-if="item.type === 'match'">
                   <div class="flex justify-between items-start">
-                    <span class="font-semibold text-foreground">{{ (item as Match).trigger }}</span>
+                    <span class="font-semibold text-foreground">
+                      <HighlightText v-if="searchQuery.trim()" :text="(item as Match).trigger" :searchQuery="searchQuery.trim()" />
+                      <template v-else>{{ (item as Match).trigger }}</template>
+                    </span>
                     <div class="flex flex-wrap gap-1" v-if="(item as Match).tags && (item as Match).tags.length > 0">
                       <Badge
                         v-for="tag in (item as Match).tags"
@@ -159,7 +155,10 @@
                       </Badge>
                     </div>
                   </div>
-                  <div class="text-sm text-muted-foreground my-1 whitespace-pre-line">{{ getContentPreview(item as Match) }}</div>
+                  <div class="text-sm text-muted-foreground my-1 whitespace-pre-line">
+                    <HighlightText v-if="searchQuery.trim()" :text="getContentPreview(item as Match)" :searchQuery="searchQuery.trim()" />
+                    <template v-else>{{ getContentPreview(item as Match) }}</template>
+                  </div>
                   <div class="flex justify-between text-xs text-muted-foreground mt-1">
                     <Badge variant="outline" class="bg-muted">{{ getContentTypeLabel((item as Match).contentType) }}</Badge>
                     <span v-if="(item as Match).updatedAt">{{ formatDate((item as Match).updatedAt) }}</span>
@@ -167,7 +166,10 @@
                 </div>
                 <div v-else-if="item.type === 'group'">
                   <div class="flex justify-between items-start">
-                    <span class="font-semibold text-foreground">{{ (item as Group).name }}</span>
+                    <span class="font-semibold text-foreground">
+                      <HighlightText v-if="searchQuery.trim()" :text="(item as Group).name" :searchQuery="searchQuery.trim()" />
+                      <template v-else>{{ (item as Group).name }}</template>
+                    </span>
                     <Badge variant="secondary" v-if="(item as Group).matches">{{ (item as Group).matches?.length || 0 }} 项</Badge>
                   </div>
                   <div class="flex justify-between text-xs text-muted-foreground mt-1">
@@ -193,6 +195,7 @@ import Badge from '@/components/ui/badge.vue'
 import Card from '@/components/ui/card.vue'
 import CardContent from '@/components/ui/card-content.vue'
 import ConfigTree from '@/components/ConfigTree.vue'
+import HighlightText from '@/components/common/HighlightText.vue'
 import {
   SearchIcon,
   FolderIcon,
@@ -369,73 +372,56 @@ const loading = computed(() => store.state.config === null)
 
 // 过滤和排序项目
 const filteredItems = computed(() => {
-  if (!config.value) {
-    return []
+  if (!config.value || !store.getAllMatchesFromTree || !store.getAllGroupsFromTree) {
+    return [];
   }
+  let allItems = [
+      ...store.getAllMatchesFromTree(), 
+      ...store.getAllGroupsFromTree()
+  ];
 
-  // 从树结构中获取所有匹配项和分组
-  const matches = store.getAllMatchesFromTree ? store.getAllMatchesFromTree() : []
-  const groups = store.getAllGroupsFromTree ? store.getAllGroupsFromTree() : []
+  const query = searchQuery.value.trim().toLowerCase();
+  const tags = filterTags.value || [];
 
-  // 合并所有项目
-  let allItems: (Match | Group)[] = [...matches, ...groups]
-
-  // 先按搜索过滤
-  let filtered = allItems
-  if (searchQuery.value && searchQuery.value.trim() !== '') {
-    const query = searchQuery.value.toLowerCase()
-    filtered = filtered.filter(item => {
+  if (query) {
+    allItems = allItems.filter(item => {
       if (item.type === 'match') {
-        const match = item as Match
-        // 搜索多个字段
+        const match = item as Match;
         return (
-          // 搜索触发词
           match.trigger?.toLowerCase().includes(query) ||
-          // 搜索描述/标签
           match.label?.toLowerCase().includes(query) ||
           match.description?.toLowerCase().includes(query) ||
-          // 搜索替换内容 - 支持多种内容类型
           match.replace?.toString().toLowerCase().includes(query) ||
-          match.content?.toString().toLowerCase().includes(query) ||
-          match.markdown?.toString().toLowerCase().includes(query) ||
-          match.html?.toString().toLowerCase().includes(query) ||
-          // 搜索标签
-          match.tags?.some((tag: string) => tag.toLowerCase().includes(query)) ||
-          // 搜索搜索词
-          match.search_terms?.some((term: string) => term.toLowerCase().includes(query))
-        )
+          match.tags?.some((tag: string) => tag.toLowerCase().includes(query))
+          // Add other searchable fields if needed for list view
+        );
       } else if (item.type === 'group') {
-        const group = item as Group
-        return group.name?.toLowerCase().includes(query)
+        return item.name?.toLowerCase().includes(query);
       }
-      return false
-    })
+      return false;
+    });
   }
 
-  // 按标签过滤
-  if (filterTags.value && filterTags.value.length > 0) {
-    filtered = filtered.filter(item => {
+  if (tags.length > 0) {
+    allItems = allItems.filter(item => {
       if (item.type === 'match') {
-        const match = item as Match
-        return match.tags && filterTags.value.every(tag => match.tags.includes(tag))
+        const match = item as Match;
+        return match.tags && tags.every((tag: string) => match.tags?.includes(tag));
       }
-      return false
-    })
+      return false; // Tags only apply to matches in this simple filter
+    });
   }
+  
+  // Sort list items (optional)
+   allItems.sort((a, b) => {
+    const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
+    const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
+    return dateB - dateA; // Newest first
+  });
 
-  // 按最后更新日期排序（最新的在前面）
-  filtered.sort((a, b) => {
-    const dateA = a.type === 'match'
-      ? (a as Match).updatedAt ? new Date((a as Match).updatedAt).getTime() : 0
-      : (a as Group).updatedAt ? new Date((a as Group).updatedAt).getTime() : 0
-    const dateB = b.type === 'match'
-      ? (b as Match).updatedAt ? new Date((b as Match).updatedAt).getTime() : 0
-      : (b as Group).updatedAt ? new Date((b as Group).updatedAt).getTime() : 0
-    return dateB - dateA
-  })
 
-  return filtered
-})
+  return allItems;
+});
 
 // 内容预览
 const getContentPreview = (item: Match) => {
@@ -545,6 +531,14 @@ const handleTreeItemSelect = (item: Match | Group) => {
   console.log('选择树节点:', item);
   selectItem(item.id);
 }
+
+// --- Total Item Count --- 
+const totalItemCount = computed(() => {
+  if (!config.value || !store.getAllMatchesFromTree || !store.getAllGroupsFromTree) return 0;
+  const matches = store.getAllMatchesFromTree();
+  const groups = store.getAllGroupsFromTree();
+  return matches.length + groups.length;
+});
 </script>
 
 
