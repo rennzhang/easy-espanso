@@ -174,7 +174,7 @@
               v-for="item in filteredItems"
               :key="item.id"
               :class="{
-                'border-primary shadow-[0_0_0_1px] shadow-primary':
+                'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
                   selectedItemId === item.id,
               }"
               class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md"
@@ -488,7 +488,7 @@ const filteredItems = computed(() => {
     query: string,
     tags: string[],
   ): boolean => {
-    let queryMatch = false;
+    let queryMatch: boolean = false; // Initialize explicitly
     if (query) {
       if (item.type === "match") {
         const match = item as Match;
@@ -502,8 +502,8 @@ const filteredItems = computed(() => {
         );
       } else if (item.type === "group") {
         queryMatch = (
-          item.name?.toLowerCase().includes(query) ||
-          (item.filePath && item.filePath.toLowerCase().includes(query))
+          (item.name?.toLowerCase().includes(query) ?? false) ||
+          (item.filePath?.toLowerCase().includes(query) ?? false)
         );
       }
     }

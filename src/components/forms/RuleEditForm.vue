@@ -26,14 +26,14 @@
       <div class="space-y-2">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
-            <label class="text-sm font-medium leading-none mr-2">内容类型</label>
-            <HelpTip content="选择替换内容的类型，如纯文本、Markdown等" />
+            <label class="text-sm font-medium leading-none mr-2">替换内容</label>
+            <HelpTip content="触发词最终替换的内容" />
           </div>
 
           <Menubar class="flex py-2 cursor-pointer">
             <MenubarMenu v-for="option in contentTypeOptions" :key="option.value">
               <MenubarTrigger 
-                class="h-10 px-4 py-2 text-sm transition-colors duration-150"
+                class="h-10 px-4 py-2 text-sm transition-colors duration-150 focus:outline-none"
                 :class="{
                   'bg-primary text-primary-foreground hover:bg-primary/90': currentContentType === option.value,
                   'text-muted-foreground hover:bg-accent hover:text-accent-foreground': currentContentType !== option.value
@@ -143,6 +143,56 @@
                   <p>插入剪贴板内容</p>
                 </TooltipContent>
               </Tooltip>
+              
+              <!-- Separator -->
+              <div class="h-4 w-px bg-border mx-2"></div>
+
+              <!-- Insertion Mode Label and HelpTip -->
+              <div class="flex items-center mr-2">
+                  <Label class="text-xs font-medium mr-1">插入模式</Label> 
+                  <HelpTip content="控制内容如何被插入，通过剪贴板或模拟按键" />
+              </div>
+
+              <!-- Insertion Mode Button Group (Replaced with Menubar) -->
+              <Menubar class="border rounded-none overflow-hidden p-0 shadow-none">
+                <template v-for="(option, index) in insertionModeOptions" :key="option.value">
+                  <MenubarMenu> 
+                    <!-- Apply Tooltip only for the 'Auto' option -->
+                    <TooltipProvider v-if="option.value === 'default'" :delay-duration="100">
+                      <Tooltip>
+                        <TooltipTrigger as-child>
+                          <MenubarTrigger
+                            @click="formState.forceMode = ''"
+                            class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
+                            :class="[
+                              { 'border-l': index > 0 },
+                              (!formState.forceMode || formState.forceMode === 'default') ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                            ]"
+                          >
+                            {{ option.label }}
+                          </MenubarTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p>自动模式: Espanso 会根据内容长度 (阈值默认100字符) 自动选择插入方式 (按键或剪贴板)。</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                    <!-- Regular MenubarTrigger for other options -->
+                    <MenubarTrigger
+                      v-else
+                      @click="formState.forceMode = option.value"
+                      class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
+                      :class="[
+                        { 'border-l': index > 0 },
+                        formState.forceMode === option.value ? 'bg-primary text-primary-foreground' : 'hover:bg-muted'
+                      ]"
+                    >
+                      {{ option.label }}
+                    </MenubarTrigger>
+                  </MenubarMenu>
+                </template>
+              </Menubar>
+
               <div class="flex-grow"></div> <!-- Spacer -->
               <Tooltip>
                 <TooltipTrigger as-child>
@@ -253,29 +303,6 @@
             </div>
           </div>
         </div>
-
-        <!-- 插入模式 -->
-        <div class="space-y-2">
-           <div class="flex items-center">
-             <h4 class="text-sm font-medium mr-2">插入模式</h4>
-             <HelpTip content="控制内容如何被插入，通过剪贴板或模拟按键" />
-           </div>
-           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-             <div class="space-y-1">
-               <Select v-model="formState.forceMode">
-                 <SelectTrigger class="h-8 text-sm px-2 py-1 w-full focus:ring-1 focus:ring-ring">
-                   <SelectValue placeholder="选择模式" />
-                 </SelectTrigger>
-                 <SelectContent>
-                   <SelectItem value="default">默认</SelectItem>
-                   <SelectItem value="clipboard">剪贴板</SelectItem>
-                   <SelectItem value="keys">按键</SelectItem>
-                 </SelectContent>
-               </Select>
-             </div>
-             <!-- Add force_clipboard if needed -->
-           </div>
-         </div>
 
         <!-- 应用限制 -->
         <div class="space-y-2">
@@ -444,7 +471,7 @@ interface RuleFormState {
   rightWord?: boolean;
   propagateCase?: boolean;
   uppercaseStyle?: 'capitalize_words' | 'uppercase_first' | ''; // Use empty string for default
-  forceMode?: 'default' | 'clipboard' | 'keys'; // Updated type, removed undefined and empty string
+  forceMode?: 'default' | 'clipboard' | 'keys' | ''; // Updated type, allowing empty string
   apps?: string[];
   exclude_apps?: string[];
   search_terms?: string[];
@@ -472,6 +499,13 @@ const formState = ref<RuleFormState>({
   priority: 0,
   hotkey: ''
 });
+
+// Define insertion mode options for the button group
+const insertionModeOptions = [
+  { value: 'default', label: '自动' },
+  { value: 'clipboard', label: '剪贴板' },
+  { value: 'keys', label: '按键' }
+];
 
 // 内容类型选项
 const contentTypeOptions = [
@@ -552,7 +586,7 @@ onMounted(() => {
     rightWord: ruleData.rightWord || ruleData.right_word || false,
     propagateCase: ruleData.propagateCase || ruleData.propagate_case || false,
     uppercaseStyle: ruleData.uppercaseStyle || ruleData.uppercase_style || '',
-    forceMode: ruleData.forceMode || ruleData.force_mode || '',
+    forceMode: ruleData.forceMode === 'default' ? '' : (ruleData.forceMode || ruleData.force_mode || ''),
     apps: Array.isArray(ruleData.apps) ? [...ruleData.apps] : [],
     exclude_apps: Array.isArray(ruleData.exclude_apps) ? [...ruleData.exclude_apps] : [],
     search_terms: Array.isArray(ruleData.search_terms) ? [...ruleData.search_terms] : [],
@@ -634,7 +668,7 @@ watch(() => props.rule, (newRule) => {
     rightWord: ruleData.rightWord || ruleData.right_word || false,
     propagateCase: ruleData.propagateCase || ruleData.propagate_case || false,
     uppercaseStyle: ruleData.uppercaseStyle || ruleData.uppercase_style || '',
-    forceMode: ruleData.forceMode || ruleData.force_mode || '',
+    forceMode: ruleData.forceMode === 'default' ? '' : (ruleData.forceMode || ruleData.force_mode || ''),
     apps: Array.isArray(ruleData.apps) ? [...ruleData.apps] : [],
     exclude_apps: Array.isArray(ruleData.exclude_apps) ? [...ruleData.exclude_apps] : [],
     search_terms: Array.isArray(ruleData.search_terms) ? [...ruleData.search_terms] : [],
@@ -808,8 +842,8 @@ const onSubmit = () => {
     right_word: formState.value.rightWord,
     propagate_case: formState.value.propagateCase,
     uppercase_style: formState.value.uppercaseStyle || undefined,
-    // Handle forceMode: if 'default', set to undefined for saving
-    force_mode: formState.value.forceMode === 'default' ? undefined : formState.value.forceMode,
+    // Handle forceMode: if 'default' or empty, set to undefined for saving
+    force_mode: !formState.value.forceMode || formState.value.forceMode === 'default' ? undefined : formState.value.forceMode,
     apps: formState.value.apps,
     exclude_apps: formState.value.exclude_apps,
     search_terms: formState.value.search_terms,
@@ -888,7 +922,7 @@ const determineInitialContentType = (rule: Match): string => {
   // if (rule.vars && rule.vars.length > 0) return 'form';
   // Make sure to handle potential undefined force_mode from saved data
   if (!formState.value.forceMode) {
-      formState.value.forceMode = 'default';
+      formState.value.forceMode = ''; // 设置为空字符串，表示默认值
   }
   return 'plain'; // Default to plain text
 };

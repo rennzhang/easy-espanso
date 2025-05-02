@@ -9,7 +9,7 @@
       <div
         class="flex items-center w-full cursor-pointer px-0 py-1 rounded"
         :class="{
-          'bg-primary text-primary-foreground': isSelected,
+          'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground': isSelected,
           'hover:bg-accent hover:text-accent-foreground': !isSelected,
         }"
       >
@@ -46,7 +46,7 @@
       <div
         class="flex items-center w-full cursor-pointer px-0 py-1 rounded group"
         :class="{
-          'bg-primary text-primary-foreground': isSelected,
+          'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground': isSelected,
           'hover:bg-accent hover:text-accent-foreground': !isSelected,
         }"
       >
