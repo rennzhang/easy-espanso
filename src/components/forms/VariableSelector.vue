@@ -223,4 +223,9 @@ const selectVariable = (variable: VariableItem) => {
   emit('select', variable);
   closeModal();
 };
+
+// Expose the showModal method
+defineExpose({
+  showModal
+});
 </script>

@@ -61,7 +61,6 @@
               class="flex min-h-[250px] w-full appearance-none rounded-none bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:!shadow-none border-0 ring-0 resize-y"
               style="outline: none !important;"
             ></textarea>
-            <!-- Other editors... -->
             <textarea
               v-else-if="currentContentType === 'markdown'"
               v-model="formState.content"
@@ -113,55 +112,17 @@
           <!-- 新的底部工具栏 -->
           <TooltipProvider :delay-duration="200">
             <div class="flex items-center gap-1 p-1.5 border-t bg-muted/50">
-              <VariableSelector @select="insertVariable">
-                <template #default="{ showModal }">
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <Button type="button" variant="ghost" size="icon" @click="showModal" class="h-7 w-7">
-                        <PlusIcon class="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>插入变量</p>
-                    </TooltipContent>
-                  </Tooltip>
-                </template>
-              </VariableSelector>
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <Button type="button" variant="ghost" size="icon" @click="insertCommonVariable('date')" class="h-7 w-7">
-                    <CalendarIcon class="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>插入日期</p>
-                </TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <Button type="button" variant="ghost" size="icon" @click="insertCommonVariable('clipboard')" class="h-7 w-7">
-                    <ClipboardIcon class="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>插入剪贴板内容</p>
-                </TooltipContent>
-              </Tooltip>
               
-              <!-- Separator -->
-              <div class="h-4 w-px bg-border mx-2"></div>
-
-              <!-- Insertion Mode Label and HelpTip -->
+              <!-- Replacement Mode Label and HelpTip (Moved Left & Renamed) -->
               <div class="flex items-center mr-2">
-                  <Label class="text-xs font-medium mr-1">插入模式</Label> 
-                  <HelpTip content="控制内容如何被插入，通过剪贴板或模拟按键" />
+                  <Label class="text-xs font-medium mr-1">替换模式</Label> 
+                  <HelpTip content="控制内容如何替换触发词，通过剪贴板或模拟按键" />
               </div>
 
-              <!-- Insertion Mode Button Group (Replaced with Menubar) -->
-              <Menubar class="border rounded-none overflow-hidden p-0 shadow-none">
+              <!-- Insertion Mode Menubar (Moved Left) -->
+              <Menubar class="border rounded-none overflow-hidden p-0 shadow-none mr-2">
                 <template v-for="(option, index) in insertionModeOptions" :key="option.value">
                   <MenubarMenu> 
-                    <!-- Apply Tooltip only for the 'Auto' option -->
                     <TooltipProvider v-if="option.value === 'default'" :delay-duration="100">
                       <Tooltip>
                         <TooltipTrigger as-child>
@@ -181,7 +142,6 @@
                         </TooltipContent>
                       </Tooltip>
                     </TooltipProvider>
-                    <!-- Regular MenubarTrigger for other options -->
                     <MenubarTrigger
                       v-else
                       @click="formState.forceMode = option.value"
@@ -198,6 +158,36 @@
               </Menubar>
 
               <div class="flex-grow"></div> <!-- Spacer -->
+              
+              <!-- New Insert Dropdown -->
+              <DropdownMenu>
+                <DropdownMenuTrigger as-child>
+                  <Button type="button" variant="ghost" size="sm" class="h-7 px-2 focus:outline-none" style="outline: none !important; box-shadow: none !important;">
+                    <span>插入</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem @click="insertCommonVariable('clipboard')">
+                    <ClipboardIcon class="mr-2 h-4 w-4" />
+                    <span>插入剪贴板</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem @click="insertVariable({ id: 'cursor', name: '光标', description: '插入光标位置' })">
+                    <MousePointerClickIcon class="mr-2 h-4 w-4" />
+                    <span>插入光标</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem @click="insertCommonVariable('date')">
+                     <CalendarIcon class="mr-2 h-4 w-4" />
+                    <span>插入日期</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem @click="variableSelectorRef?.showModal()">
+                     <MoreHorizontalIcon class="mr-2 h-4 w-4" />
+                    <span>更多</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              <!-- Preview Button -->
               <Tooltip>
                 <TooltipTrigger as-child>
                   <Button type="button" variant="ghost" size="icon" @click="showPreview" class="h-7 w-7">
@@ -209,6 +199,8 @@
                 </TooltipContent>
               </Tooltip>
             </div>
+            <!-- VariableSelector Component moved inside TooltipProvider -->
+            <VariableSelector ref="variableSelectorRef" @select="insertVariable" />
           </TooltipProvider>
         </div>
       </div>
@@ -435,7 +427,10 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   XIcon,
-  HelpCircleIcon
+  HelpCircleIcon,
+  MousePointerClickIcon,
+  MoreHorizontalIcon,
+  TextCursorInputIcon
 } from 'lucide-vue-next';
 import type { Match } from '../../types/espanso'; // Import Match type
 import { Transition } from 'vue'; // Ensure Transition is imported
@@ -446,6 +441,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '../ui/select'; // Changed path
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '../ui/dropdown-menu' // Removed @/ prefix
 
 // 定义props
 const props = defineProps<{
@@ -537,6 +540,9 @@ const previewContent = ref('');
 const isFormModified = ref(false);
 // 原始表单数据，用于比较是否有修改
 const originalFormData = ref<RuleFormState | null>(null);
+
+// Add ref for VariableSelector
+const variableSelectorRef = ref<InstanceType<typeof VariableSelector> | null>(null);
 
 // Expose only the method to get the current form data
 defineExpose({

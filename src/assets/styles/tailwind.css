@@ -189,3 +189,24 @@
     @apply px-6 py-4 whitespace-nowrap text-sm text-gray-500;
   }
 }
+
+/* 强制移除按钮焦点和轮廓样式 */
+button:focus,
+button:focus-visible,
+button:focus-within,
+[role="button"]:focus,
+[role="button"]:focus-visible,
+[type="button"]:focus,
+[type="button"]:focus-visible,
+.btn:focus,
+.btn:focus-visible,
+[class*="button"]:focus,
+[class*="button"]:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+  -moz-box-shadow: none !important;
+  border-color: transparent !important;
+  ring-width: 0 !important;
+  ring-offset-width: 0 !important;
+}
