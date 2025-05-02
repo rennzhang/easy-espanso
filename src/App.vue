@@ -35,25 +35,8 @@
       <!-- 主布局 -->
       <MainLayout />
 
-      <!-- Global Toast Notification -->
-      <Transition name="toast-fade">
-        <div
-          v-if="isToastVisible"
-          class="fixed top-5 right-5 py-2 px-4 pr-8 rounded-md shadow-lg text-sm font-medium z-50 min-w-[250px] max-w-sm"
-          :class="{
-            'bg-red-500 text-white': toastType === 'error',
-            // Add other types if needed, e.g., bg-blue-500 for info
-          }"
-        >
-          <span>{{ toastMessage }}</span>
-          <button
-            @click="store.hideToast"
-            class="absolute top-1/2 right-2 transform -translate-y-1/2 text-white/70 hover:text-white focus:outline-none"
-          >
-            <XIcon class="h-4 w-4" />
-          </button>
-        </div>
-      </Transition>
+      <!-- Global Sonner Toaster -->
+      <Toaster position="top-right" richColors />
     </template>
   </div>
 </template>
@@ -65,7 +48,7 @@ import { detectEnvironment, getEspansoConfigDir, showOpenDirectoryDialog, saveCo
 import MainLayout from './components/layout/MainLayout.vue';
 import { FolderIcon, LoaderIcon, CheckIcon, XIcon } from 'lucide-vue-next';
 import type { PreloadApi, FileSystemNode } from './types/preload';
-import { Transition } from 'vue';
+import { Toaster } from 'vue-sonner';
 
 // 声明全局 window 对象的类型
 declare global {
@@ -97,83 +80,6 @@ const isLoading = ref(true);
 const needsConfigSelection = ref(false);
 const environment = ref<'electron' | 'web'>('web');
 const configData = ref<FileSystemNode[]>([]);
-
-// Global Toast computed properties
-const isToastVisible = computed(() => store.state.toastVisible);
-const toastMessage = computed(() => store.state.toastMessage);
-const toastType = computed(() => store.state.toastType);
-
-// 加载Electron默认配置
-const loadElectronDefaultConfig = async () => {
-  try {
-    console.log('尝试获取Electron默认配置路径...');
-    // 获取默认配置路径
-    const defaultConfigPath = await getDefaultEspansoConfigPath();
-    console.log('默认配置路径:', defaultConfigPath);
-
-    if (!defaultConfigPath) {
-      console.log('未找到默认配置路径');
-      return false;
-    }
-
-    // 确保路径使用正确的分隔符
-    const normalizedConfigPath = defaultConfigPath.replace(/\\/g, '/');
-
-    // 扫描配置目录
-    console.log('扫描目录结构...');
-    const fileTree = await scanDirectory(normalizedConfigPath);
-    configData.value = fileTree;
-    console.log('文件树结构:', fileTree);
-
-    // 保存配置目录路径
-    saveConfigDirPath(normalizedConfigPath);
-
-    // 直接加载整个配置目录，让新的树结构逻辑处理文件
-    console.log('加载配置目录:', normalizedConfigPath);
-    await store.loadConfig(normalizedConfigPath);
-
-    // 检查是否成功加载
-    const hasMatches = store.getAllMatchesFromTree().length > 0;
-    const hasGroups = store.getAllGroupsFromTree().length > 0;
-    const hasGlobalConfig = store.state.globalConfig !== null;
-
-    console.log('加载结果:', {
-      hasMatches,
-      hasGroups,
-      hasGlobalConfig,
-      configTree: store.state.configTree.length
-    });
-
-    return hasMatches || hasGroups || hasGlobalConfig || store.state.configTree.length > 0;
-  } catch (error: any) {
-    console.error('加载Electron默认配置失败:', error);
-    return false;
-  }
-};
-
-// 递归查找默认配置文件路径
-const findDefaultConfigPath = (nodes: FileSystemNode[]): string | null => {
-  for (const node of nodes) {
-    if (node.type === 'directory' && node.name === 'config') {
-      // 在config目录中查找default.yml
-      if (node.children) {
-        const defaultConfig = node.children.find(
-          child => child.type === 'file' && (child.name === 'default.yml' || child.name === 'default.yaml')
-        );
-        if (defaultConfig) {
-          return defaultConfig.path;
-        }
-      }
-    } else if (node.type === 'directory' && node.children) {
-      // 递归查找子目录
-      const result = findDefaultConfigPath(node.children);
-      if (result) {
-        return result;
-      }
-    }
-  }
-  return null;
-};
 
 onMounted(() => {
   // Start the initialization process that waits for the preload API AND IPC handlers
@@ -269,6 +175,78 @@ async function initializeAppConfig() {
     console.log('[App Init] Core initialization finished.');
   }
 }
+
+// 加载Electron默认配置
+const loadElectronDefaultConfig = async () => {
+  try {
+    console.log('尝试获取Electron默认配置路径...');
+    // 获取默认配置路径
+    const defaultConfigPath = await getDefaultEspansoConfigPath();
+    console.log('默认配置路径:', defaultConfigPath);
+
+    if (!defaultConfigPath) {
+      console.log('未找到默认配置路径');
+      return false;
+    }
+
+    // 确保路径使用正确的分隔符
+    const normalizedConfigPath = defaultConfigPath.replace(/\\/g, '/');
+
+    // 扫描配置目录
+    console.log('扫描目录结构...');
+    const fileTree = await scanDirectory(normalizedConfigPath);
+    configData.value = fileTree;
+    console.log('文件树结构:', fileTree);
+
+    // 保存配置目录路径
+    saveConfigDirPath(normalizedConfigPath);
+
+    // 直接加载整个配置目录，让新的树结构逻辑处理文件
+    console.log('加载配置目录:', normalizedConfigPath);
+    await store.loadConfig(normalizedConfigPath);
+
+    // 检查是否成功加载
+    const hasMatches = store.getAllMatchesFromTree().length > 0;
+    const hasGroups = store.getAllGroupsFromTree().length > 0;
+    const hasGlobalConfig = store.state.globalConfig !== null;
+
+    console.log('加载结果:', {
+      hasMatches,
+      hasGroups,
+      hasGlobalConfig,
+      configTree: store.state.configTree.length
+    });
+
+    return hasMatches || hasGroups || hasGlobalConfig || store.state.configTree.length > 0;
+  } catch (error: any) {
+    console.error('加载Electron默认配置失败:', error);
+    return false;
+  }
+};
+
+// 递归查找默认配置文件路径
+const findDefaultConfigPath = (nodes: FileSystemNode[]): string | null => {
+  for (const node of nodes) {
+    if (node.type === 'directory' && node.name === 'config') {
+      // 在config目录中查找default.yml
+      if (node.children) {
+        const defaultConfig = node.children.find(
+          child => child.type === 'file' && (child.name === 'default.yml' || child.name === 'default.yaml')
+        );
+        if (defaultConfig) {
+          return defaultConfig.path;
+        }
+      }
+    } else if (node.type === 'directory' && node.children) {
+      // 递归查找子目录
+      const result = findDefaultConfigPath(node.children);
+      if (result) {
+        return result;
+      }
+    }
+  }
+  return null;
+};
 
 // 选择配置文件夹
 const selectConfigFolder = async () => {

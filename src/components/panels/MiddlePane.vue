@@ -76,7 +76,7 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto">
+    <div class="flex-1 overflow-y-auto middle-pane-scrollbar">
       <div
         v-if="loading"
         class="flex flex-col justify-center items-center h-full gap-4"
@@ -138,13 +138,14 @@
             :selected-id="selectedItemId"
             :searchQuery="searchQuery.trim()"
             @select="handleTreeItemSelect"
+            @request-rename="openRenameDialog"
           />
         </div>
 
         <!-- 列表视图 -->
         <div v-else class="p-0">
           <Card
-            v-for="item in filteredItems" 
+            v-for="item in filteredItems"
             :key="item.id"
             :class="{
               'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
@@ -160,7 +161,7 @@
                     <span class="font-semibold text-foreground">
                       <HighlightText
                         v-if="searchQuery.trim()"
-                        :text="(item as Match).trigger"
+                        :text="(item as Match).trigger || ''"
                         :searchQuery="searchQuery.trim()"
                       />
                       <template v-else>{{ (item as Match).trigger }}</template>
@@ -197,7 +198,7 @@
                       getContentTypeLabel((item as Match).contentType)
                     }}</Badge>
                     <span v-if="(item as Match).updatedAt">{{
-                      formatDate((item as Match).updatedAt)
+                      formatDate((item as Match).updatedAt!)
                     }}</span>
                   </div>
                 </div>
@@ -220,7 +221,7 @@
                   >
                     <Badge variant="outline" class="bg-muted">分组</Badge>
                     <span v-if="(item as Group).updatedAt">{{
-                      formatDate((item as Group).updatedAt)
+                      formatDate((item as Group).updatedAt!)
                     }}</span>
                   </div>
                 </div>
@@ -230,6 +231,18 @@
         </div>
       </div>
     </div>
+
+    <!-- 输入对话框 -->
+    <InputDialog
+      v-model:visible="inputDialogVisible"
+      :title="inputDialogTitle"
+      :label="inputDialogLabel"
+      :initial-value="inputDialogInitialValue"
+      :placeholder="inputDialogPlaceholder"
+      @submit="handleRenameSubmit"
+      @cancel="handleRenameCancel"
+    />
+
   </div>
 </template>
 
@@ -241,14 +254,18 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Card, CardContent } from "../ui/card";
 import ConfigTree from "@/components/ConfigTree.vue";
+import type { TreeNodeItem } from "@/components/ConfigTree.vue";
 import HighlightText from "@/components/common/HighlightText.vue";
+import InputDialog from "@/components/common/InputDialog.vue";
 import {
   SearchIcon,
   FolderIcon,
   FileTextIcon,
   XIcon,
   ListIcon,
-  FolderTreeIcon
+  FolderTreeIcon,
+  Trash2Icon,
+  PencilIcon,
 } from "lucide-vue-next";
 import { Match, Group } from "../../types/espanso";
 
@@ -257,6 +274,15 @@ const searchQuery = ref("");
 const viewMode = ref<"tree" | "list">("tree");
 const showSearchBar = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
+
+// --- Input Dialog State ---
+const inputDialogVisible = ref(false);
+const inputDialogTitle = ref("");
+const inputDialogLabel = ref("");
+const inputDialogInitialValue = ref("");
+const inputDialogPlaceholder = ref("");
+let renameActionCallback: ((newValue: string) => void) | null = null;
+let renameTargetItem: Group | null = null;
 
 // 设置键盘快捷键来打开搜索
 onMounted(() => {
@@ -622,10 +648,6 @@ const clearFilters = () => {
   searchQuery.value = "";
 };
 
-// 添加新规则功能已移至右侧面板
-
-// 添加新分组功能已移除
-
 // 切换视图模式
 const toggleViewMode = () => {
   viewMode.value = viewMode.value === "tree" ? "list" : "tree";
@@ -671,4 +693,68 @@ const totalItemCount = computed(() => {
   const groups = store.getAllGroupsFromTree();
   return matches.length + groups.length;
 });
+
+// --- Input Dialog Logic (Adjusted for rename request) ---
+const openRenameDialog = (item: TreeNodeItem) => { 
+  // Expecting item to be the TreeNodeItem for a group from ConfigTree
+  if (item.type === 'group' && item.group) { // Check if it's a group and has the original group data
+    renameTargetItem = item.group; // Store the actual Group object
+    inputDialogTitle.value = "重命名分组";
+    inputDialogLabel.value = "新名称";
+    inputDialogInitialValue.value = item.group.name; // Use name from the group data
+    inputDialogPlaceholder.value = "输入新的分组名称";
+    inputDialogVisible.value = true;
+  } else {
+    console.warn('[MiddlePane] Received rename request for non-group item or missing group data:', item);
+    renameTargetItem = null;
+  }
+};
+
+const handleRenameSubmit = (newValue: string) => {
+  if (renameTargetItem && newValue.trim()) {
+    // Create the updated group object
+    const updatedGroup = { ...renameTargetItem, name: newValue.trim() };
+    console.log('[MiddlePane] Submitting rename for group:', renameTargetItem.id, 'New name:', newValue.trim());
+    store.updateItem(updatedGroup); // Call store action to update
+  } else {
+    console.warn('[MiddlePane] Rename submit failed: No target item or empty value.');
+  }
+  // Reset state regardless of success
+  renameTargetItem = null;
+  inputDialogVisible.value = false;
+};
+
+const handleRenameCancel = () => {
+  renameTargetItem = null; // Clear target item on cancel
+  inputDialogVisible.value = false;
+};
 </script>
+
+<style>
+/* 自定义滚动条，使其不占空间 (覆盖) */
+.middle-pane-scrollbar {
+  overflow-y: auto; /* 确保滚动 */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.middle-pane-scrollbar::-webkit-scrollbar {
+  width: 0px; /* Chrome, Safari, Opera */
+  background: transparent; /* Optional: just make scrollbar invisible */
+}
+
+/* 如果需要一个非常细的滚动条 */
+/*
+.middle-pane-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.middle-pane-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.middle-pane-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(155, 155, 155, 0.5);
+  border-radius: 20px;
+  border: transparent;
+}
+*/
+</style>

@@ -7,7 +7,7 @@
     <div v-else-if="!treeData || treeData.length === 0" class="p-4 text-muted-foreground">
       没有找到配置文件
     </div>
-    <div v-else class="tree-container px-0 mx-0 drop-zone" v-sortable="rootSortableOptions" data-parent-id="root" data-container-type="root">
+    <div v-else class="tree-container w-full drop-zone" v-sortable="rootSortableOptions" data-parent-id="root" data-container-type="root">
       <template v-for="node in treeData" :key="node.id">
          <TreeNode
             :node="node"
@@ -15,9 +15,11 @@
             :searchQuery="searchQuery"
             :parentMatches="false"
             :draggable="true"
+            :level="0"
             @select="handleSelect"
             @move="handleItemMove"
             @moveNode="handleNodeMove"
+            @request-rename="handleRequestRename"
           />
       </template>
     </div>
@@ -50,6 +52,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: 'select', item: Match | Group): void;
+  (e: 'request-rename', item: TreeNodeItem): void;
 }>();
 
 const store = useEspansoStore();
@@ -457,6 +460,26 @@ const sortableOptions = computed(() => ({
   },
   onUpdate: handleSortUpdate,
 }));
+
+const handleRequestRename = (item: TreeNodeItem) => {
+  // Add defensive check for item
+  if (!item) {
+    console.warn('[ConfigTree] handleRequestRename received undefined item.');
+    return;
+  }
+
+  // 只处理 group 类型的节点 for renaming
+  if (item.type !== 'group') {
+    console.log('[ConfigTree] Ignoring request-rename for non-group node:', item.type);
+    return;
+  }
+
+  console.log('[ConfigTree] Received request-rename event from TreeNode:', item.id, item.type);
+
+  // Re-emit the event upwards
+  emit('request-rename', item); 
+  console.log('[ConfigTree] Emitted request-rename upwards with item:', item);
+};
 </script>
 
 <style scoped>
@@ -464,14 +487,15 @@ const sortableOptions = computed(() => ({
   width: 100%;
   height: 100%;
   overflow-y: auto;
+  overflow-x: hidden; /* 隐藏横向滚动条 */
   padding: 0;
   margin: 0;
 }
 
 .tree-container {
-  padding: 0.75rem;
-  margin: 0;
   width: 100%;
+  margin: 0;
+  padding: 0; /* 移除左侧内边距，恢复为0 */
 }
 
 /* 拖拽样式 */
