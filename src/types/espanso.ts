@@ -17,7 +17,7 @@ export interface Match {
   exclude_apps?: string[];
   vars?: any[]; // Consider defining a Var type if structure is known
   search_terms?: string[]; // Added based on RuleEditForm
-  priority?: number; // Added based on RuleEditForm
+  priority?: number; // Espanso's conflict priority
   hotkey?: string; // Added based on RuleEditForm
   image_path?: string; // Added based on RuleEditForm
   markdown?: string; // Added based on RuleEditForm
@@ -26,6 +26,7 @@ export interface Match {
   contentType?: string; // Added based on RuleEditForm (internal UI state)
   filePath?: string; // Added path tracking
   updatedAt?: string; // Added timestamp
+  guiOrder?: number; // Added for UI display sorting only
   // Allow other Espanso-specific fields
   [key: string]: any;
 }
@@ -40,6 +41,7 @@ export interface Group {
   groups?: Group[];
   filePath?: string; // Added path tracking
   updatedAt?: string; // Added timestamp
+  guiOrder?: number; // Added for UI display sorting only
   // Allow other Espanso-specific fields
   [key: string]: any;
 }

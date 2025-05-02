@@ -160,6 +160,8 @@
 
         <!-- 树视图 -->
         <div v-if="viewMode === 'tree'" class="h-full m-0">
+          <!-- Log: Rendering ConfigTree -->
+          {{ console.log('[MiddlePane] Rendering ConfigTree component because viewMode is tree') }}
           <ConfigTree
             :selected-id="selectedItemId"
             :searchQuery="searchQuery.trim()"
@@ -169,18 +171,18 @@
 
         <!-- 列表视图 -->
         <div v-else class="p-0">
-          <div class="flex flex-col gap-2">
-            <Card
-              v-for="item in filteredItems"
-              :key="item.id"
-              :class="{
-                'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
-                  selectedItemId === item.id,
-              }"
-              class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md"
-              @click="selectItem(item.id)"
-            >
-              <CardContent class="p-4">
+          <Card
+            v-for="item in filteredItems" 
+            :key="item.id"
+            :class="{
+              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
+                selectedItemId === item.id,
+            }"
+            class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md rounded-none mb-2"
+            @click="selectItem(item.id)"
+          >
+            <CardContent class="p-4 flex items-start gap-2">
+              <div class="flex-1">
                 <div v-if="item.type === 'match'">
                   <div class="flex justify-between items-start">
                     <span class="font-semibold text-foreground">
@@ -250,9 +252,9 @@
                     }}</span>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>
@@ -274,7 +276,7 @@ import {
   FileTextIcon,
   XIcon,
   ListIcon,
-  FolderTreeIcon,
+  FolderTreeIcon
 } from "lucide-vue-next";
 import { Match, Group } from "../../types/espanso";
 
@@ -456,7 +458,7 @@ const selectedItemId = computed(() => store.state.selectedItemId);
 const filterTags = computed(() => store.state.selectedTags);
 const loading = computed(() => store.state.config === null);
 
-// 过滤和排序项目 (Refactored for hierarchical inclusion in list view)
+// 过滤和排序项目
 const filteredItems = computed(() => {
   if (
     !config.value ||
@@ -565,11 +567,19 @@ const filteredItems = computed(() => {
   // 4. Convert Map back to Array and Sort
   let finalItems = Array.from(finalItemMap.values());
 
-  // Sort: Newest first
+  // Sort: guiOrder first, then date
   finalItems.sort((a, b) => {
+    const orderA = a.guiOrder ?? Infinity; // Treat undefined as lowest order
+    const orderB = b.guiOrder ?? Infinity;
+
+    if (orderA !== orderB) {
+      return orderA - orderB; // Lower guiOrder number comes first
+    }
+
+    // If guiOrders are the same or both undefined, sort by date
     const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
     const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-    return dateB - dateA;
+    return dateB - dateA; // Newest date first
   });
 
   return finalItems;

@@ -1,0 +1,139 @@
+/* 全局拖拽样式 */
+
+/* 拖拽中的元素 */
+.sortable-drag {
+  opacity: 0.8;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border: 1px dashed #3b82f6 !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000 !important;
+}
+
+/* 拖拽中的占位符 */
+.sortable-ghost {
+  opacity: 0.5;
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  border: 1px dashed #60a5fa !important;
+  border-radius: 0.25rem;
+  cursor: grabbing !important;
+}
+
+/* 拖拽源容器 */
+.sortable-source {
+  background-color: rgba(59, 130, 246, 0.05);
+  border-radius: 0.25rem;
+}
+
+/* 拖拽中的body样式 */
+body.dragging-active {
+  cursor: grabbing !important;
+}
+
+/* 可拖拽区域的视觉提示 */
+.cursor-grab {
+  cursor: grab;
+}
+.cursor-grab:active {
+  cursor: grabbing;
+}
+
+/* 树节点悬停时的强调效果 */
+.tree-node:hover > div > div {
+  background-color: rgba(59, 130, 246, 0.05);
+}
+
+/* 拖拽过程中的树形结构视觉辅助 */
+.children.sortable-source:before {
+  content: '';
+  display: block;
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background-color: rgba(59, 130, 246, 0.5);
+}
+
+/* 正在被拖拽的元素 */
+.being-dragged {
+  opacity: 0.9 !important;
+}
+
+/* 强制隐藏正在拖拽元素的子节点容器 */
+.being-dragged .children {
+  display: none !important;
+}
+
+/* 备用拖拽时的克隆元素样式 */
+.sortable-fallback {
+  opacity: 0.8;
+  background-color: rgba(59, 130, 246, 0.1) !important;
+  border: 1px dashed #3b82f6 !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+  z-index: 1000 !important;
+  max-height: 30px !important;
+  overflow: hidden !important;
+}
+
+/* 确保克隆元素中的子元素容器不可见 */
+.sortable-fallback .children {
+  display: none !important;
+}
+
+/* 安全拖拽区域样式 */
+.drop-zone {
+  position: relative;
+}
+
+/* 有效的放置目标 */
+.valid-drop-target {
+  background-color: rgba(34, 197, 94, 0.1) !important;
+  border: 1px dashed #22c55e !important;
+  transition: all 0.2s ease;
+}
+
+/* 无效的放置目标 */
+.invalid-drop-target {
+  background-color: rgba(239, 68, 68, 0.1) !important;
+  border: 1px dashed #ef4444 !important;
+  transition: all 0.2s ease;
+}
+
+/* 拖拽过程中突出显示安全区域 */
+body.dragging-active .drop-zone {
+  background-color: rgba(59, 130, 246, 0.03);
+  border-radius: 0.25rem;
+  transition: background-color 0.3s ease;
+}
+
+/* 拖拽过程中安全区域的悬停效果 */
+body.dragging-active .drop-zone:hover {
+  background-color: rgba(59, 130, 246, 0.08);
+}
+
+/* 拖拽取消动画 */
+@keyframes drag-cancelled-animation {
+  0% {
+    transform: translateX(0);
+    background-color: rgba(239, 68, 68, 0.1);
+  }
+  25% {
+    transform: translateX(-10px);
+  }
+  50% {
+    transform: translateX(10px);
+  }
+  75% {
+    transform: translateX(-5px);
+  }
+  100% {
+    transform: translateX(0);
+    background-color: transparent;
+  }
+}
+
+.drag-cancelled {
+  animation: drag-cancelled-animation 0.5s ease;
+  border: 1px dashed #ef4444;
+  border-radius: 0.25rem;
+}

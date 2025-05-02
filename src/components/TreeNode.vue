@@ -1,26 +1,26 @@
 <template>
-  <div class="tree-node px-0 pl-0" v-if="isVisible" :id="`tree-node-${node.id}`">
+  <div class="tree-node px-0 pl-0" v-if="isVisible" :id="`tree-node-${node.id}`" :data-id="node.id" :data-node-type="node.type">
     <!-- 非叶子节点（文件夹、文件、分组） -->
     <div
       v-if="node.type !== 'match'"
       :class="node.type + '-node'"
-      @click="toggleFolder"
+      @click="toggleFolder($event)"
     >
       <div
-        class="flex items-center w-full cursor-pointer px-0 py-1 rounded"
+        class="flex items-center w-full px-0 py-1 rounded group"
         :class="{
           'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground': isSelected,
           'hover:bg-accent hover:text-accent-foreground': !isSelected,
         }"
       >
-        <span class="mr-1 text-muted-foreground" v-if="hasChildren">
+        <span class="mr-1 text-muted-foreground cursor-grab" v-if="hasChildren">
           <ChevronRightIcon v-if="!isOpen" class="h-4 w-4" />
           <ChevronDownIcon v-else class="h-4 w-4" />
         </span>
         <span class="mr-1 text-muted-foreground" v-else>
           <span class="w-4 inline-block"></span>
         </span>
-        <span class="text-sm font-medium">
+        <span class="text-sm font-medium cursor-grab flex-grow">
           <HighlightText
             v-if="searchQuery"
             :text="displayName"
@@ -34,6 +34,10 @@
         >
           {{ visibleChildCount }}
         </span>
+        <!-- 拖拽手柄 -->
+        <span class="cursor-grab ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <GripVerticalIcon class="h-4 w-4 text-muted-foreground" />
+        </span>
       </div>
     </div>
 
@@ -41,10 +45,10 @@
     <div
       v-else-if="node.type === 'match'"
       class="match-node"
-      @click="selectNode"
+      @click="selectNode($event)"
     >
       <div
-        class="flex items-center w-full cursor-pointer px-0 py-1 rounded group"
+        class="flex items-center w-full px-0 py-1 rounded group"
         :class="{
           'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground': isSelected,
           'hover:bg-accent hover:text-accent-foreground': !isSelected,
@@ -52,7 +56,7 @@
       >
         <span class="w-4 inline-block"></span>
         <ZapIcon class="h-4 w-4 mr-1 text-blue-500" />
-        <span class="text-sm">
+        <span class="text-sm cursor-grab flex-grow">
           <HighlightText
             v-if="searchQuery"
             :text="node.name"
@@ -75,39 +79,56 @@
             <template v-else>{{ node.match.description }}</template>
           </span>
         </div>
+
+        <!-- 拖拽手柄 -->
+        <span class="cursor-grab ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          <GripVerticalIcon class="h-4 w-4 text-muted-foreground" />
+        </span>
       </div>
     </div>
 
     <!-- 子节点 -->
-    <div v-if="hasChildren && isOpen" class="children pl-2 pr-0">
+    <div
+      v-if="hasChildren && isOpen"
+      class="children pl-2 pr-0 drop-zone"
+      v-sortable="childSortableOptions"
+      :data-parent-id="node.id"
+    >
       <TreeNode
         v-for="child in node.children"
         :key="child.id"
         :node="child"
+        :parentId="node.id"
         :selected-id="selectedId"
         :searchQuery="searchQuery"
         :parentMatches="selfMatchesSearch || props.parentMatches"
+        :draggable="props.draggable"
         @select="$emit('select', $event)"
+        @move="$emit('move', $event)"
       />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineProps, defineEmits, watch } from "vue";
-import { ChevronRightIcon, ChevronDownIcon, ZapIcon } from "lucide-vue-next";
+import { ref, computed, defineProps, defineEmits, watch, onMounted, onUnmounted } from "vue";
+import { ChevronRightIcon, ChevronDownIcon, ZapIcon, GripVerticalIcon } from "lucide-vue-next";
 import type { TreeNodeItem } from "./ConfigTree.vue";
 import HighlightText from "./common/HighlightText.vue";
+import Sortable from 'sortablejs'; // 导入 Sortable 类型
 
 const props = defineProps<{
   node: TreeNodeItem;
+  parentId?: string | null; // 添加 parentId prop
   selectedId?: string | null;
   searchQuery?: string;
   parentMatches?: boolean; // 父节点是否匹配搜索词
+  draggable?: boolean; // 是否可拖拽
 }>();
 
 const emit = defineEmits<{
   (e: "select", node: TreeNodeItem): void;
+  (e: "move", payload: { itemId: string; oldParentId: string | null; newParentId: string | null; oldIndex: number; newIndex: number }): void; // 添加 move 事件
 }>();
 
 // 默认展开所有节点
@@ -121,11 +142,19 @@ watch(() => props.searchQuery, (newQuery) => {
 }, { immediate: true });
 
 // 切换文件夹展开/折叠状态
-const toggleFolder = () => {
+const toggleFolder = (event: MouseEvent) => {
+  // 移除拖拽句柄检查
+  // if ((event.target as HTMLElement).closest('.drag-handle')) {
+  //   return;
+  // }
   isOpen.value = !isOpen.value;
 };
 
-const selectNode = () => {
+const selectNode = (event: MouseEvent) => {
+  // 移除拖拽句柄检查
+  // if ((event.target as HTMLElement).closest('.drag-handle')) {
+  //   return;
+  // }
   emit("select", props.node);
 };
 
@@ -177,12 +206,12 @@ const selfMatchesSearch = computed(() => {
       return checkMatch(props.node.name, regex);
     }
 
-    // --- Match Node Checks --- 
+    // --- Match Node Checks ---
     if (props.node.match) {
       const match = props.node.match;
-      
+
       // Check trigger or triggers array
-      if (checkMatch(match.trigger, regex) || 
+      if (checkMatch(match.trigger, regex) ||
           (Array.isArray(match.triggers) && match.triggers.some(t => checkMatch(t, regex)))) {
         return true;
       }
@@ -272,23 +301,39 @@ const descendantMatchesSearch = computed(() => {
 
 // Computed: Determine if the node should be visible
 const isVisible = computed(() => {
+  const noSearch = !props.searchQuery?.trim();
+  const selfMatch = selfMatchesSearch.value;
+  const descendantMatch = descendantMatchesSearch.value;
+  const parentMatch = props.parentMatches;
+
+  const visible = noSearch || parentMatch || selfMatch || descendantMatch;
+
+  console.log(`[TreeNode ${props.node.name}] isVisible check:`, {
+    noSearch,
+    parentMatch,
+    selfMatch,
+    descendantMatch,
+    searchQuery: props.searchQuery,
+    result: visible
+  });
+
   // Always visible if there is no search query
-  if (!props.searchQuery?.trim()) {
+  if (noSearch) {
     return true;
   }
 
   // 如果父节点匹配搜索词，则子节点也应该可见
-  if (props.parentMatches) {
+  if (parentMatch) {
     return true;
   }
 
   // 如果节点本身匹配搜索词，则节点应该可见
-  if (selfMatchesSearch.value) {
+  if (selfMatch) {
     return true;
   }
 
   // 如果节点的子节点匹配搜索词，则节点应该可见
-  if (descendantMatchesSearch.value) {
+  if (descendantMatch) {
     return true;
   }
 
@@ -418,6 +463,178 @@ watch(() => props.parentMatches, (newValue) => {
     isOpen.value = true;
   }
 }, { immediate: true });
+
+// 处理子节点列表的 SortableJS 更新事件
+const handleChildSortUpdate = (event: Sortable.SortableEvent) => {
+  console.log('[TreeNode SortableJS onUpdate]', event);
+  const { item, from, to, oldIndex, newIndex } = event;
+
+  if (oldIndex === undefined || newIndex === undefined) return;
+
+  const itemId = item.dataset.id; // 需要在 TreeNode 根元素上添加 data-id
+  if (!itemId) {
+    console.error('Dragged item missing data-id!');
+    return;
+  }
+
+  // 如果 from 和 to 是同一个列表，则是在当前节点内排序
+  // 如果 from 和 to 不同，则是移动到了其他节点或根节点
+  // 这里简化处理，总是将事件冒泡到顶层处理
+  emit('move', {
+    itemId: itemId,
+    oldParentId: props.node.id, // 'from' list corresponds to this node's children
+    newParentId: props.node.id, // Assume moved within the same parent for now (needs refinement)
+    oldIndex: oldIndex,
+    newIndex: newIndex,
+  });
+
+  // TODO: 更精确地判断 newParentId 需要检查 event.to
+};
+
+// 子列表的 SortableJS 选项
+const childSortableOptions = computed(() => ({
+  group: 'nested-tree',
+  animation: 150,
+  ghostClass: 'sortable-ghost',
+  dragClass: 'sortable-drag',
+  fallbackOnBody: true,       // 允许拖拽到整个body区域
+  swapThreshold: 0.65,        // 交换阈值
+  handle: '.cursor-grab',     // 只允许通过.cursor-grab元素拖拽
+  emptyInsertThreshold: 10,   // 插入空列表的距离阈值
+  onStart: (evt: Sortable.SortableEvent) => {
+    console.log(`[TreeNode ${props.node.name} SortableJS onStart]`, evt);
+    document.body.classList.add('dragging-active');
+    // 为拖拽的父容器添加一个特殊类，使其显示为可放置区域
+    if (evt.from) {
+      evt.from.classList.add('sortable-source');
+    }
+
+    // 获取被拖拽元素的相关信息
+    const draggedItemId = evt.item.dataset.id;
+    const draggedItemType = evt.item.dataset.nodeType;
+
+    // 如果拖拽的是文件夹或分组，自动折叠它
+    if (draggedItemType === 'folder' || draggedItemType === 'group' || draggedItemType === 'file') {
+      // 找到拖拽元素的TreeNode组件实例
+      const draggedNode = findTreeNodeComponent(evt.item);
+      if (draggedNode) {
+        // 将节点折叠
+        if (typeof draggedNode.isOpen === 'object' && draggedNode.isOpen.value !== undefined) {
+          // 如果是响应式对象
+          draggedNode.isOpen.value = false;
+        } else if (typeof draggedNode === 'boolean') {
+          // 如果是通过DOM操作返回的成功状态
+          // 已经通过模拟点击处理了
+        } else {
+          // 直接尝试DOM操作
+          const childrenContainer = evt.item.querySelector('.children');
+          if (childrenContainer) {
+            (childrenContainer as HTMLElement).style.display = 'none';
+          }
+        }
+      } else {
+        // 备用方案：直接隐藏子容器
+        const childrenContainer = evt.item.querySelector('.children');
+        if (childrenContainer) {
+          (childrenContainer as HTMLElement).style.display = 'none';
+        }
+      }
+
+      // 强制隐藏克隆元素的子容器
+      setTimeout(() => {
+        const draggedClone = document.querySelector('.sortable-fallback');
+        if (draggedClone) {
+          const cloneChildren = draggedClone.querySelector('.children');
+          if (cloneChildren) {
+            (cloneChildren as HTMLElement).style.display = 'none';
+          }
+        }
+      }, 0);
+    }
+  },
+  onEnd: (evt: Sortable.SortableEvent) => {
+    console.log(`[TreeNode ${props.node.name} SortableJS onEnd]`, evt);
+    document.body.classList.remove('dragging-active');
+    // 移除所有可能存在的sortable特殊标记类
+    document.querySelectorAll('.sortable-source').forEach(el => {
+      el.classList.remove('sortable-source');
+    });
+
+    // 检查是否在安全区域内结束拖拽
+    const targetContainer = evt.to;
+    const isInSafeZone = targetContainer.classList.contains('drop-zone') ||
+                         !!targetContainer.closest('.drop-zone');
+
+    // 如果不在安全区域内，不触发move事件，元素会自动返回原位置
+    if (!isInSafeZone) {
+      console.log(`[TreeNode ${props.node.name} SortableJS onEnd] 拖拽取消：不在安全区域内`);
+      return;
+    }
+  },
+  onUpdate: handleChildSortUpdate,
+  // 新增：设置该容器的父级ID，用于识别
+  setData: (dataTransfer: DataTransfer, dragEl: HTMLElement) => {
+    // 设置父节点ID到拖动元素
+    dataTransfer.setData('parentId', props.node.id);
+    dragEl.dataset.parentId = props.node.id;
+  }
+}));
+
+// 创建一个全局组件实例映射，用于在拖拽时访问组件实例
+// 这样可以直接修改组件的状态，而不是通过DOM操作
+const treeNodeInstances = new Map<string, { isOpen: any }>();
+
+// 注册当前组件实例
+onMounted(() => {
+  if (props.node.id) {
+    treeNodeInstances.set(props.node.id, { isOpen });
+  }
+});
+
+// 在组件卸载时移除实例
+onUnmounted(() => {
+  if (props.node.id) {
+    treeNodeInstances.delete(props.node.id);
+  }
+});
+
+// 辅助函数：尝试查找HTML元素对应的TreeNode组件实例
+const findTreeNodeComponent = (element: HTMLElement): any => {
+  // 尝试查找最近的tree-node元素
+  const treeNodeEl = element.closest('.tree-node');
+  if (!treeNodeEl) return null;
+
+  // 获取节点ID
+  const nodeId = treeNodeEl.getAttribute('data-id');
+  if (!nodeId) return null;
+
+  // 尝试从映射中获取组件实例
+  const instance = treeNodeInstances.get(nodeId);
+  if (instance) {
+    return instance;
+  }
+
+  // 备用方案：通过DOM操作
+  const chevronIcon = treeNodeEl.querySelector('.ChevronDownIcon, .ChevronRightIcon');
+  if (chevronIcon) {
+    // 模拟点击折叠图标
+    chevronIcon.dispatchEvent(new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true,
+      view: window
+    }));
+    return true;
+  }
+
+  return null;
+};
+
+// 公共方法：折叠节点
+const collapseNode = () => {
+  if (hasChildren.value) {
+    isOpen.value = false;
+  }
+};
 </script>
 
 <style scoped>
@@ -444,5 +661,23 @@ watch(() => props.parentMatches, (newValue) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* 拖拽句柄样式 */
+.drag-handle {
+  touch-action: none;
+  transition: opacity 0.2s;
+}
+
+.drag-handle:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+  border-radius: 3px;
+}
+
+/* 确保被拖拽的节点在拖拽过程中保持折叠状态 */
+.being-dragged .children,
+.sortable-fallback .children,
+.sortable-ghost .children {
+  display: none !important;
 }
 </style>

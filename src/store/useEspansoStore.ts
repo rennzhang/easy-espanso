@@ -109,6 +109,8 @@ export const useEspansoStore = defineStore('espanso', () => {
     // --- End comment out ---
   });
 
+  let globalGuiOrderCounter = 0; // Define counter outside
+
   // --- Define helper functions outside computed/actions if possible, or ensure they are in scope ---
   // Example: Moving getAllMatchesFromTree (adjust based on actual dependencies)
   const getAllMatchesFromTree = (): Match[] => {
@@ -159,11 +161,13 @@ export const useEspansoStore = defineStore('espanso', () => {
 
   // Process raw match data into internal format
   const processMatch = (match: any, filePath?: string): Match => {
-    console.log('[processMatch] 处理触发词:', match.trigger, match.triggers);
+    globalGuiOrderCounter++; // Increment counter
+    console.log('[processMatch] 处理触发词:', match.trigger, match.triggers, `guiOrder: ${globalGuiOrderCounter}`);
     const baseMatch: Match = {
       id: match.id || generateId('match'),
       type: 'match',
       filePath: filePath || match.filePath || '',
+      guiOrder: globalGuiOrderCounter, // Assign current order
       // Initialize trigger/triggers as undefined
       trigger: undefined,
       triggers: undefined,
@@ -220,6 +224,7 @@ export const useEspansoStore = defineStore('espanso', () => {
 
   // Process raw group data into internal format
   const processGroup = (group: any, filePath?: string): Group => {
+    globalGuiOrderCounter++; // Increment counter for group itself
     const processedGroup: Group = {
       id: group.id || generateId('group'),
       type: 'group',
@@ -227,7 +232,8 @@ export const useEspansoStore = defineStore('espanso', () => {
       matches: [],
       groups: [],
       filePath: filePath || group.filePath || '',
-      ...(group as Omit<Group, 'id' | 'type' | 'name' | 'matches' | 'groups' | 'filePath'>)
+      guiOrder: globalGuiOrderCounter, // Assign current order
+      ...(group as Omit<Group, 'id' | 'type' | 'name' | 'matches' | 'groups' | 'filePath' | 'guiOrder'>)
     };
     processedGroup.matches = Array.isArray(group.matches) ? group.matches.map((match: any) => processMatch(match, filePath)) : [];
     processedGroup.groups = Array.isArray(group.groups) ? group.groups.map((nestedGroup: any) => processGroup(nestedGroup, filePath)) : [];
@@ -365,6 +371,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         return args.join('/'); 
       }
     };
+    globalGuiOrderCounter = 0; // Reset counter before loading
     console.log('开始加载配置，路径:', configDirOrPath);
     state.value.loading = true;
     state.value.error = null;
@@ -808,6 +815,156 @@ export const useEspansoStore = defineStore('espanso', () => {
     // await saveItemToFile(item);
   };
 
+  // --- Tree Manipulation Action --- 
+  const moveTreeItem = (itemId: string, oldParentId: string | null, newParentId: string | null, oldIndex: number, newIndex: number) => {
+    console.log(`[Store moveTreeItem] Moving item ${itemId} from parent ${oldParentId} (index ${oldIndex}) to parent ${newParentId} (index ${newIndex})`);
+    
+    try {
+      // 根据ID查找需要移动的节点
+      const itemToMove = findNodeById(state.value.configTree, itemId);
+      if (!itemToMove) {
+        console.error(`[Store moveTreeItem] Failed to find item with ID ${itemId}`);
+        return;
+      }
+
+      // 根据ID查找旧父节点
+      const oldParent = oldParentId ? findNodeById(state.value.configTree, oldParentId) : { children: state.value.configTree };
+      if (!oldParent || !oldParent.children) {
+        console.error(`[Store moveTreeItem] Failed to find old parent with ID ${oldParentId}`);
+        return;
+      }
+
+      // 根据ID查找新父节点
+      const newParent = newParentId ? findNodeById(state.value.configTree, newParentId) : { children: state.value.configTree };
+      if (!newParent || !newParent.children) {
+        console.error(`[Store moveTreeItem] Failed to find new parent with ID ${newParentId}`);
+        return;
+      }
+
+      // 1. 从旧位置删除节点
+      if (oldIndex >= 0 && oldIndex < oldParent.children.length) {
+        // 创建节点的副本，断开原始引用
+        const itemCopy = JSON.parse(JSON.stringify(itemToMove));
+        oldParent.children.splice(oldIndex, 1);
+        
+        // 2. 插入到新位置
+        // 确保新位置索引有效 
+        const safeNewIndex = Math.min(Math.max(0, newIndex), newParent.children.length);
+        newParent.children.splice(safeNewIndex, 0, itemCopy);
+        
+        // 3. 更新节点的filePath（如果需要）
+        if (itemCopy.type === 'match' || itemCopy.type === 'group') {
+          // 确定新的filePath
+          const newFilePath = determineNewFilePath(itemCopy, newParent);
+          if (newFilePath) {
+            // 更新节点及其子节点的filePath
+            updateNodeFilePath(itemCopy, newFilePath);
+          }
+        }
+        
+        // 4. 更新guiOrder
+        updateGuiOrderForChildren(newParent.children);
+        
+        // 5. 标记为未保存状态
+        state.value.hasUnsavedChanges = true;
+        state.value.autoSaveStatus = 'idle';
+        
+        console.log('[Store moveTreeItem] Successfully moved item');
+      } else {
+        console.error(`[Store moveTreeItem] Invalid oldIndex: ${oldIndex}`);
+      }
+    } catch (error: any) {
+      console.error('[Store moveTreeItem] Error during move operation:', error);
+    }
+  };
+
+  // 根据ID在树中查找节点
+  const findNodeById = (tree: any[], id: string): any => {
+    // 参数验证
+    if (!tree || !Array.isArray(tree) || !id) return null;
+    
+    // 遍历树的第一层
+    for (const node of tree) {
+      // 检查当前节点
+      if (node.id === id) {
+        return node;
+      }
+      
+      // 如果有子节点，递归搜索
+      if (node.children && Array.isArray(node.children)) {
+        const foundInChildren = findNodeById(node.children, id);
+        if (foundInChildren) {
+          return foundInChildren;
+        }
+      }
+    }
+    
+    // 未找到返回null
+    return null;
+  };
+
+  // 确定节点移动后的新文件路径
+  const determineNewFilePath = (node: any, newParent: any): string | null => {
+    // 如果新父节点是文件
+    if (newParent.type === 'file' && newParent.path) {
+      return newParent.path;
+    }
+    
+    // 如果新父节点是文件夹，需要寻找默认文件或第一个文件
+    if (newParent.type === 'folder') {
+      const defaultFile = newParent.children?.find((child: any) => 
+        child.type === 'file' && child.name.toLowerCase() === 'base.yml');
+      
+      // 有默认文件，使用它的路径
+      if (defaultFile && defaultFile.path) {
+        return defaultFile.path;
+      }
+      
+      // 否则使用第一个文件的路径
+      const firstFile = newParent.children?.find((child: any) => child.type === 'file');
+      if (firstFile && firstFile.path) {
+        return firstFile.path;
+      }
+    }
+    
+    // 找不到合适的路径
+    return null;
+  };
+
+  // 递归更新节点及其子节点的文件路径
+  const updateNodeFilePath = (node: any, newFilePath: string): void => {
+    if (!node) return;
+    
+    // 更新当前节点的filePath
+    if (node.type === 'match' || node.type === 'group') {
+      node.filePath = newFilePath;
+    }
+    
+    // 递归更新子节点
+    if (node.children && Array.isArray(node.children)) {
+      for (const child of node.children) {
+        updateNodeFilePath(child, newFilePath);
+      }
+    }
+  };
+
+  // 更新子节点的guiOrder
+  const updateGuiOrderForChildren = (children: any[]): void => {
+    if (!children || !Array.isArray(children)) return;
+    
+    // 遍历所有子节点，更新guiOrder
+    children.forEach((child, index) => {
+      if (child.type === 'match' || child.type === 'group') {
+        child.guiOrder = index + 1; // 从1开始
+      }
+      
+      // 递归处理子节点的子节点
+      if (child.children && Array.isArray(child.children)) {
+        updateGuiOrderForChildren(child.children);
+      }
+    });
+  };
+
   // --- Comment out initialization action --- 
   /*
   const initializePlatformAndFullscreenListener = () => {
@@ -1075,5 +1232,6 @@ export const useEspansoStore = defineStore('espanso', () => {
     // --- Comment out exposure --- 
     // initializePlatformAndFullscreenListener
     // --- End comment out --- 
+    moveTreeItem, // Expose the new action
   };
 });
