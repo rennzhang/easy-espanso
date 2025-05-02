@@ -121,21 +121,22 @@ body.dragging-active .drop-zone:hover {
   box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
   animation: insert-indicator-pulse 1.5s infinite;
   border-radius: 2px; /* 添加圆角 */
+  opacity: 1 !important; /* 确保完全不透明 */
 }
 
 @keyframes insert-indicator-pulse {
   0% {
-    opacity: 0.8;
+    opacity: 0.9;
     box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
     transform: scaleY(1);
   }
   50% {
     opacity: 1;
     box-shadow: 0 0 12px rgba(59, 130, 246, 1);
-    transform: scaleY(1.2);
+    transform: scaleY(1.5); /* 增加脉冲效果 */
   }
   100% {
-    opacity: 0.8;
+    opacity: 0.9;
     box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
     transform: scaleY(1);
   }

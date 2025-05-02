@@ -507,10 +507,31 @@ export const getDefaultEspansoConfigPath = async (): Promise<string | null> => {
 
     // 调用预加载API
     if (window.preloadApi?.getDefaultEspansoConfigPath) {
-      return await window.preloadApi.getDefaultEspansoConfigPath();
+      console.log('调用预加载API: getDefaultEspansoConfigPath');
+      console.log('[fileService] About to call window.preloadApi.getDefaultEspansoConfigPath');
+      const result = await window.preloadApi.getDefaultEspansoConfigPath();
+      console.log('[fileService] getDefaultEspansoConfigPath result:', result);
+      // 处理返回的对象
+      if (result && typeof result === 'object' && 'success' in result) { 
+          if (result.success && result.path) {
+              return result.path;
+          } else {
+              console.warn(`获取默认配置路径失败: ${result.error || 'Unknown error'}`);
+              return null;
+          }
+      } else if (typeof result === 'string') { // 兼容旧的直接返回字符串的情况 (可能由用户的修改导致)
+          console.warn('[fileService] getDefaultEspansoConfigPath 返回了字符串，期望是对象。可能预加载脚本被修改？');
+          return result;
+      } else if (result === null) { // 兼容直接返回 null 的情况
+          console.warn('[fileService] getDefaultEspansoConfigPath 返回了 null。');
+          return null;
+      } else {
+          console.error('[fileService] getDefaultEspansoConfigPath 返回了意外的类型:', typeof result, result);
+          return null;
+      }
     }
 
-    console.warn('预加载API不可用');
+    console.warn('预加载API getDefaultEspansoConfigPath 不可用');
     return null;
   } catch (error) {
     console.error('获取默认配置路径失败:', error);

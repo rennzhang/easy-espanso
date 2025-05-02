@@ -71,13 +71,34 @@ const sortableDirective: Directive<HTMLElement, SortableOptionsExtended> = {
       // 拖拽开始
       onStart: (evt: Sortable.SortableEvent) => {
         console.log('[Sortable onStart]', evt);
-        document.body.classList.add('dragging-active');
 
         const draggedEl = evt.item;
         const nodeType = draggedEl.dataset.nodeType;
 
+        // 只允许match和group节点拖拽，禁止文件夹和文件的拖拽
+        if (nodeType !== 'match' && nodeType !== 'group') {
+          console.log('[Sortable onStart] 禁止拖拽：只允许match和group节点拖拽');
+          // 取消拖拽
+          evt.preventDefault?.();
+          evt.stopPropagation?.();
+
+          // 如果有Sortable实例，取消拖拽
+          if (el._sortableInstance) {
+            el._sortableInstance.option('disabled', true);
+            setTimeout(() => {
+              if (el._sortableInstance) {
+                el._sortableInstance.option('disabled', false);
+              }
+            }, 100);
+          }
+
+          return false;
+        }
+
+        document.body.classList.add('dragging-active');
+
         // 直接折叠被拖拽节点的所有子节点容器
-        if (nodeType === 'folder' || nodeType === 'file' || nodeType === 'group') {
+        if (nodeType === 'group') {
           // 找到并触发chevron点击
           try {
             const chevron = draggedEl.querySelector('.ChevronDownIcon');
@@ -126,8 +147,13 @@ const sortableDirective: Directive<HTMLElement, SortableOptionsExtended> = {
         const draggedEl = evt.item;
         draggedEl.classList.remove('being-dragged');
 
-        // 移除所有指示线
-        document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+        // 移除所有指示线（确保在拖拽结束时移除）
+        setTimeout(() => {
+          document.querySelectorAll('.insert-indicator').forEach(el => {
+            console.log('移除指示线:', el);
+            el.remove();
+          });
+        }, 0);
 
         // 检查是否在安全区域内结束拖拽
         const targetContainer = evt.to;
@@ -203,6 +229,23 @@ const sortableDirective: Directive<HTMLElement, SortableOptionsExtended> = {
           targetContainer: targetContainer?.dataset
         });
 
+        // 规则0：只允许match和group节点拖拽，禁止文件夹和文件的拖拽
+        if (draggedType !== 'match' && draggedType !== 'group') {
+          console.log('禁止拖拽：只允许match和group节点拖拽');
+          // 添加视觉提示，表明这不是有效的放置区域
+          targetEl.classList.add('invalid-drop-target');
+
+          // 使用setTimeout移除类，避免视觉效果持续太久
+          setTimeout(() => {
+            targetEl.classList.remove('invalid-drop-target');
+          }, 300);
+
+          // 移除所有指示线
+          document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+
+          return false; // 禁止此移动
+        }
+
         // 规则1：match和group节点不能拖入folder节点
         if ((draggedType === 'match' || draggedType === 'group') && targetContainerType === 'folder') {
           console.log('禁止拖拽：match/group不能拖入folder');
@@ -267,6 +310,9 @@ const sortableDirective: Directive<HTMLElement, SortableOptionsExtended> = {
           const mouseY = (originalEvent as MouseEvent).clientY;
           const isBeforeTarget = mouseY < rect.top + rect.height / 2;
 
+          // 移除之前的指示线
+          document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+
           if (isBeforeTarget) {
             // 在目标元素上方插入
             insertLine.style.top = `${rect.top - 2}px`;
@@ -281,10 +327,13 @@ const sortableDirective: Directive<HTMLElement, SortableOptionsExtended> = {
 
           // 添加一些内联样式，确保指示线可见
           insertLine.style.backgroundColor = '#3b82f6'; // 蓝色
+          insertLine.style.height = '4px'; // 确保高度足够
           insertLine.style.boxShadow = '0 0 8px rgba(59, 130, 246, 0.8)';
-
-          // 移除之前的指示线
-          document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+          insertLine.style.pointerEvents = 'none'; // 确保不会干扰鼠标事件
+          insertLine.style.zIndex = '2000'; // 确保在最上层
+          insertLine.style.position = 'fixed'; // 确保位置固定
+          insertLine.style.borderRadius = '2px'; // 添加圆角
+          insertLine.style.opacity = '1'; // 确保完全不透明
 
           // 添加新的指示线
           document.body.appendChild(insertLine);
@@ -293,7 +342,8 @@ const sortableDirective: Directive<HTMLElement, SortableOptionsExtended> = {
           console.log('创建指示线:', {
             top: insertLine.style.top,
             left: insertLine.style.left,
-            width: insertLine.style.width
+            width: insertLine.style.width,
+            height: insertLine.style.height
           });
 
           // 使用setTimeout移除类和指示线

@@ -78,6 +78,40 @@ async function writeFile(filePath, content) {
   }
 }
 
+// 重命名文件
+async function renameFile(oldPath, newPath) {
+  console.log(`[Preload] renameFile called: ${oldPath} -> ${newPath}`);
+  if (!fsModule || !pathModule) {
+    console.error('[Preload] renameFile: fs or path module not loaded.');
+    throw new Error('fs or path module not available in preload');
+  }
+  try {
+    // 确保目标目录存在
+    await fsModule.promises.mkdir(pathModule.dirname(newPath), { recursive: true });
+    await fsModule.promises.rename(oldPath, newPath);
+    console.log(`[Preload] renameFile successful: ${oldPath} -> ${newPath}`);
+  } catch (error) {
+    console.error(`[Preload] renameFile error: ${oldPath} -> ${newPath}`, error);
+    throw error;
+  }
+}
+
+// 删除文件
+async function deleteFile(filePath) {
+  console.log(`[Preload] deleteFile called for path: ${filePath}`);
+  if (!fsModule) {
+    console.error('[Preload] deleteFile: fs module not loaded.');
+    throw new Error('fs module not available in preload');
+  }
+  try {
+    await fsModule.promises.unlink(filePath);
+    console.log(`[Preload] deleteFile successful for: ${filePath}`);
+  } catch (error) {
+    console.error(`[Preload] deleteFile error for ${filePath}:`, error);
+    throw error;
+  }
+}
+
 // 显示打开文件对话框
 async function showOpenFileDialog(options) {
   console.log('[Preload] showOpenDialog called with options:', options);
@@ -243,11 +277,11 @@ async function getEspansoConfigFiles() {
     // 获取匹配文件
     const matchDirPath = pathModule.join(configDir, 'match');
     const matchDirExists = await fileExists(matchDirPath);
-    
+
     let matchFiles = [];
     if (matchDirExists) {
       const files = await listFiles(matchDirPath);
-      matchFiles = files.filter(file => 
+      matchFiles = files.filter(file =>
         file.extension === '.yml' || file.extension === '.yaml'
       );
     }
@@ -316,10 +350,10 @@ const scanDirectory = async (dirPath) => {
   try {
     const entries = await fsModule.promises.readdir(dirPath, { withFileTypes: true });
     const result = [];
-    
+
     for (const entry of entries) {
       const fullPath = pathModule.join(dirPath, entry.name);
-      
+
       if (entry.isDirectory()) {
         const children = await scanDirectory(fullPath);
         result.push({
@@ -336,7 +370,7 @@ const scanDirectory = async (dirPath) => {
         });
       }
     }
-    
+
     return result;
   } catch (error) {
     console.error(`扫描目录失败: ${dirPath}`, error);
@@ -349,20 +383,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 文件操作
   readFile,
   writeFile,
+  renameFile,
+  deleteFile,
   fileExists,
   listFiles,
   showOpenFileDialog,
   showOpenDirectoryDialog,
   showSaveDialog,
-  
+
   // Espanso配置
   getEspansoConfigDir,
   getEspansoConfigFiles,
-  
+
   // YAML处理
   parseYaml,
   serializeYaml,
-  
+
   // 系统操作
   getHomedir: () => homeDir,
   getPlatform: () => process.platform,
@@ -382,6 +418,8 @@ try {
     // 文件操作
     readFile,
     writeFile,
+    renameFile,
+    deleteFile,
     fileExists,
     listFiles,
 
@@ -407,7 +445,7 @@ try {
 
     // 通知
     showNotification,
-    
+
     // 环境信息
     isElectron: true
   });
@@ -436,4 +474,4 @@ ipcMain.handle('show-save-dialog', async (event, options) => {
   const result = await dialog.showSaveDialog(options);
   return result;
 });
-*/ 
+*/

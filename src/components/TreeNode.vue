@@ -13,14 +13,14 @@
           'hover:bg-accent hover:text-accent-foreground': !isSelected,
         }"
       >
-        <span class="mr-1 text-muted-foreground cursor-grab" v-if="hasChildren">
+        <span class="mr-1 text-muted-foreground" v-if="hasChildren">
           <ChevronRightIcon v-if="!isOpen" class="h-4 w-4" />
           <ChevronDownIcon v-else class="h-4 w-4" />
         </span>
         <span class="mr-1 text-muted-foreground" v-else>
           <span class="w-4 inline-block"></span>
         </span>
-        <span class="text-sm font-medium cursor-grab flex-grow">
+        <span class="text-sm font-medium flex-grow">
           <HighlightText
             v-if="searchQuery"
             :text="displayName"
@@ -38,10 +38,7 @@
         <span v-if="node.type === 'folder'" class="ml-auto pl-2">
           <FolderIcon class="h-4 w-4 text-muted-foreground" />
         </span>
-        <!-- 拖拽手柄 -->
-        <span class="cursor-grab ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <GripVerticalIcon class="h-4 w-4 text-muted-foreground" />
-        </span>
+        <!-- 拖拽手柄已移除 -->
       </div>
     </div>
 
@@ -84,10 +81,7 @@
           </span>
         </div>
 
-        <!-- 拖拽手柄 -->
-        <span class="cursor-grab ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
-          <GripVerticalIcon class="h-4 w-4 text-muted-foreground" />
-        </span>
+        <!-- 拖拽手柄已移除 -->
       </div>
     </div>
 
@@ -110,6 +104,7 @@
         :draggable="props.draggable"
         @select="$emit('select', $event)"
         @move="$emit('move', $event)"
+        @moveNode="$emit('moveNode', $event)"
       />
     </div>
   </div>
@@ -133,7 +128,8 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   (e: "select", node: TreeNodeItem): void;
-  (e: "move", payload: { itemId: string; oldParentId: string | null; newParentId: string | null; oldIndex: number; newIndex: number }): void; // 添加 move 事件
+  (e: "move", payload: { itemId: string; oldParentId: string | null; newParentId: string | null; oldIndex: number; newIndex: number }): void; // 现有规则/分组移动
+  (e: "moveNode", payload: { nodeId: string; targetParentId: string | null; newIndex: number }): void; // 新增文件/文件夹移动
 }>();
 
 // 默认展开所有节点
@@ -522,147 +518,131 @@ const handleChildSortUpdate = (event: Sortable.SortableEvent) => {
 
 // 子列表的 SortableJS 选项
 const childSortableOptions = computed(() => ({
-  group: 'nested-tree',
+  group: 'configTreeGroup', // 允许在所有TreeNode的children之间拖拽
   animation: 150,
-  ghostClass: 'sortable-ghost',
-  dragClass: 'sortable-drag',
-  fallbackOnBody: true,       // 允许拖拽到整个body区域
-  swapThreshold: 0.65,        // 交换阈值
-  handle: '.cursor-grab',     // 只允许通过.cursor-grab元素拖拽
-  emptyInsertThreshold: 10,   // 插入空列表的距离阈值
-  onStart: (evt: Sortable.SortableEvent) => {
-    console.log(`[TreeNode ${props.node.name} SortableJS onStart]`, evt);
-    document.body.classList.add('dragging-active');
-    // 为拖拽的父容器添加一个特殊类，使其显示为可放置区域
-    if (evt.from) {
-      evt.from.classList.add('sortable-source');
-    }
-
-    // 获取被拖拽元素的相关信息
-    const draggedItemId = evt.item.dataset.id;
-    const draggedItemType = evt.item.dataset.nodeType;
-
-    // 如果拖拽的是文件夹或分组，自动折叠它
-    if (draggedItemType === 'folder' || draggedItemType === 'group' || draggedItemType === 'file') {
-      // 找到拖拽元素的TreeNode组件实例
-      const draggedNode = findTreeNodeComponent(evt.item);
-      if (draggedNode) {
-        // 将节点折叠
-        if (typeof draggedNode.isOpen === 'object' && draggedNode.isOpen.value !== undefined) {
-          // 如果是响应式对象
-          draggedNode.isOpen.value = false;
-        } else if (typeof draggedNode === 'boolean') {
-          // 如果是通过DOM操作返回的成功状态
-          // 已经通过模拟点击处理了
-        } else {
-          // 直接尝试DOM操作
-          const childrenContainer = evt.item.querySelector('.children');
-          if (childrenContainer) {
-            (childrenContainer as HTMLElement).style.display = 'none';
-          }
-        }
-      } else {
-        // 备用方案：直接隐藏子容器
-        const childrenContainer = evt.item.querySelector('.children');
-        if (childrenContainer) {
-          (childrenContainer as HTMLElement).style.display = 'none';
-        }
-      }
-
-      // 强制隐藏克隆元素的子容器
-      setTimeout(() => {
-        const draggedClone = document.querySelector('.sortable-fallback');
-        if (draggedClone) {
-          const cloneChildren = draggedClone.querySelector('.children');
-          if (cloneChildren) {
-            (cloneChildren as HTMLElement).style.display = 'none';
-          }
-        }
-      }, 0);
-    }
-  },
-  onEnd: (evt: Sortable.SortableEvent) => {
-    console.log(`[TreeNode ${props.node.name} SortableJS onEnd]`, evt);
-    document.body.classList.remove('dragging-active');
-    // 移除所有可能存在的sortable特殊标记类
-    document.querySelectorAll('.sortable-source').forEach(el => {
-      el.classList.remove('sortable-source');
-    });
-
-    // 移除所有指示线
-    document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
-
-    // 检查是否在安全区域内结束拖拽
-    const targetContainer = evt.to;
-    const isInSafeZone = targetContainer.classList.contains('drop-zone') ||
-                         !!targetContainer.closest('.drop-zone');
-
-    // 如果不在安全区域内，不触发move事件，元素会自动返回原位置
-    if (!isInSafeZone) {
-      console.log(`[TreeNode ${props.node.name} SortableJS onEnd] 拖拽取消：不在安全区域内`);
-      return;
-    }
-
-    // 检查是否是跨容器拖拽
-    const isCrossContainer = evt.from !== evt.to;
-    if (isCrossContainer) {
-      console.log(`[TreeNode ${props.node.name} SortableJS onEnd] 检测到跨容器拖拽，处理数据更新`);
-
-      // 获取必要的数据
-      const { item, from, to, oldIndex, newIndex } = evt;
-      if (oldIndex === undefined || newIndex === undefined) return;
-
-      const itemId = item.dataset.id;
-      if (!itemId) {
-        console.error('Dragged item missing data-id!');
-        return;
-      }
-
-      // 获取拖拽项的类型
-      const draggedType = item.dataset.nodeType;
-
-      // 获取目标容器的类型
-      const targetContainerType = to.dataset.containerType || '';
-
-      // 如果是match或group类型，且目标容器是folder类型，则禁止拖拽
-      if ((draggedType === 'match' || draggedType === 'group') && targetContainerType === 'folder') {
-        console.log('禁止拖拽：match/group不能拖入folder');
-        return;
-      }
-
-      // 如果是match或group类型，且目标容器不是file、group或root类型，则禁止拖拽
-      if ((draggedType === 'match' || draggedType === 'group') &&
-          targetContainerType !== 'file' && targetContainerType !== 'group' && targetContainerType !== 'root') {
-        console.log('禁止拖拽：match/group只能拖入file/group/root');
-        return;
-      }
-
-      // 获取父容器ID
-      const oldParentId = from.dataset.parentId || null;
-      const newParentId = to.dataset.parentId || null;
-
-      // 触发move事件
-      try {
-        emit('move', {
-          itemId: itemId,
-          oldParentId: oldParentId,
-          newParentId: newParentId,
-          oldIndex: oldIndex,
-          newIndex: newIndex,
-        });
-      } catch (error) {
-        console.error('[TreeNode onEnd] 处理跨容器拖拽时出错:', error);
-      }
-    }
-  },
-  onUpdate: handleChildSortUpdate,
-  // 新增：设置该容器的父级ID，用于识别
-  setData: (dataTransfer: DataTransfer, dragEl: HTMLElement) => {
-    // 设置父节点ID到拖动元素
-    dataTransfer.setData('parentId', props.node.id);
-    dragEl.dataset.parentId = props.node.id;
-  }
+  fallbackOnBody: true,
+  swapThreshold: 0.65,
+  handle: '.cursor-grab', // 使用特定的拖拽手柄
+  onMove: handleDragMove, // 添加 onMove 校验
+  onEnd: handleSortEnd, // 修改 onEnd 处理逻辑
+  filter: '.ignore-drag', // 类名，阻止某些元素触发拖拽
+  preventOnFilter: true, // 阻止在过滤元素上的拖拽
 }));
+
+// SortableJS onMove 回调：校验是否允许放置
+const handleDragMove = (event: Sortable.MoveEvent): boolean => {
+  const draggedElement = event.dragged; // 被拖拽的元素 (TreeNode div)
+  const targetContainer = event.to; // 目标容器 (div.children)
+
+  const draggedNodeType = draggedElement.dataset.nodeType as TreeNodeItem['type'] | undefined;
+  const targetContainerType = targetContainer.dataset.containerType as TreeNodeItem['type'] | 'root' | undefined; // 'root' for ConfigTree top-level
+  const targetParentId = targetContainer.dataset.parentId; // Get parent ID from target container
+
+  // console.log(`[TreeNode onMove] Dragged: ${draggedNodeType} (${draggedElement.dataset.id}), Target Container Type: ${targetContainerType} (Parent ID: ${targetParentId})`);
+
+  if (!draggedNodeType || !targetContainerType) {
+    // console.warn('[TreeNode onMove] Missing node type or container type. Denying move.');
+    return false; // Cannot determine types, deny move
+  }
+
+  // --- 规则/分组 (Match/Group) 的移动规则 ---
+  if (draggedNodeType === 'match' || draggedNodeType === 'group') {
+    // 规则/分组只能移动到 文件(file) 或 分组(group) 容器中
+    const allowedContainerTypes: Array<TreeNodeItem['type'] | 'root'> = ['file', 'group'];
+    if (!allowedContainerTypes.includes(targetContainerType)) {
+      // console.log(`[TreeNode onMove] Denied: ${draggedNodeType} cannot move into ${targetContainerType}`);
+      return false;
+    }
+  }
+  // --- 文件 (File) 的移动规则 ---
+  else if (draggedNodeType === 'file') {
+    // 文件只能移动到 文件夹(folder) 或 根(root) 容器中
+    const allowedContainerTypes: Array<TreeNodeItem['type'] | 'root'> = ['folder', 'root'];
+     if (!allowedContainerTypes.includes(targetContainerType)) {
+      // console.log(`[TreeNode onMove] Denied: ${draggedNodeType} cannot move into ${targetContainerType}`);
+      return false;
+    }
+  }
+  // --- 文件夹 (Folder) 的移动规则 ---
+  else if (draggedNodeType === 'folder') {
+     // 文件夹只能移动到 文件夹(folder) 或 根(root) 容器中
+    const allowedContainerTypes: Array<TreeNodeItem['type'] | 'root'> = ['folder', 'root'];
+    if (!allowedContainerTypes.includes(targetContainerType)) {
+      // console.log(`[TreeNode onMove] Denied: ${draggedNodeType} cannot move into ${targetContainerType}`);
+      return false;
+    }
+    // 防止文件夹拖到自身内部
+    if (draggedElement.dataset.id === targetParentId) {
+      // console.log('[TreeNode onMove] Denied: Cannot move folder into itself.');
+      return false;
+    }
+    // 防止文件夹拖入其子文件夹 (需要递归检查，暂时简化，不允许直接拖入)
+    // A more robust check would involve traversing up from the target to see if the dragged folder is an ancestor.
+    // For simplicity now, we might allow it and rely on the user not doing this, or add the check later.
+  }
+
+  // console.log('[TreeNode onMove] Allowed move.');
+  return true; // Allow move if rules pass
+};
+
+// SortableJS onEnd 回调：处理拖拽结束事件
+const handleSortEnd = (event: Sortable.SortableEvent) => {
+  console.log('[TreeNode handleSortEnd] Event triggered:', event);
+  const { item, from, to, oldIndex, newIndex } = event;
+
+  if (oldIndex === undefined || newIndex === undefined) {
+      console.log('[TreeNode handleSortEnd] Exiting: oldIndex or newIndex is undefined.');
+      return;
+  }
+
+  const itemId = item.dataset.id; // ID of the dragged item (Match, Group, File, Folder)
+  const itemType = item.dataset.nodeType as TreeNodeItem['type'] | undefined;
+  // Ensure parent IDs are null if 'root' or undefined
+  const oldParentId = from.dataset.parentId === 'root' || from.dataset.parentId === undefined ? null : from.dataset.parentId;
+  const newParentId = to.dataset.parentId === 'root' || to.dataset.parentId === undefined ? null : to.dataset.parentId;
+
+  console.log(`[TreeNode handleSortEnd] Processing - Item ID: ${itemId}, Type: ${itemType}, Old Parent: ${oldParentId}, New Parent: ${newParentId}, Old Index: ${oldIndex}, New Index: ${newIndex}`);
+
+  if (!itemId || !itemType) {
+    console.error('[TreeNode handleSortEnd] Exiting: Missing item ID or type.');
+    return;
+  }
+
+  // 检查是否真的移动了位置 (不同父容器或不同索引)
+  if (from === to && oldIndex === newIndex) {
+    console.log('[TreeNode handleSortEnd] Exiting: No actual move detected.');
+    return; // No change
+  }
+
+  // --- 根据拖拽的节点类型，触发不同的事件 ---
+  if (itemType === 'match' || itemType === 'group') {
+    // 规则或分组的移动 -> 触发 'move' 事件给 ConfigTree 处理
+    console.log(`[TreeNode handleSortEnd] Emitting 'move' for ${itemType} with ID ${itemId}`);
+    emit('move', {
+      itemId,
+      oldParentId, // Use the processed ID
+      newParentId, // Use the processed ID
+      oldIndex,
+      newIndex,
+    });
+  } else if (itemType === 'file' || itemType === 'folder') {
+    // 文件或文件夹的移动 -> 触发 'moveNode' 事件给 ConfigTree 处理
+    console.log(`[TreeNode handleSortEnd] Emitting 'moveNode' for ${itemType} with ID ${itemId}`);
+    emit('moveNode', {
+      nodeId: itemId,
+      targetParentId: newParentId, // Use the processed ID (already null if root/undefined)
+      newIndex,
+    });
+  } else {
+      console.warn(`[TreeNode handleSortEnd] Exiting: Unknown itemType: ${itemType}`);
+  }
+};
+
+// 监听选中 ID 的变化
+watch(() => props.selectedId, (newId) => {
+  // console.log(`[TreeNode ${props.node.id}] Selected ID changed to: ${newId}`);
+  // ... existing code ...
+});
 
 // 创建一个全局组件实例映射，用于在拖拽时访问组件实例
 // 这样可以直接修改组件的状态，而不是通过DOM操作

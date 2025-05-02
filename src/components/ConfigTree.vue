@@ -7,7 +7,7 @@
     <div v-else-if="!treeData || treeData.length === 0" class="p-4 text-muted-foreground">
       没有找到配置文件
     </div>
-    <div v-else class="tree-container px-0 mx-0 drop-zone" v-sortable="sortableOptions" data-parent-id="root" data-container-type="root">
+    <div v-else class="tree-container px-0 mx-0 drop-zone" v-sortable="rootSortableOptions" data-parent-id="root" data-container-type="root">
       <template v-for="node in treeData" :key="node.id">
          <TreeNode
             :node="node"
@@ -16,7 +16,8 @@
             :parentMatches="false"
             :draggable="true"
             @select="handleSelect"
-            @move="handleMove"
+            @move="handleItemMove"
+            @moveNode="handleNodeMove"
           />
       </template>
     </div>
@@ -219,10 +220,88 @@ const handleSelect = (item: TreeNodeItem) => {
   } else if (item.type === 'group' && item.group) {
     emit('select', item.group);
   }
-  // Optionally handle selection of file/folder nodes if needed
-  // else if (item.type === 'file' || item.type === 'folder') {
-  //   console.log('Selected folder/file:', item);
-  // }
+};
+
+// --- NEW: Handler for file/folder node move event from TreeNode ---
+const handleNodeMove = (payload: { nodeId: string; targetParentId: string | null; newIndex: number }) => {
+  console.log('[ConfigTree] Received moveNode event:', JSON.stringify(payload));
+  store.moveTreeNode(payload.nodeId, payload.targetParentId, payload.newIndex);
+};
+
+// --- Handler for match/group move event from TreeNode ---
+const handleItemMove = (payload: { itemId: string; oldParentId: string | null; newParentId: string | null; oldIndex: number; newIndex: number }) => {
+  console.log('[ConfigTree] Received move event (for item):', JSON.stringify(payload));
+  store.moveTreeItem(payload.itemId, payload.oldParentId, payload.newParentId, payload.oldIndex, payload.newIndex);
+};
+
+// SortableJS Options for the ROOT container
+const rootSortableOptions = computed(() => ({
+  group: 'configTreeGroup',
+  animation: 150,
+  fallbackOnBody: true,
+  swapThreshold: 0.65,
+  handle: '.cursor-grab',
+  onMove: handleRootDragMove, // Use a specific move handler for root
+  onEnd: handleRootSortEnd,   // Use a specific end handler for root
+  filter: '.ignore-drag',
+  preventOnFilter: true,
+}));
+
+// SortableJS onMove validation for ROOT container
+const handleRootDragMove = (event: Sortable.MoveEvent): boolean => {
+  const draggedElement = event.dragged; // TreeNode div
+  const draggedNodeType = draggedElement.dataset.nodeType as TreeNodeItem['type'] | undefined;
+
+  console.log(`[ConfigTree Root onMove] Dragged: ${draggedNodeType} (${draggedElement.dataset.id}) into Root`);
+
+  // 只允许match和group节点拖拽，禁止文件夹和文件的拖拽
+  if (draggedNodeType !== 'match' && draggedNodeType !== 'group') {
+    console.log(`[ConfigTree Root onMove] Denied: Only match and group nodes can be dragged.`);
+    return false;
+  }
+
+  // 允许match和group节点拖入root
+  console.log('[ConfigTree Root onMove] Allowed move.');
+  return true;
+};
+
+// SortableJS onEnd handler for ROOT container
+const handleRootSortEnd = (event: Sortable.SortableEvent) => {
+  const { item, from, to, oldIndex, newIndex } = event;
+
+  // Only handle drops *into* the root container from somewhere else
+  // Drops starting and ending in root (reordering) are handled here too.
+  if (to !== event.target) { // event.target should be the root container div
+      console.log('[ConfigTree Root onEnd] Ignoring drop originating outside root.');
+      return;
+  }
+
+  if (oldIndex === undefined || newIndex === undefined) return;
+
+  const itemId = item.dataset.id; // ID of the dragged item
+  const itemType = item.dataset.nodeType as TreeNodeItem['type'] | undefined;
+  const oldParentId = from.dataset.parentId === 'root' || from.dataset.parentId === undefined ? null : from.dataset.parentId; // Parent ID of the source container
+
+  console.log(`[ConfigTree Root onEnd] Item ID: ${itemId}, Type: ${itemType}, Old Parent: ${oldParentId}, New Index: ${newIndex}`);
+
+  if (!itemId || !itemType) {
+    console.error('[ConfigTree Root onEnd] Missing item ID or type.');
+    return;
+  }
+
+  // Check if it really moved
+  if (from === to && oldIndex === newIndex) {
+     console.log('[ConfigTree Root onEnd] No actual move detected.');
+     return;
+  }
+
+  // 只处理match和group类型的拖拽
+  if (itemType === 'match' || itemType === 'group') {
+    // 触发moveTreeItem操作，将targetParentId设为null（根目录）
+    store.moveTreeItem(itemId, oldParentId, null, oldIndex, newIndex);
+  } else {
+    console.warn(`[ConfigTree Root onEnd] Unexpected item type dropped at root: ${itemType}`);
+  }
 };
 
 // 监听选中ID的变化

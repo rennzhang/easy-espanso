@@ -35,8 +35,12 @@ export interface PreloadApi {
   showNotification: (title: string, body: string) => Promise<void>;
   
   // 新增API
-  getDefaultEspansoConfigPath: () => Promise<string | null>;
+  getDefaultEspansoConfigPath: () => Promise<{ success: boolean; path: string | null; error?: string }>;
   scanDirectory: (dirPath: string) => Promise<FileSystemNode[]>;
+  fileExists: (filePath: string) => Promise<boolean>;
+
+  // 新增
+  onIpcHandlersReady: (callback: () => void) => void;
 }
 
 declare global {

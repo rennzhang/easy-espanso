@@ -78,6 +78,20 @@ declare global {
 import { Button } from './components/ui/button';
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './components/ui/card';
 
+// Extend window type for the flag
+interface CustomWindow extends Window {
+  preloadApiReady?: boolean;
+  _preloadApiRetryCount?: number;
+}
+
+// 扩展全局Window类型
+declare global {
+  interface Window {
+    preloadApiReady?: boolean;
+    _preloadApiRetryCount?: number;
+  }
+}
+
 const store = useEspansoStore();
 const isLoading = ref(true);
 const needsConfigSelection = ref(false);
@@ -112,7 +126,7 @@ const loadElectronDefaultConfig = async () => {
     console.log('文件树结构:', fileTree);
 
     // 保存配置目录路径
-    await saveConfigDirPath(normalizedConfigPath);
+    saveConfigDirPath(normalizedConfigPath);
 
     // 直接加载整个配置目录，让新的树结构逻辑处理文件
     console.log('加载配置目录:', normalizedConfigPath);
@@ -161,10 +175,32 @@ const findDefaultConfigPath = (nodes: FileSystemNode[]): string | null => {
   return null;
 };
 
-// 检测运行环境并初始化
-onMounted(async () => {
+onMounted(() => {
+  // Start the initialization process that waits for the preload API AND IPC handlers
+  waitForIpcReadyAndInitialize();
+});
+
+// 新函数：等待IPC就绪再初始化
+async function waitForIpcReadyAndInitialize() {
+  if (window.preloadApi && typeof window.preloadApi.onIpcHandlersReady === 'function') {
+    console.log('[App Init] Waiting for ipc-handlers-ready signal from main process...');
+    window.preloadApi.onIpcHandlersReady(() => {
+      console.log('[App Init] Frontend callback for ipc-handlers-ready executed.');
+      console.log('[App Init] Received ipc-handlers-ready signal. Starting initialization.');
+      initializeAppConfig();
+    });
+  } else {
+    // 如果 preloadApi 或 onIpcHandlersReady 不可用 (例如非 Electron 环境或预加载问题)
+    console.warn('[App Init] Cannot wait for IPC ready signal. Proceeding with initialization directly (might fail).');
+    initializeAppConfig();
+  }
+}
+
+async function initializeAppConfig() {
+  // 不再需要检查 preloadApi，因为 waitForIpcReadyAndInitialize 已经处理
+  console.log('[App Init] Core initialization started.');
   try {
-    // 检测环境
+    // 检测环境 (理论上在 Electron 环境下已经检测过，但保留无妨)
     environment.value = await detectEnvironment();
     console.log('检测到运行环境:', environment.value);
 
@@ -183,19 +219,23 @@ onMounted(async () => {
           groups: store.getAllGroupsFromTree().length
         });
         needsConfigSelection.value = false;
-        return;
+        isLoading.value = false; // Mark loading as complete
+        return; // Exit initialization
+      } else {
+         console.log('自动加载默认配置失败或未找到。');
+         // 这里需要决定是直接显示选择界面还是尝试 localStorage
+         // 保持现有逻辑：尝试 localStorage
       }
     }
 
-    // 尝试从本地存储获取配置目录
-    const configDir = await getEspansoConfigDir();
+    // 尝试从本地存储获取配置目录 (Web 或 Electron 默认加载失败/未加载时)
+    console.log('尝试从 localStorage 获取配置目录...');
+    const configDir = await getEspansoConfigDir(); // 注意：此函数也可能依赖 IPC
     console.log('从本地存储获取配置目录:', configDir);
 
     if (configDir) {
-      // 如果找到配置目录，直接加载配置
       console.log('加载已保存的配置目录:', configDir);
       await store.loadConfig(configDir);
-
       // 检查是否成功加载
       const hasMatches = store.getAllMatchesFromTree().length > 0;
       const hasGroups = store.getAllGroupsFromTree().length > 0;
@@ -212,21 +252,23 @@ onMounted(async () => {
       if (hasMatches || hasGroups || hasGlobalConfig || hasConfigTree) {
         needsConfigSelection.value = false;
       } else {
-        console.log('配置目录无效或为空，显示选择界面');
+        console.log('已保存的配置目录无效或为空，显示选择界面');
         needsConfigSelection.value = true;
       }
     } else {
       // 如果没有找到配置目录，显示选择界面
-      console.log('未找到配置目录，显示选择界面');
+      console.log('未找到配置目录（默认/localStorage），显示选择界面');
       needsConfigSelection.value = true;
     }
   } catch (error) {
     console.error('初始化失败:', error);
-    needsConfigSelection.value = true;
+    needsConfigSelection.value = true; // 出错则显示选择界面
   } finally {
+    // 确保 isLoading 在所有路径（包括错误）后都设置为 false
     isLoading.value = false;
+    console.log('[App Init] Core initialization finished.');
   }
-});
+}
 
 // 选择配置文件夹
 const selectConfigFolder = async () => {
