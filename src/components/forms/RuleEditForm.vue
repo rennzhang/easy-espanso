@@ -18,7 +18,7 @@
           required
           rows="3" 
           spellcheck="false" 
-          class="flex min-h-[60px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+          class="flex min-h-[60px] w-full rounded-none border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-gray-500 focus:shadow-lg transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
         ></textarea>
       </FormSection>
 
@@ -47,7 +47,7 @@
         </div>
 
         <!-- Editor Container -->
-        <div class="border rounded-md overflow-hidden focus-within:ring-2 focus-within:ring-ring focus-within:ring-offset-2 min-h-[250px]"> 
+        <div class="border rounded-none overflow-hidden min-h-[250px] focus-within:border-gray-500 focus-within:shadow-lg transition-colors duration-150">
           <!-- 编辑器本身 -->
           <div class="relative">
             <textarea
@@ -58,7 +58,8 @@
               placeholder="替换内容"
               required
               ref="contentEditorRef"
-              class="flex min-h-[250px] w-full bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 border-0 ring-0 focus:ring-0 resize-y"
+              class="flex min-h-[250px] w-full appearance-none rounded-none bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:!shadow-none border-0 ring-0 resize-y"
+              style="outline: none !important;"
             ></textarea>
             <!-- Other editors... -->
             <textarea
@@ -68,7 +69,8 @@
               placeholder="Markdown 内容"
               required
               ref="contentEditorRef"
-              class="flex min-h-[250px] w-full bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 border-0 ring-0 focus:ring-0 resize-y"
+              class="flex min-h-[250px] w-full appearance-none rounded-none bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:!shadow-none border-0 ring-0 resize-y"
+              style="outline: none !important;"
             ></textarea>
             <textarea
               v-else-if="currentContentType === 'html'"
@@ -77,7 +79,8 @@
               placeholder="HTML 内容"
               required
               ref="contentEditorRef"
-              class="flex min-h-[250px] w-full bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 border-0 ring-0 focus:ring-0 resize-y"
+              class="flex min-h-[250px] w-full appearance-none rounded-none bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:!shadow-none border-0 ring-0 resize-y"
+              style="outline: none !important;"
             ></textarea>
             <div v-else-if="currentContentType === 'image'" class="p-3 min-h-[250px]">
               <Input
@@ -101,7 +104,8 @@
                 placeholder="表单定义 (JSON 格式)"
                 required
                 ref="contentEditorRef"
-                class="flex min-h-[250px] w-full bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 border-0 ring-0 focus:ring-0 resize-y"
+                class="flex min-h-[250px] w-full appearance-none rounded-none bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:!shadow-none border-0 ring-0 resize-y"
+                style="outline: none !important;"
               ></textarea>
             </div>
           </div>
@@ -393,7 +397,7 @@
     <!-- 预览模态框 -->
     <div v-if="showPreviewModal" class="fixed inset-0 z-50 flex items-center justify-center">
       <div class="absolute inset-0 bg-black/50" @click="showPreviewModal = false"></div>
-      <div class="relative bg-background rounded-lg shadow-lg w-full max-w-xl max-h-[80vh] overflow-hidden">
+      <div class="relative bg-background rounded-none shadow-lg w-full max-w-xl max-h-[80vh] overflow-hidden">
         <div class="flex items-center justify-between p-4 border-b">
           <h2 class="text-lg font-semibold">预览 "{{ formState.trigger }}"</h2>
           <button @click="showPreviewModal = false" class="text-gray-500 hover:text-gray-700">
@@ -539,6 +543,34 @@ defineExpose({
   getFormData: () => formState.value
 });
 
+// 辅助函数：根据 Match 数据确定初始 contentType
+const determineInitialContentType = (ruleData: Match): 'plain' | 'markdown' | 'html' | 'image' | 'form' => {
+  if (ruleData.content && ruleData.contentType) {
+    return ruleData.contentType as 'plain' | 'markdown' | 'html' | 'image' | 'form';
+  }
+  if (ruleData.markdown) return 'markdown';
+  if (ruleData.html) return 'html';
+  if (ruleData.image_path) return 'image';
+  if (ruleData.vars && ruleData.vars.some(v => v.name === 'form')) return 'form'; // Basic check for form vars
+  // 默认或当只有 replace 时，认为是 plain
+  return 'plain';
+};
+
+// 辅助函数：根据 Match 数据确定初始 content
+const determineInitialContent = (ruleData: Match): string => {
+  const contentType = determineInitialContentType(ruleData);
+  switch (contentType) {
+    case 'markdown': return ruleData.markdown || ruleData.content || '';
+    case 'html': return ruleData.html || ruleData.content || '';
+    case 'image': return ruleData.image_path || ruleData.content || '';
+    case 'form': return ruleData.content || ''; // Assume content holds the form definition for now
+    case 'plain':
+    default:
+      return ruleData.content || ruleData.replace || ''; // Fallback to replace if content is missing
+  }
+};
+
+
 // 初始化表单
 onMounted(() => {
   // 深拷贝props.rule到formState
@@ -554,28 +586,6 @@ onMounted(() => {
   }
   // --- 处理触发词: trigger or triggers --- END
 
-  // 处理内容字段映射
-  let content = '';
-  let contentType: 'plain' | 'markdown' | 'html' | 'image' | 'form' = 'plain';
-
-  if (ruleData.content) {
-    // 如果有content字段，直接使用
-    content = ruleData.content;
-    contentType = (ruleData.contentType as 'plain' | 'markdown' | 'html' | 'image' | 'form') || 'plain';
-  } else if (ruleData.replace) {
-    // 如果没有content字段但有replace字段，使用replace
-    content = ruleData.replace;
-    contentType = 'plain';
-  } else if (ruleData.markdown) {
-    content = ruleData.markdown;
-    contentType = 'markdown';
-  } else if (ruleData.html) {
-    content = ruleData.html;
-    contentType = 'html';
-  } else if (ruleData.image_path) {
-    content = ruleData.image_path;
-    contentType = 'image';
-  }
 
   formState.value = {
     trigger: triggerInput, // Use the processed trigger input
@@ -605,7 +615,7 @@ onMounted(() => {
   // 更新 store 中的表单修改状态
   store.state.hasUnsavedChanges = false;
 
-  currentContentType.value = contentType as 'plain' | 'markdown' | 'html' | 'image' | 'form';
+  currentContentType.value = formState.value.contentType as 'plain' | 'markdown' | 'html' | 'image' | 'form';
 
   // 如果有高级选项，自动展开高级选项区域
   if (
@@ -636,28 +646,6 @@ watch(() => props.rule, (newRule) => {
   }
   // --- 处理触发词: trigger or triggers --- END
 
-  // 处理内容字段映射
-  let content = '';
-  let contentType: 'plain' | 'markdown' | 'html' | 'image' | 'form' = 'plain';
-
-  if (ruleData.content) {
-    // 如果有content字段，直接使用
-    content = ruleData.content;
-    contentType = (ruleData.contentType as 'plain' | 'markdown' | 'html' | 'image' | 'form') || 'plain';
-  } else if (ruleData.replace) {
-    // 如果没有content字段但有replace字段，使用replace
-    content = ruleData.replace;
-    contentType = 'plain';
-  } else if (ruleData.markdown) {
-    content = ruleData.markdown;
-    contentType = 'markdown';
-  } else if (ruleData.html) {
-    content = ruleData.html;
-    contentType = 'html';
-  } else if (ruleData.image_path) {
-    content = ruleData.image_path;
-    contentType = 'image';
-  }
 
   formState.value = {
     trigger: triggerInput, // Use the processed trigger input
@@ -678,7 +666,7 @@ watch(() => props.rule, (newRule) => {
     contentType: determineInitialContentType(ruleData)
   };
 
-  currentContentType.value = contentType;
+  currentContentType.value = formState.value.contentType as 'plain' | 'markdown' | 'html' | 'image' | 'form';
 
   // 保存原始表单数据
   originalFormData.value = JSON.parse(JSON.stringify(formState.value));
@@ -768,7 +756,7 @@ const showPreview = () => {
 
   // 处理变量
   let content = formState.value.content;
-  const variableRegex = /\{\{([^}]+)\}\}/g;
+  const variableRegex = /\{\{([^}]+)\}\}/g; // Corrected Regex
 
   content = content.replace(variableRegex, (_match, variableName) => {
     // 根据变量类型生成预览
@@ -787,87 +775,89 @@ const showPreview = () => {
     } else if (variableName.startsWith('form:')) {
       return '[表单输入]';
     } else {
-      return `[${variableName}]`;
+      // 对于未知变量，保持原样
+      return `{{${variableName}}}`;
     }
   });
 
-  // 设置预览内容
   previewContent.value = content;
-
-  // 显示预览模态框
   showPreviewModal.value = true;
 };
 
 // 提交表单
 const onSubmit = () => {
-  console.log('Form submitted', formState.value);
-
-  // --- 解析触发词 --- START
-  const triggerValue = formState.value.trigger || '';
-  // 确保同时处理换行符和逗号作为分隔符
-  const triggersArray = triggerValue
-    .split(/[,\n]/) // Split by comma or newline, 确保同时处理换行符和逗号作为分隔符
-    .map(t => t.trim()) // Trim whitespace
-    .filter(t => t !== ''); // Remove empty strings
-
-  console.log('解析后的触发词数组:', triggersArray);
-
-  // 根据数组长度决定使用trigger还是triggers
-  let finalTrigger: string | undefined = undefined;
-  let finalTriggers: string[] | undefined = undefined;
-
-  if (triggersArray.length === 1) {
-    finalTrigger = triggersArray[0];
-    console.log('使用单个触发词:', finalTrigger);
-  } else if (triggersArray.length > 1) {
-    finalTriggers = triggersArray;
-    console.log('使用多个触发词:', finalTriggers);
-  } else {
-    // 处理空数组的情况
-    console.warn('警告: 未找到有效的触发词!');
+  // 简单验证
+  if (!formState.value.trigger || (!formState.value.content && currentContentType.value !== 'image')) {
+    alert('触发词和替换内容不能为空');
+    return;
   }
-  // --- 解析触发词 --- END
 
-  // 创建要保存的数据对象，仅包含 Match 类型定义的字段
-  const saveData: Partial<Match> = {
-    // --- 使用解析后的触发词 --- 
-    trigger: finalTrigger,
-    triggers: finalTriggers,
-    // --- END --- 
-    label: formState.value.label,
-    // Map content back based on contentType
-    ...(mapContentToMatchFields(formState.value.content, formState.value.contentType)),
-    word: formState.value.word,
-    left_word: formState.value.leftWord,
-    right_word: formState.value.rightWord,
-    propagate_case: formState.value.propagateCase,
+  // 准备要保存的数据
+  const dataToSave: Partial<Match> = {
+    // Process trigger/triggers
+    ...(formState.value.trigger.includes('\n') || formState.value.trigger.includes(',')
+      ? { triggers: formState.value.trigger.split(/[\n,]/).map(t => t.trim()).filter(t => t) }
+      : { trigger: formState.value.trigger.trim() }),
+    // Explicitly delete the other trigger field if one exists
+    ...(formState.value.trigger.includes('\n') || formState.value.trigger.includes(',') ? { trigger: undefined } : { triggers: undefined }),
+    
+    label: formState.value.label || undefined,
+    word: formState.value.word || undefined,
+    left_word: formState.value.leftWord || undefined,
+    right_word: formState.value.rightWord || undefined,
+    propagate_case: formState.value.propagateCase || undefined,
     uppercase_style: formState.value.uppercaseStyle || undefined,
-    // Handle forceMode: if 'default' or empty, set to undefined for saving
-    force_mode: !formState.value.forceMode || formState.value.forceMode === 'default' ? undefined : formState.value.forceMode,
-    apps: formState.value.apps,
-    exclude_apps: formState.value.exclude_apps,
-    search_terms: formState.value.search_terms,
-    priority: formState.value.priority,
-    hotkey: formState.value.hotkey,
-    vars: formState.value.vars,
+    force_mode: (formState.value.forceMode === '' || formState.value.forceMode === 'default') ? undefined : formState.value.forceMode, // Map '' or 'default' to undefined
+    apps: formState.value.apps && formState.value.apps.length > 0 ? formState.value.apps : undefined,
+    exclude_apps: formState.value.exclude_apps && formState.value.exclude_apps.length > 0 ? formState.value.exclude_apps : undefined,
+    search_terms: formState.value.search_terms && formState.value.search_terms.length > 0 ? formState.value.search_terms : undefined,
+    priority: formState.value.priority || undefined,
+    hotkey: formState.value.hotkey || undefined,
+    vars: formState.value.vars && formState.value.vars.length > 0 ? formState.value.vars : undefined,
+
+    // Reset content-specific fields first
+    content: undefined,
+    replace: undefined,
+    markdown: undefined,
+    html: undefined,
+    image_path: undefined,
+    contentType: undefined, // Remove UI-only field
   };
 
-  console.log('Data prepared for saving:', JSON.parse(JSON.stringify(saveData)));
+  // Add content based on currentContentType
+  switch (currentContentType.value) {
+    case 'plain':
+      dataToSave.replace = formState.value.content;
+      break;
+    case 'markdown':
+      dataToSave.markdown = formState.value.content;
+      break;
+    case 'html':
+      dataToSave.html = formState.value.content;
+      break;
+    case 'image':
+      dataToSave.image_path = formState.value.content;
+      break;
+    case 'form':
+      // Store form definition in content, mark contentType
+      dataToSave.content = formState.value.content;
+      dataToSave.contentType = 'form'; // Explicitly set contentType for forms
+      break;
+  }
 
   // 保存后更新原始表单数据
   originalFormData.value = JSON.parse(JSON.stringify(formState.value));
   isFormModified.value = false;
   store.state.hasUnsavedChanges = false;
 
-  emit('save', props.rule.id, saveData);
+  console.log('正在保存:', dataToSave);
+  emit('save', props.rule.id, dataToSave);
 };
 
 // 取消编辑
 const onCancel = () => {
-  // 如果表单已修改，提示用户
   if (isFormModified.value) {
     if (confirm('您有未保存的修改，确定要放弃这些修改吗？')) {
-      // 重置表单状态
       isFormModified.value = false;
       store.state.hasUnsavedChanges = false;
       emit('cancel');
@@ -882,48 +872,4 @@ onBeforeUnmount(() => {
   // 确保组件卸载时重置全局状态
   store.state.hasUnsavedChanges = false;
 });
-
-// 不再需要删除规则的函数，因为我们移除了删除按钮
-
-// Helper function to map content to appropriate Match field
-const mapContentToMatchFields = (content?: string, contentType?: string): Partial<Match> => {
-  if (content === undefined || content === null) return {};
-  switch (contentType) {
-    case 'markdown':
-      return { markdown: content, replace: undefined, html: undefined, image_path: undefined };
-    case 'html':
-      return { html: content, replace: undefined, markdown: undefined, image_path: undefined };
-    case 'image':
-      return { image_path: content, replace: undefined, markdown: undefined, html: undefined };
-    case 'form': // Assuming form definition stored in 'replace' for now?
-      return { replace: content, markdown: undefined, html: undefined, image_path: undefined };
-    case 'plain':
-    default:
-      return { replace: content, markdown: undefined, html: undefined, image_path: undefined };
-  }
-};
-
-// Helper function to determine initial content based on Match fields
-const determineInitialContent = (rule: Match): string | undefined => {
-  if (rule.replace !== undefined) return rule.replace.toString(); // Default to replace
-  if (rule.markdown !== undefined) return rule.markdown;
-  if (rule.html !== undefined) return rule.html;
-  if (rule.image_path !== undefined) return rule.image_path;
-  if (rule.content !== undefined) return rule.content.toString(); // Fallback to generic content if needed
-  return '';
-};
-
-// Helper function to determine initial content type
-const determineInitialContentType = (rule: Match): string => {
-  if (rule.markdown !== undefined) return 'markdown';
-  if (rule.html !== undefined) return 'html';
-  if (rule.image_path !== undefined) return 'image';
-  // Add check for 'form' if applicable (e.g., based on presence of `vars` or a specific structure in `replace`)
-  // if (rule.vars && rule.vars.length > 0) return 'form';
-  // Make sure to handle potential undefined force_mode from saved data
-  if (!formState.value.forceMode) {
-      formState.value.forceMode = ''; // 设置为空字符串，表示默认值
-  }
-  return 'plain'; // Default to plain text
-};
 </script>

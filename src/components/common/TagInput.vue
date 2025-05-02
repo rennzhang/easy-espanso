@@ -5,12 +5,12 @@
         v-for="(tag, index) in modelValue"
         :key="index"
         variant="secondary"
-        class="flex items-center gap-1"
+        class="flex items-center gap-1 rounded-none"
       >
         {{ tag }}
         <button
           type="button"
-          class="inline-flex items-center justify-center rounded-full text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-4 w-4"
+          class="inline-flex items-center justify-center rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-4 w-4"
           @click="removeTag(index)"
         >
           <span class="sr-only">Remove</span>
