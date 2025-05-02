@@ -126,6 +126,9 @@ const sortableDirective: Directive<HTMLElement, SortableOptionsExtended> = {
         const draggedEl = evt.item;
         draggedEl.classList.remove('being-dragged');
 
+        // 移除所有指示线
+        document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+
         // 检查是否在安全区域内结束拖拽
         const targetContainer = evt.to;
         const isInSafeZone = targetContainer.classList.contains('drop-zone') ||
@@ -186,10 +189,52 @@ const sortableDirective: Directive<HTMLElement, SortableOptionsExtended> = {
         const targetEl = evt.related;
 
         const draggedType = draggedEl.dataset.nodeType;
-        const targetType = targetEl.dataset.nodeType;
 
-        // 示例规则：match节点不能拖入file节点
-        if (draggedType === 'match' && targetType === 'file') {
+        // 获取目标容器的父节点类型
+        const targetContainer = targetEl.closest('.drop-zone') as HTMLElement;
+        const targetContainerType = targetContainer?.dataset?.containerType || '';
+
+        // 获取拖拽项的类型和目标容器类型
+        console.log('拖拽检查:', {
+          draggedType,
+          targetContainerType,
+          draggedEl: draggedEl.dataset,
+          targetEl: targetEl.dataset,
+          targetContainer: targetContainer?.dataset
+        });
+
+        // 规则1：match和group节点不能拖入folder节点
+        if ((draggedType === 'match' || draggedType === 'group') && targetContainerType === 'folder') {
+          console.log('禁止拖拽：match/group不能拖入folder');
+          // 添加视觉提示，表明这不是有效的放置区域
+          targetEl.classList.add('invalid-drop-target');
+
+          // 使用setTimeout移除类，避免视觉效果持续太久
+          setTimeout(() => {
+            targetEl.classList.remove('invalid-drop-target');
+          }, 300);
+
+          // 移除所有指示线
+          document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+
+          return false; // 禁止此移动
+        }
+
+        // 规则2：match和group节点只能拖入file节点或group节点
+        if ((draggedType === 'match' || draggedType === 'group') &&
+            targetContainerType !== 'file' && targetContainerType !== 'group' && targetContainerType !== 'root') {
+          console.log('禁止拖拽：match/group只能拖入file/group/root');
+          // 添加视觉提示，表明这不是有效的放置区域
+          targetEl.classList.add('invalid-drop-target');
+
+          // 使用setTimeout移除类，避免视觉效果持续太久
+          setTimeout(() => {
+            targetEl.classList.remove('invalid-drop-target');
+          }, 300);
+
+          // 移除所有指示线
+          document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+
           return false; // 禁止此移动
         }
 
@@ -213,7 +258,45 @@ const sortableDirective: Directive<HTMLElement, SortableOptionsExtended> = {
           // 在安全区域内，添加视觉提示
           targetEl.classList.add('valid-drop-target');
 
-          // 使用setTimeout移除类
+          // 添加蓝色指示线，显示可以插入的位置
+          const insertLine = document.createElement('div');
+          insertLine.className = 'insert-indicator';
+
+          // 计算指示线位置（在目标元素上方或下方）
+          const rect = targetEl.getBoundingClientRect();
+          const mouseY = (originalEvent as MouseEvent).clientY;
+          const isBeforeTarget = mouseY < rect.top + rect.height / 2;
+
+          if (isBeforeTarget) {
+            // 在目标元素上方插入
+            insertLine.style.top = `${rect.top - 2}px`;
+          } else {
+            // 在目标元素下方插入
+            insertLine.style.top = `${rect.bottom}px`;
+          }
+
+          // 确保指示线宽度足够，并且左侧对齐
+          insertLine.style.left = `${rect.left}px`;
+          insertLine.style.width = `${rect.width}px`;
+
+          // 添加一些内联样式，确保指示线可见
+          insertLine.style.backgroundColor = '#3b82f6'; // 蓝色
+          insertLine.style.boxShadow = '0 0 8px rgba(59, 130, 246, 0.8)';
+
+          // 移除之前的指示线
+          document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+
+          // 添加新的指示线
+          document.body.appendChild(insertLine);
+
+          // 打印日志，确认指示线已创建
+          console.log('创建指示线:', {
+            top: insertLine.style.top,
+            left: insertLine.style.left,
+            width: insertLine.style.width
+          });
+
+          // 使用setTimeout移除类和指示线
           setTimeout(() => {
             targetEl.classList.remove('valid-drop-target');
           }, 300);

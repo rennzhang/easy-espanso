@@ -111,6 +111,36 @@ body.dragging-active .drop-zone:hover {
   background-color: rgba(59, 130, 246, 0.08);
 }
 
+/* 拖拽指示线 */
+.insert-indicator {
+  position: fixed;
+  height: 4px; /* 增加高度 */
+  background-color: #3b82f6; /* 蓝色 */
+  z-index: 2000;
+  pointer-events: none; /* 确保指示线不会干扰鼠标事件 */
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+  animation: insert-indicator-pulse 1.5s infinite;
+  border-radius: 2px; /* 添加圆角 */
+}
+
+@keyframes insert-indicator-pulse {
+  0% {
+    opacity: 0.8;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+    transform: scaleY(1);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 12px rgba(59, 130, 246, 1);
+    transform: scaleY(1.2);
+  }
+  100% {
+    opacity: 0.8;
+    box-shadow: 0 0 8px rgba(59, 130, 246, 0.8);
+    transform: scaleY(1);
+  }
+}
+
 /* 拖拽取消动画 */
 @keyframes drag-cancelled-animation {
   0% {

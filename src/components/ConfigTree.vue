@@ -7,7 +7,7 @@
     <div v-else-if="!treeData || treeData.length === 0" class="p-4 text-muted-foreground">
       没有找到配置文件
     </div>
-    <div v-else class="tree-container px-0 mx-0 drop-zone" v-sortable="sortableOptions" data-parent-id="root">
+    <div v-else class="tree-container px-0 mx-0 drop-zone" v-sortable="sortableOptions" data-parent-id="root" data-container-type="root">
       <template v-for="node in treeData" :key="node.id">
          <TreeNode
             :node="node"
@@ -325,6 +325,9 @@ const sortableOptions = computed(() => ({
     // 移除拖拽样式
     document.body.classList.remove('dragging-active');
 
+    // 移除所有指示线
+    document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+
     // 检查是否在安全区域内结束拖拽
     const targetContainer = evt.to;
     const isInSafeZone = targetContainer.classList.contains('drop-zone') ||
@@ -334,6 +337,43 @@ const sortableOptions = computed(() => ({
     if (!isInSafeZone) {
       console.log('[ConfigTree SortableJS onEnd] 拖拽取消：不在安全区域内');
       return;
+    }
+
+    // 检查是否是跨容器拖拽（from和to不同）
+    const isCrossContainer = evt.from !== evt.to;
+    if (isCrossContainer) {
+      console.log('[ConfigTree SortableJS onEnd] 检测到跨容器拖拽，处理数据更新');
+
+      // 检查必要的数据是否存在
+      if (evt.oldIndex === undefined || evt.newIndex === undefined) return;
+
+      const itemId = evt.item.dataset.id;
+      if (!itemId) {
+        console.error('Dragged item missing data-id!');
+        return;
+      }
+
+      // 获取拖拽项的类型
+      const draggedType = evt.item.dataset.nodeType;
+
+      // 获取目标容器的类型
+      const targetContainerType = evt.to.dataset.containerType || '';
+
+      // 如果是match或group类型，且目标容器是folder类型，则禁止拖拽
+      if ((draggedType === 'match' || draggedType === 'group') && targetContainerType === 'folder') {
+        console.log('禁止拖拽：match/group不能拖入folder');
+        return;
+      }
+
+      // 如果是match或group类型，且目标容器不是file、group或root类型，则禁止拖拽
+      if ((draggedType === 'match' || draggedType === 'group') &&
+          targetContainerType !== 'file' && targetContainerType !== 'group' && targetContainerType !== 'root') {
+        console.log('禁止拖拽：match/group只能拖入file/group/root');
+        return;
+      }
+
+      // 调用handleSortUpdate处理跨容器拖拽
+      handleSortUpdate(evt);
     }
   },
   onUpdate: handleSortUpdate,

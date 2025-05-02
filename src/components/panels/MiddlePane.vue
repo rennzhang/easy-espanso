@@ -130,34 +130,6 @@
         >
       </div>
       <div v-else class="h-full">
-        <!-- 提示气泡 -->
-        <div
-          v-if="showListViewTip && viewMode === 'tree'"
-          class="fixed right-4 top-16 mt-2 p-2 bg-popover text-popover-foreground rounded shadow-md z-10 w-48"
-        >
-          <p class="text-xs mb-2">
-            点击可切换到列表视图，以平铺方式查看所有片段
-          </p>
-          <div class="flex justify-between">
-            <Button
-              @click="hideListViewTip"
-              variant="ghost"
-              size="sm"
-              class="text-xs border-none focus:ring-0 focus:ring-offset-0"
-            >
-              不再提示
-            </Button>
-            <Button
-              @click="showListViewTip = false"
-              variant="ghost"
-              size="sm"
-              class="text-xs border-none focus:ring-0 focus:ring-offset-0"
-            >
-              知道了
-            </Button>
-          </div>
-        </div>
-
         <!-- 树视图 -->
         <div v-if="viewMode === 'tree'" class="h-full m-0">
           <!-- Log: Rendering ConfigTree -->
@@ -286,9 +258,6 @@ const viewMode = ref<"tree" | "list">("tree");
 const showSearchBar = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
 
-// 从本地存储中读取提示显示状态
-const showListViewTip = ref(false);
-
 // 设置键盘快捷键来打开搜索
 onMounted(() => {
   // 返回值是用于清理事件监听器的函数
@@ -330,14 +299,6 @@ onMounted(() => {
   onUnmounted(() => {
     cleanup();
   });
-
-  // 其他现有的onMounted逻辑...
-  const savedHideListViewTip = localStorage.getItem("hideListViewTip");
-  if (savedHideListViewTip === "true") {
-    showListViewTip.value = false;
-  } else {
-    showListViewTip.value = true;
-  }
 
   // 检查是否有预加载的配置
   if (store.state.config && store.getAllMatchesFromTree) {
@@ -690,12 +651,6 @@ const hideSearchBar = () => {
   // console.log("按下ESC键，隐藏搜索栏"); // Removed log
   showSearchBar.value = false;
   searchQuery.value = "";
-};
-
-// 隐藏列表视图提示
-const hideListViewTip = () => {
-  showListViewTip.value = false;
-  localStorage.setItem("hideListViewTip", "true");
 };
 
 // 处理树节点选择

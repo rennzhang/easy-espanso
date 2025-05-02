@@ -1,5 +1,5 @@
 <template>
-  <div class="tree-node px-0 pl-0" v-if="isVisible" :id="`tree-node-${node.id}`" :data-id="node.id" :data-node-type="node.type">
+  <div class="tree-node px-0 pl-0" v-if="isVisible" :id="`tree-node-${node.id}`" :data-id="node.id" :data-node-type="node.type" :data-node-name="node.name">
     <!-- 非叶子节点（文件夹、文件、分组） -->
     <div
       v-if="node.type !== 'match'"
@@ -33,6 +33,10 @@
           class="ml-2 text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full"
         >
           {{ visibleChildCount }}
+        </span>
+        <!-- 文件夹图标 (新添加) -->
+        <span v-if="node.type === 'folder'" class="ml-auto pl-2">
+          <FolderIcon class="h-4 w-4 text-muted-foreground" />
         </span>
         <!-- 拖拽手柄 -->
         <span class="cursor-grab ml-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -93,6 +97,7 @@
       class="children pl-2 pr-0 drop-zone"
       v-sortable="childSortableOptions"
       :data-parent-id="node.id"
+      :data-container-type="node.type"
     >
       <TreeNode
         v-for="child in node.children"
@@ -112,7 +117,7 @@
 
 <script setup lang="ts">
 import { ref, computed, defineProps, defineEmits, watch, onMounted, onUnmounted } from "vue";
-import { ChevronRightIcon, ChevronDownIcon, ZapIcon, GripVerticalIcon } from "lucide-vue-next";
+import { ChevronRightIcon, ChevronDownIcon, ZapIcon, GripVerticalIcon, FolderIcon } from "lucide-vue-next";
 import type { TreeNodeItem } from "./ConfigTree.vue";
 import HighlightText from "./common/HighlightText.vue";
 import Sortable from 'sortablejs'; // 导入 Sortable 类型
@@ -477,18 +482,42 @@ const handleChildSortUpdate = (event: Sortable.SortableEvent) => {
     return;
   }
 
-  // 如果 from 和 to 是同一个列表，则是在当前节点内排序
-  // 如果 from 和 to 不同，则是移动到了其他节点或根节点
-  // 这里简化处理，总是将事件冒泡到顶层处理
+  // 获取拖拽项的类型
+  const draggedType = item.dataset.nodeType;
+
+  // 获取目标容器的类型
+  const targetContainerType = to.dataset.containerType || '';
+
+  // 检查是否是跨容器拖拽
+  const isCrossContainer = from !== to;
+
+  // 如果是match或group类型，且目标容器是folder类型，则禁止拖拽
+  if ((draggedType === 'match' || draggedType === 'group') && targetContainerType === 'folder') {
+    console.log('禁止拖拽：match/group不能拖入folder');
+    return;
+  }
+
+  // 如果是match或group类型，且目标容器不是file、group或root类型，则禁止拖拽
+  if ((draggedType === 'match' || draggedType === 'group') &&
+      targetContainerType !== 'file' && targetContainerType !== 'group' && targetContainerType !== 'root') {
+    console.log('禁止拖拽：match/group只能拖入file/group/root');
+    return;
+  }
+
+  // 确定正确的父节点ID
+  const oldParentId = from.dataset.parentId || null;
+  const newParentId = to.dataset.parentId || null;
+
+  console.log(`[TreeNode handleChildSortUpdate] 拖拽项 ${itemId} (${draggedType}) 从 ${oldParentId} (${from.dataset.containerType}) 到 ${newParentId} (${targetContainerType})`);
+
+  // 触发move事件，传递正确的父节点ID
   emit('move', {
     itemId: itemId,
-    oldParentId: props.node.id, // 'from' list corresponds to this node's children
-    newParentId: props.node.id, // Assume moved within the same parent for now (needs refinement)
+    oldParentId: oldParentId,
+    newParentId: newParentId,
     oldIndex: oldIndex,
     newIndex: newIndex,
   });
-
-  // TODO: 更精确地判断 newParentId 需要检查 event.to
 };
 
 // 子列表的 SortableJS 选项
@@ -560,6 +589,9 @@ const childSortableOptions = computed(() => ({
       el.classList.remove('sortable-source');
     });
 
+    // 移除所有指示线
+    document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
+
     // 检查是否在安全区域内结束拖拽
     const targetContainer = evt.to;
     const isInSafeZone = targetContainer.classList.contains('drop-zone') ||
@@ -569,6 +601,58 @@ const childSortableOptions = computed(() => ({
     if (!isInSafeZone) {
       console.log(`[TreeNode ${props.node.name} SortableJS onEnd] 拖拽取消：不在安全区域内`);
       return;
+    }
+
+    // 检查是否是跨容器拖拽
+    const isCrossContainer = evt.from !== evt.to;
+    if (isCrossContainer) {
+      console.log(`[TreeNode ${props.node.name} SortableJS onEnd] 检测到跨容器拖拽，处理数据更新`);
+
+      // 获取必要的数据
+      const { item, from, to, oldIndex, newIndex } = evt;
+      if (oldIndex === undefined || newIndex === undefined) return;
+
+      const itemId = item.dataset.id;
+      if (!itemId) {
+        console.error('Dragged item missing data-id!');
+        return;
+      }
+
+      // 获取拖拽项的类型
+      const draggedType = item.dataset.nodeType;
+
+      // 获取目标容器的类型
+      const targetContainerType = to.dataset.containerType || '';
+
+      // 如果是match或group类型，且目标容器是folder类型，则禁止拖拽
+      if ((draggedType === 'match' || draggedType === 'group') && targetContainerType === 'folder') {
+        console.log('禁止拖拽：match/group不能拖入folder');
+        return;
+      }
+
+      // 如果是match或group类型，且目标容器不是file、group或root类型，则禁止拖拽
+      if ((draggedType === 'match' || draggedType === 'group') &&
+          targetContainerType !== 'file' && targetContainerType !== 'group' && targetContainerType !== 'root') {
+        console.log('禁止拖拽：match/group只能拖入file/group/root');
+        return;
+      }
+
+      // 获取父容器ID
+      const oldParentId = from.dataset.parentId || null;
+      const newParentId = to.dataset.parentId || null;
+
+      // 触发move事件
+      try {
+        emit('move', {
+          itemId: itemId,
+          oldParentId: oldParentId,
+          newParentId: newParentId,
+          oldIndex: oldIndex,
+          newIndex: newIndex,
+        });
+      } catch (error) {
+        console.error('[TreeNode onEnd] 处理跨容器拖拽时出错:', error);
+      }
     }
   },
   onUpdate: handleChildSortUpdate,

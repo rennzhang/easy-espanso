@@ -23,6 +23,7 @@ export interface ConfigFileNode {
   content?: YamlData;
   matches?: Match[];
   groups?: Group[];
+  id?: string;
 }
 
 export interface ConfigFolderNode {
@@ -30,6 +31,7 @@ export interface ConfigFolderNode {
   name: string;
   path: string;
   children: (ConfigFileNode | ConfigFolderNode)[];
+  id?: string;
 }
 
 export type ConfigTreeNode = ConfigFileNode | ConfigFolderNode;
@@ -70,15 +72,10 @@ interface State {
   autoSaveStatus: 'idle' | 'saving' | 'saved' | 'error';
   loading: boolean;
   error: string | null;
-  // Toast state
   toastMessage: string | null;
   toastType: 'success' | 'error' | null;
   toastVisible: boolean;
   toastTimeoutId: ReturnType<typeof setTimeout> | null;
-  // --- Comment out fullscreen and platform state ---
-  // isFullscreen: boolean;
-  // platform: 'darwin' | 'win32' | 'linux' | null;
-  // --- End state comment out ---
 }
 
 export const useEspansoStore = defineStore('espanso', () => {
@@ -98,21 +95,15 @@ export const useEspansoStore = defineStore('espanso', () => {
     autoSaveStatus: 'idle',
     loading: false,
     error: null,
-    // Toast state initialization
     toastMessage: null,
     toastType: null,
     toastVisible: false,
     toastTimeoutId: null,
-    // --- Comment out initialization ---
-    // isFullscreen: false,
-    // platform: null
-    // --- End comment out ---
   });
 
   let globalGuiOrderCounter = 0; // Define counter outside
 
   // --- Define helper functions outside computed/actions if possible, or ensure they are in scope ---
-  // Example: Moving getAllMatchesFromTree (adjust based on actual dependencies)
   const getAllMatchesFromTree = (): Match[] => {
     const matches: Match[] = [];
     const traverseTree = (nodes: ConfigTreeNode[]) => {
@@ -147,19 +138,16 @@ export const useEspansoStore = defineStore('espanso', () => {
     return groups;
   };
 
-  // --- Helpers --- 
+  // --- Helpers ---
 
-  // Generate unique ID
   const generateId = (prefix: string): string => {
     return `${prefix}-${Math.random().toString(36).substring(2, 11)}`;
   };
 
-  // Check if file is a config file
   const isConfigFile = (fileName: string): boolean => {
     return (fileName.endsWith('.yml') || fileName.endsWith('.yaml')) && !fileName.startsWith('_');
   };
 
-  // Process raw match data into internal format
   const processMatch = (match: any, filePath?: string): Match => {
     globalGuiOrderCounter++; // Increment counter
     console.log('[processMatch] 处理触发词:', match.trigger, match.triggers, `guiOrder: ${globalGuiOrderCounter}`);
@@ -194,35 +182,48 @@ export const useEspansoStore = defineStore('espanso', () => {
     };
 
     // 处理多行触发词字符串 (YAML字符块，比如 trigger: |- )
-    if (match.trigger && typeof match.trigger === 'string' && 
+    if (match.trigger && typeof match.trigger === 'string' &&
        (match.trigger.includes('\n') || match.trigger.includes(','))) {
       console.log('[processMatch] 检测到多行触发词:', match.trigger);
       // 使用触发词分割逻辑，统一处理
       const triggerItems = match.trigger
-        .split(/[,\n]/)
+        .split(/[\n,]/) // Use regex for newline or comma
         .map((t: string) => t.trim())
         .filter((t: string) => t !== '');
-      
+
       if (triggerItems.length > 1) {
         console.log('[processMatch] 将多行触发词转换为数组:', triggerItems);
         baseMatch.triggers = triggerItems;
+        // Ensure single trigger is removed if triggers array is used
+        delete baseMatch.trigger;
         return baseMatch;
       }
+      // If only one item after split, treat as single trigger
+      baseMatch.trigger = triggerItems[0] || match.trigger; // Fallback to original if split resulted in empty
+      delete baseMatch.triggers; // Ensure triggers is removed
+      return baseMatch;
+
     }
 
-    // 标准处理逻辑
+    // 标准处理逻辑 for existing trigger/triggers fields
     if (Array.isArray(match.triggers) && match.triggers.length > 0) {
       // 如果有triggers数组，优先使用
       baseMatch.triggers = match.triggers;
+      delete baseMatch.trigger; // Ensure single trigger is removed if array exists
     } else if (match.trigger) {
       // 如果只有单个trigger，使用它
       baseMatch.trigger = match.trigger;
+      delete baseMatch.triggers; // Ensure triggers array is removed
+    } else {
+      // If neither, maybe default to empty trigger?
+      // baseMatch.trigger = '';
+      // delete baseMatch.triggers;
     }
+
 
     return baseMatch;
   };
 
-  // Process raw group data into internal format
   const processGroup = (group: any, filePath?: string): Group => {
     globalGuiOrderCounter++; // Increment counter for group itself
     const processedGroup: Group = {
@@ -240,12 +241,12 @@ export const useEspansoStore = defineStore('espanso', () => {
     return processedGroup;
   };
 
-  // Create a file node for the config tree
   const createFileNode = (file: FileInfo, content: YamlData, fileType: 'match' | 'config' | 'package', processedMatches: Match[], processedGroups: Group[]): ConfigFileNode => {
     return {
       type: 'file',
       name: file.name,
       path: file.path,
+      id: `file-${file.path}`, // Add an ID for files
       fileType,
       content, // Store original parsed content
       matches: processedMatches, // Use pre-processed matches
@@ -253,17 +254,16 @@ export const useEspansoStore = defineStore('espanso', () => {
     };
   };
 
-  // Create a folder node for the config tree
   const createFolderNode = (name: string, path: string): ConfigFolderNode => {
     return {
       type: 'folder',
       name,
       path,
+      id: `folder-${path}`, // Add an ID for folders
       children: []
     };
   };
 
-  // Add a node to the config tree structure
   const addToTree = (tree: ConfigTreeNode[], fileNodeToAdd: ConfigFileNode, relativePath: string): void => {
     // Use preloadApi for path joining if available, cast to any
     const safeJoinPath = (...args: string[]) => {
@@ -273,7 +273,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         return api.joinPath(...args);
       } else {
         // console.log('[safeJoinPath in addToTree] Falling back to args.join("/")');
-        return args.join('/'); 
+        return args.join('/');
       }
     };
 
@@ -296,8 +296,7 @@ export const useEspansoStore = defineStore('espanso', () => {
       folderNode.children.push(fileNodeToAdd);
     }
   };
-  
-  // Find a file node in the tree by path
+
   const findFileNode = (nodes: ConfigTreeNode[], path: string): ConfigFileNode | null => {
     for (const node of nodes) {
       if (node.type === 'file' && node.path === path) {
@@ -310,44 +309,64 @@ export const useEspansoStore = defineStore('espanso', () => {
     return null;
   };
 
-  // Recursively find an item (Match or Group) within a Group
-  const findItemInGroup = (group: Group, id: string): Match | Group | null => {
-    if (group.matches) {
-      const match = group.matches.find(m => m.id === id);
-      if (match) return match;
-    }
-    if (group.groups) {
-      for (const nestedGroup of group.groups) {
-        if (nestedGroup.id === id) return nestedGroup; // Check group itself
-        const item = findItemInGroup(nestedGroup, id);
-        if (item) return item;
+  // --- NEW HELPER FUNCTION ---
+  const getFilePathForNode = (nodes: ConfigTreeNode[], targetNodeId: string): string | null => {
+    for (const node of nodes) {
+      if (node.type === 'file' && node.id === targetNodeId) {
+        return node.path;
       }
-    }
-    return null;
-  };
-  
-  // Find an item (Match or Group) by ID anywhere in the config
-  const findItemById = (id: string): Match | Group | null => {
-    if (!state.value.config) {
-      return null;
-    }
-    const match = state.value.config.matches.find(m => m.id === id);
-    if (match) {
-      return match;
-    }
-    for (const group of state.value.config.groups) {
-      if (group.id === id) {
-        return group;
+      if (node.type === 'file') {
+         if (node.matches?.some(m => m.id === targetNodeId)) return node.path;
+         if (node.groups?.some(g => g.id === targetNodeId)) return node.path;
+         if (node.groups) {
+            for (const group of node.groups) {
+               const itemInGroup = findItemByIdRecursive(group, targetNodeId);
+               if (itemInGroup) return node.path;
+            }
+         }
       }
-      const item = findItemInGroup(group, id);
-      if (item) {
-        return item;
+      else if (node.type === 'folder' && node.children) {
+        const path = getFilePathForNode(node.children, targetNodeId);
+        if (path) return path;
       }
     }
     return null;
   };
 
-  // --- Computed Properties --- 
+  // Helper for recursive search within Group objects
+  const findItemByIdRecursive = (item: Match | Group, targetId: string): Match | Group | null => {
+    if (item.id === targetId) return item;
+    if (item.type === 'group') {
+       if (item.matches) {
+          const foundMatch = item.matches.find(m => m.id === targetId);
+          if (foundMatch) return foundMatch;
+       }
+       if (item.groups) {
+          for (const subGroup of item.groups) {
+             const found = findItemByIdRecursive(subGroup, targetId);
+             if (found) return found;
+          }
+       }
+    }
+    return null;
+  };
+
+  const findItemInGroup = (group: Group, id: string): Match | Group | null => {
+    return findItemByIdRecursive(group, id);
+  };
+
+  const findItemById = (id: string): Match | Group | null => {
+    if (!state.value.config) return null;
+    const directMatch = state.value.config.matches.find(m => m.id === id);
+    if (directMatch) return directMatch;
+    for (const group of state.value.config.groups) {
+       const found = findItemByIdRecursive(group, id);
+       if (found) return found;
+    }
+    return null;
+  };
+
+  // --- Computed Properties ---
 
   const allMatches = computed(getAllMatchesFromTree);
   const allGroups = computed(getAllGroupsFromTree);
@@ -357,10 +376,11 @@ export const useEspansoStore = defineStore('espanso', () => {
     return state.value.selectedItemId ? findItemById(state.value.selectedItemId) : null;
   });
 
-  // --- Core Actions --- 
+  // --- Core Actions ---
 
   const loadConfig = async (configDirOrPath: string): Promise<void> => {
-    // Use preloadApi for path joining if available, cast to any
+    // Ensure createFileNode and createFolderNode assign IDs
+     // Use preloadApi for path joining if available, cast to any
     const safeJoinPath = (...args: string[]) => {
        const api = window.preloadApi as any;
       if (api?.joinPath) {
@@ -368,7 +388,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         return api.joinPath(...args);
       } else {
         // console.log('[safeJoinPath in loadConfig] Falling back to args.join("/")');
-        return args.join('/'); 
+        return args.join('/');
       }
     };
     globalGuiOrderCounter = 0; // Reset counter before loading
@@ -403,9 +423,10 @@ export const useEspansoStore = defineStore('espanso', () => {
       if (await fileExists(defaultGlobalPath)) {
           try {
               const content = await readFile(defaultGlobalPath);
-          const yaml = await parseYaml(content) as YamlData;
-          state.value.globalConfig = yaml;
+              const yaml = await parseYaml(content) as YamlData;
+              state.value.globalConfig = yaml;
               state.value.globalConfigPath = defaultGlobalPath;
+              // Ensure createFileNode assigns an ID
               const fileNode = createFileNode({ name: 'default.yml', path: defaultGlobalPath, extension: '.yml' }, yaml, 'config', [], []);
               addToTree(configTree, fileNode, 'config');
               console.log('加载全局配置成功:', defaultGlobalPath);
@@ -416,10 +437,10 @@ export const useEspansoStore = defineStore('espanso', () => {
       const matchDir = safeJoinPath(configDir, 'match');
       if (await fileExists(matchDir)) {
           const matchDirTree = await scanDirectory(matchDir);
-          console.log('匹配目录结构:', matchDirTree);
+          // console.log('匹配目录结构:', matchDirTree); // Less verbose logging
 
           const processDirectory = async (dirNode: any, relativePath: string = '') => {
-              if (dirNode.type === 'file' && isConfigFile(dirNode.name)) {
+             if (dirNode.type === 'file' && isConfigFile(dirNode.name)) {
                 try {
                   const content = await readFile(dirNode.path);
                   const yaml = await parseYaml(content) as YamlData;
@@ -430,12 +451,12 @@ export const useEspansoStore = defineStore('espanso', () => {
                         ? yaml.matches.map((match: any) => processMatch(match, dirNode.path))
                         : [];
                       const fileGroups = Array.isArray(yaml.groups)
-                        ? yaml.groups.map((group: Group) => processGroup(group, dirNode.path))
+                        ? yaml.groups.map((group: any) => processGroup(group, dirNode.path)) // Use any here temporarily
                         : [];
 
-                      // Create file node using the processed items
+                      // Create file node using the processed items (Ensure ID is assigned)
                       const fileNode = createFileNode({ name: dirNode.name, path: dirNode.path, extension: '.yml' }, yaml, fileType, fileMatches, fileGroups);
-                  addToTree(configTree, fileNode, relativePath);
+                      addToTree(configTree, fileNode, relativePath);
 
                       // Add the processed items to the global list
                       if (fileMatches.length > 0) {
@@ -470,56 +491,55 @@ export const useEspansoStore = defineStore('espanso', () => {
           const exampleFilePath = safeJoinPath(matchDir, 'base.yml'); // Get path first
           if (!exampleFilePath || typeof exampleFilePath !== 'string') {
              console.error('无法为示例文件生成有效路径!');
-             // Handle error appropriately, maybe skip example creation or throw
         } else {
               // 创建示例匹配规则
-              const exampleMatch = processMatch({ 
-                  trigger: ':hello', 
-                  replace: 'Hello World!' 
+              const exampleMatch = processMatch({
+                  trigger: ':hello',
+                  replace: 'Hello World!'
               }, exampleFilePath);
-              
+
               currentMatches.push(exampleMatch);
               firstMatchFilePath = exampleFilePath; // Assign the confirmed string path
-              
+
               // 创建示例YAML文件内容
-              const exampleYaml = { 
-                  matches: [{ 
-                      trigger: ':hello', 
-                      replace: 'Hello World!' 
-                  }] 
+              const exampleYaml = {
+                  matches: [{
+                      trigger: ':hello',
+                      replace: 'Hello World!'
+                  }]
               };
-              
+
               try {
                 await writeFile(exampleFilePath, await serializeYaml(exampleYaml)); // Use confirmed string path
-                const fileNode = createFileNode({ 
-                    name: 'base.yml', 
-                    path: exampleFilePath, 
-                    extension: '.yml' 
+                // Ensure createFileNode assigns an ID
+                const fileNode = createFileNode({
+                    name: 'base.yml',
+                    path: exampleFilePath,
+                    extension: '.yml'
                 }, exampleYaml, 'match', [exampleMatch], []); // Use confirmed string path
-                
+
                 addToTree(configTree, fileNode, '');
                 console.log('示例文件已创建:', exampleFilePath);
-              } catch(e) { 
-                  console.error('创建示例文件失败:', e); 
+              } catch(e) {
+                  console.error('创建示例文件失败:', e);
               }
           }
       }
 
       // Update state
       state.value.configTree = configTree;
+      // Make sure the flat state reflects the processed data correctly
       state.value.config = { matches: currentMatches, groups: currentGroups };
-      // Set configPath to the first file found containing matches/groups, or default to base.yml
-      state.value.configPath = firstMatchFilePath || safeJoinPath(matchDir, 'base.yml'); 
-      state.value.lastSavedState = JSON.stringify(state.value.config, null, 2); // Initialize saved state
+      state.value.configPath = firstMatchFilePath || safeJoinPath(matchDir, 'base.yml');
+      state.value.lastSavedState = JSON.stringify({ matches: currentMatches, groups: currentGroups }, null, 2); // Store only matches/groups for comparison?
       state.value.hasUnsavedChanges = false;
 
       console.log('配置加载完成', { path: state.value.configPath, matches: currentMatches.length, groups: currentGroups.length });
 
     } catch (error: any) {
-      console.error('加载配置失败:', error);
-      state.value.error = `加载配置失败: ${error.message}`;
-       // Ensure minimal state exists even on error
-       if (!state.value.config) state.value.config = { matches: [], groups: [] };
+        console.error('加载配置失败:', error);
+        state.value.error = `加载配置失败: ${error.message}`;
+        if (!state.value.config) state.value.config = { matches: [], groups: [] };
     } finally {
       state.value.loading = false;
     }
@@ -533,7 +553,7 @@ export const useEspansoStore = defineStore('espanso', () => {
       state.value.autoSaveStatus = 'saving';
       // console.log('[Store autoSaveConfig] Starting global config auto-save...');
 
-      // --- Save Global Config ONLY --- 
+      // --- Save Global Config ONLY ---
       if (state.value.globalConfig && state.value.globalConfigPath) {
         // console.log('[Store autoSaveConfig] Saving global config:', state.value.globalConfigPath);
         try {
@@ -550,21 +570,6 @@ export const useEspansoStore = defineStore('espanso', () => {
         // console.log('[Store autoSaveConfig] No global config or path, skipping global save.');
       }
 
-      // --- REMOVED Reload config logic --- 
-      /*
-      const currentConfigDir = state.value.configPath ? state.value.configPath.substring(0, state.value.configPath.lastIndexOf('/')) : null;
-      if (currentConfigDir && (currentConfigDir.endsWith('/match') || currentConfigDir.endsWith('/config'))) {
-        const baseDir = currentConfigDir.substring(0, currentConfigDir.lastIndexOf('/'));
-        console.log('[Store autoSaveConfig] Reloading configuration from base directory after save:', baseDir);
-        await loadConfig(baseDir);
-      } else if (state.value.configPath) { // Fallback if path structure is different
-         console.warn('[Store autoSaveConfig] Could not reliably determine base directory from configPath, attempting reload with existing path which might be incorrect for full reload:', state.value.configPath);
-         // Attempt reload with configPath, might not reload everything if it was just a file path
-         await loadConfig(state.value.configPath);
-      } else {
-          console.error('[Store autoSaveConfig] Cannot reload config after save: configPath is missing.');
-      }
-      */
 
       // Update saved state marker and status - perhaps remove if only saving global?
       // state.value.lastSavedState = JSON.stringify(state.value.config, null, 2);
@@ -578,605 +583,738 @@ export const useEspansoStore = defineStore('espanso', () => {
     }
   };
 
-  // --- Helpers for updating state --- 
+  // --- Helpers for updating state ---
 
-  // Helper to find and update item within a Group object (used by findAndUpdateInTree)
   const findAndUpdateInGroup = (group: Group, updatedItem: Match | Group): boolean => {
-      if (updatedItem.type === 'match' && group.matches) {
-          const index = group.matches.findIndex(m => m.id === updatedItem.id);
-          if (index !== -1) {
-              group.matches[index] = updatedItem as Match; // Replace reference
-              return true;
-          }
-      }
-      if (group.groups) {
-          for (let i = 0; i < group.groups.length; i++) {
-               if (updatedItem.type === 'group' && group.groups[i].id === updatedItem.id) {
-                   group.groups[i] = updatedItem as Group; // Replace reference
-                   return true;
-               }
-               if (findAndUpdateInGroup(group.groups[i], updatedItem)) {
-                   return true;
-               }
-          }
-      }
-      return false;
-  };
-
-  // Helper to find and update item reference in the configTree
-  const findAndUpdateInTree = (nodes: ConfigTreeNode[], updatedItem: Match | Group): boolean => {
-            for (const node of nodes) {
-          if (node.type === 'file') {
-              if (updatedItem.type === 'match' && node.matches) {
-                  const index = node.matches.findIndex(m => m.id === updatedItem.id);
-                  if (index !== -1) {
-                      node.matches[index] = updatedItem as Match; // Replace reference
-                      return true;
-                  }
-              } else if (updatedItem.type === 'group' && node.groups) {
-                  const index = node.groups.findIndex(g => g.id === updatedItem.id);
-                  if (index !== -1) {
-                      node.groups[index] = updatedItem as Group; // Replace reference
-                      return true;
-                  }
-                  // Recursively search within groups in the file node
-                  for(const groupInFile of node.groups) {
-                     if (findAndUpdateInGroup(groupInFile, updatedItem)) return true;
-                  }
-              }
-              } else if (node.type === 'folder') {
-              if (findAndUpdateInTree(node.children, updatedItem)) {
-                  return true;
-              }
-          }
-      }
-      return false;
-  };
-
-  // Update config state and sync configTree reference
-  const updateConfigState = (itemId: string, updateData: Partial<Match> | Partial<Group>) => {
-    try {
-      // console.log(`[Store updateConfigState] Updating item ID: ${itemId} with data:`, JSON.parse(JSON.stringify(updateData)));
-      if (!state.value.config) {
-        console.error("Cannot update state, config is null.");
-        return;
-      }
-
-      let targetItem: Match | Group | null = null;
-
-      // 1. Find the item in the flat list (matches)
-      let matchIndex = state.value.config.matches.findIndex(m => m.id === itemId);
-      if (matchIndex !== -1) {
-        targetItem = state.value.config.matches[matchIndex];
-        } else {
-        // 2. If not in matches, find in groups (recursively)
-        const findInGroupsRecursive = (groups: Group[]): Group | null => {
-          for (let i = 0; i < groups.length; i++) {
-            if (groups[i].id === itemId) {
-              return groups[i]; // Return the found item
-            }
-            if (groups[i].groups) {
-              const found = findInGroupsRecursive(groups[i].groups!); // Change var name
-              if (found) return found;
-            }
-          }
-          return null;
-        };
-        targetItem = findInGroupsRecursive(state.value.config.groups); // Assign result
-      }
-
-      if (!targetItem) {
-        console.error(`[Store updateConfigState] Item with ID ${itemId} not found in config.`);
-        return; 
-      }
-
-      // 复制更新数据，以免修改原始数据
-      const updateDataCopy = { ...updateData };
-      
-      if (targetItem.type === 'match') {
-        // 暂存触发词相关字段
-        const newTrigger = (updateDataCopy as Partial<Match>).trigger;
-        const newTriggers = (updateDataCopy as Partial<Match>).triggers;
-        
-        // 从更新数据中删除这些字段，以便后面单独处理
-        delete (updateDataCopy as Partial<Match>).trigger;
-        delete (updateDataCopy as Partial<Match>).triggers;
-        
-        // 先应用其他更新
-        Object.assign(targetItem, updateDataCopy);
-        
-        // 删除现有的trigger和triggers字段
-        delete (targetItem as Match).trigger;
-        delete (targetItem as Match).triggers;
-        
-        // 根据情况分配新的trigger或triggers
-        if (newTriggers && newTriggers.length > 0) {
-          (targetItem as Match).triggers = newTriggers;
-        } else if (newTrigger !== undefined) {
-          (targetItem as Match).trigger = newTrigger;
-        } else {
-          // 如果更新数据中未提供trigger和triggers，保留原有值
+    if (updatedItem.type === 'match' && group.matches) {
+        const index = group.matches.findIndex(m => m.id === updatedItem.id);
+        if (index !== -1) {
+            group.matches[index] = updatedItem as Match;
+            return true;
         }
-      } else {
-        // 对于Group类型，直接应用更新
-        Object.assign(targetItem, updateDataCopy);
-      }
-
-      // 3. Find and update the item reference in the configTree
-      if (!findAndUpdateInTree(state.value.configTree, targetItem)) {
-        console.warn(`[Store updateConfigState] Item ID ${itemId} was updated in config, but not found/updated in configTree. Tree might be out of sync.`);
-      } else {
-        // console.log(`[Store updateConfigState] Item ID ${itemId} reference updated in configTree.`);
-      }
-
-      // Mark changes as unsaved
-      state.value.hasUnsavedChanges = true;
-      state.value.autoSaveStatus = 'idle';
-
-    } catch (error: any) {
-      console.error('更新配置状态失败:', error);
-      state.value.error = `更新配置状态失败: ${error.message}`;
     }
+    if (group.groups) {
+        for (let i = 0; i < group.groups.length; i++) {
+             if (updatedItem.type === 'group' && group.groups[i].id === updatedItem.id) {
+                 group.groups[i] = updatedItem as Group;
+                 return true;
+             }
+             if (findAndUpdateInGroup(group.groups[i], updatedItem)) {
+                 return true;
+             }
+        }
+    }
+    return false; // Explicit return
+  };
+
+  const findAndUpdateInTree = (nodes: ConfigTreeNode[], updatedItem: Match | Group): boolean => {
+    for (const node of nodes) {
+        if (node.type === 'file') {
+            if (updatedItem.type === 'match' && node.matches) {
+                const index = node.matches.findIndex(m => m.id === updatedItem.id);
+                if (index !== -1) {
+                    node.matches[index] = updatedItem as Match;
+                    return true;
+                }
+            } else if (updatedItem.type === 'group' && node.groups) {
+                // Use type assertion here to potentially resolve 'never' issue
+                const index = node.groups.findIndex(g => g.id === (updatedItem as Group).id);
+                if (index !== -1) {
+                    node.groups[index] = updatedItem as Group;
+                    return true;
+                }
+                for(const groupInFile of node.groups) {
+                   if (findAndUpdateInGroup(groupInFile, updatedItem)) return true;
+                }
+            }
+        } else if (node.type === 'folder' && node.children) {
+            if (findAndUpdateInTree(node.children, updatedItem)) {
+                return true;
+            }
+        } else if (node.type === 'group') { // Should be handled within file/folder
+             if (findAndUpdateInGroup(node as Group, updatedItem)) return true;
+        }
+    }
+    return false;
+  };
+
+  const updateConfigState = (itemId: string, updateData: Partial<Match> | Partial<Group>) => {
+      try {
+        // console.log(`[Store updateConfigState] Updating item ID: ${itemId} with data:`, JSON.parse(JSON.stringify(updateData)));
+        if (!state.value.config) {
+          console.error("Cannot update state, config is null.");
+          return;
+        }
+
+        let targetItem: Match | Group | null = null;
+
+        // Use the refined findItemById to locate the item in the logical structure
+        targetItem = findItemById(itemId);
+
+
+        if (!targetItem) {
+          console.error(`[Store updateConfigState] Item with ID ${itemId} not found in config.`);
+          return;
+        }
+
+        // 复制更新数据，以免修改原始数据
+        const updateDataCopy = { ...updateData };
+
+        if (targetItem.type === 'match') {
+          // 暂存触发词相关字段
+          const newTrigger = (updateDataCopy as Partial<Match>).trigger;
+          const newTriggers = (updateDataCopy as Partial<Match>).triggers;
+
+          // 从更新数据中删除这些字段，以便后面单独处理
+          delete (updateDataCopy as Partial<Match>).trigger;
+          delete (updateDataCopy as Partial<Match>).triggers;
+
+          // 先应用其他更新
+          Object.assign(targetItem, updateDataCopy);
+
+          // 删除现有的trigger和triggers字段
+          delete (targetItem as Match).trigger;
+          delete (targetItem as Match).triggers;
+
+          // 根据情况分配新的trigger或triggers
+          if (newTriggers && newTriggers.length > 0) {
+            (targetItem as Match).triggers = newTriggers;
+          } else if (newTrigger !== undefined && newTrigger !== null) { // Check for null as well
+            (targetItem as Match).trigger = newTrigger;
+          } else {
+            // If updateData didn't provide either, it might mean clearing them.
+            // Let's explicitly set trigger to empty string if neither is provided?
+            // Or rely on cleanMatchForSaving to handle it? Let's rely on cleaner.
+          }
+        } else {
+          // 对于Group类型，直接应用更新
+          Object.assign(targetItem, updateDataCopy);
+        }
+
+        // 3. Find and update the item reference in the configTree (visual structure)
+        if (!findAndUpdateInTree(state.value.configTree, targetItem)) {
+          console.warn(`[Store updateConfigState] Item ID ${itemId} was updated in config, but not found/updated in configTree. Tree might be out of sync.`);
+        } else {
+          // console.log(`[Store updateConfigState] Item ID ${itemId} reference updated in configTree.`);
+        }
+
+        // Mark changes as unsaved
+        state.value.hasUnsavedChanges = true;
+        state.value.autoSaveStatus = 'idle';
+
+      } catch (error: any) {
+        console.error('更新配置状态失败:', error);
+        state.value.error = `更新配置状态失败: ${error.message}`;
+      }
   };
 
   // --- Item CRUD Actions (call updateConfigState or specific logic) ---
 
   const updateItem = async (item: Match | Group) => {
-    console.log('[Store updateItem] Received item:', JSON.parse(JSON.stringify(item)));
+    // console.log('[Store updateItem] Received item:', JSON.parse(JSON.stringify(item)));
     // Call the new updateConfigState with ID and data
     updateConfigState(item.id, item);
   };
 
   const deleteItem = async (id: string, type: 'match' | 'group') => {
     console.log(`[Store deleteItem] Deleting ${type} with id: ${id}`);
-    // TODO: Implement proper deletion from state AND tree
-    // Temporarily reverting to a function-based update to avoid breaking changes
-    // This needs a dedicated deletion logic for both config and configTree
-    const updateFn = (config: EspansoConfig) => {
-        if (type === 'match') {
-            config.matches = config.matches.filter(i => i.id !== id);
-          } else {
-            const removeGroupRecursive = (groups: Group[]): Group[] => {
-                return groups.filter(group => group.id !== id).map(group => {
-                    if (group.groups) {
-                        group.groups = removeGroupRecursive(group.groups);
-                    }
-                    return group;
-                });
-            };
-            config.groups = removeGroupRecursive(config.groups);
-        }
-    };
-    // This uses the OLD signature temporarily - find a better way
-    // We need a way to pass the ID and signal deletion, or create deleteConfigState
-    try {
-        console.log('[Store deleteItem] Starting state update (temp logic)...');
-        if (!state.value.config) {
-            console.error("Cannot update state, config is null.");
-            return;
-        }
-        const newConfig = cloneDeep(state.value.config);
-        updateFn(newConfig);
-        state.value.config = newConfig;
-        // TODO: Also remove from configTree!
-        console.warn('[Store deleteItem] Item removed from config, but NOT from configTree. Tree is out of sync!')
-        state.value.hasUnsavedChanges = true;
-        state.value.autoSaveStatus = 'idle';
-        console.log('配置状态更新完成 (delete - temp logic)，标记为未保存');
-    } catch (error: any) {
-        console.error('更新配置状态失败 (delete - temp logic): ', error);
+    if (!state.value.config) return;
+
+    const itemToDelete = findItemById(id);
+    if (!itemToDelete) {
+      console.error(`[Store deleteItem] Item ${id} not found.`);
+      return;
+    }
+    const filePathToSave = itemToDelete.filePath; // Get path BEFORE removing
+
+    // --- Remove from flat lists ---
+    if (type === 'match') {
+      state.value.config.matches = state.value.config.matches.filter(i => i.id !== id);
+      const removeFromGroupMatches = (groups: Group[]) => {
+          groups.forEach(g => {
+              if (g.matches) g.matches = g.matches.filter(m => m.id !== id);
+              if (g.groups) removeFromGroupMatches(g.groups);
+          });
+      };
+      removeFromGroupMatches(state.value.config.groups);
+    } else { // type === 'group'
+        const removeGroupRecursive = (groups: Group[]): Group[] => {
+            return groups.filter(group => {
+                if (group.id === id) return false;
+                if (group.groups) {
+                    group.groups = removeGroupRecursive(group.groups);
+                }
+                return true;
+            });
+        };
+        state.value.config.groups = removeGroupRecursive(state.value.config.groups);
     }
 
-    // Need to trigger save after deletion if required
-    // const itemToDelete = findItemById(id); // Find before deleting from state
-    // if (itemToDelete?.filePath) {
-    //   await saveFileByPath(itemToDelete.filePath); // Need a saveFileByPath function
-    // }
+    // --- Remove from tree structure ---
+    const removeFromTree = (nodes: ConfigTreeNode[]): ConfigTreeNode[] => {
+       return nodes.filter(node => {
+           if (node.id === id) return false;
+           if (node.type === 'file') {
+               if (node.matches) node.matches = node.matches.filter(m => m.id !== id);
+               if (node.groups) {
+                  node.groups = node.groups.filter(g => g.id !== id);
+                  node.groups.forEach(g => {
+                     const removeNested = (group: Group) => {
+                         if (group.matches) group.matches = group.matches.filter(m => m.id !== id);
+                         if (group.groups) {
+                             group.groups = group.groups.filter(sg => sg.id !== id);
+                             group.groups.forEach(removeNested);
+                         }
+                     }
+                     removeNested(g);
+                  });
+               }
+           } else if (node.type === 'folder' && node.children) {
+               node.children = removeFromTree(node.children);
+           }
+           return true;
+       });
+    };
+    state.value.configTree = removeFromTree(state.value.configTree);
+
+    // --- Save the affected file ---
+    if (filePathToSave) {
+        try {
+            console.log(`[Store deleteItem] Saving file ${filePathToSave} after deletion.`);
+            // --- Simplified Trigger Item Search ---
+            let triggerItem: Match | Group | undefined;
+            const findAnyItemForFile = (path: string): Match | Group | undefined => {
+                const findRecursive = (items: (Match | Group)[]): Match | Group | undefined => {
+                    for (const item of items) {
+                        if (item.filePath === path) return item;
+                        if (item.type === 'group' && item.matches) {
+                           const foundMatch = item.matches.find(m => m.filePath === path);
+                           if (foundMatch) return foundMatch;
+                        }
+                         if (item.type === 'group' && item.groups) {
+                             const found = findRecursive(item.groups);
+                             if (found) return found;
+                         }
+                    }
+                    return undefined;
+                };
+                return findRecursive([...(state.value.config?.matches || []), ...(state.value.config?.groups || [])]);
+            }
+            triggerItem = findAnyItemForFile(filePathToSave);
+            // --- End Simplified Search ---
+
+            if (triggerItem) {
+                console.log(`[Store deleteItem] Saving file ${filePathToSave} (triggered by remaining item ${triggerItem.id})`);
+                await saveItemToFile(triggerItem);
+            } else {
+                console.log(`[Store deleteItem] No items left for file ${filePathToSave}. Writing empty/cleaned file.`);
+                 const fileNode = findFileNode(state.value.configTree, filePathToSave);
+                 let otherKeysData: YamlData = {};
+                  if (fileNode && fileNode.content) {
+                     Object.keys(fileNode.content).forEach(key => {
+                        if (key !== 'matches' && key !== 'groups') {
+                           otherKeysData[key] = fileNode.content![key];
+                        }
+                     });
+                  }
+                 const yamlContent = Object.keys(otherKeysData).length > 0 ? await serializeYaml(otherKeysData) : '';
+                 await writeFile(filePathToSave, yamlContent);
+                 console.log(`[Store deleteItem] Wrote empty/cleaned file: ${filePathToSave}`);
+            }
+             state.value.hasUnsavedChanges = false;
+             state.value.autoSaveStatus = 'idle';
+             showToast('项目已删除并保存', 'success');
+        } catch (error) {
+             console.error(`[Store deleteItem] Failed to save file ${filePathToSave} after deletion:`, error);
+             state.value.hasUnsavedChanges = true;
+             state.value.autoSaveStatus = 'error';
+             showToast('删除项目后保存文件失败', 'error');
+        }
+    } else {
+        console.warn(`[Store deleteItem] Could not determine file path for deleted item ${id}. File not saved.`);
+         state.value.hasUnsavedChanges = true;
+         state.value.autoSaveStatus = 'idle';
+    }
+    if (state.value.selectedItemId === id) {
+        state.value.selectedItemId = null;
+    }
   };
 
+
   const addItem = async (item: Match | Group) => {
+    // Needs update to add to flat list, tree structure, and save file.
      console.log(`[Store addItem] Adding new ${item.type}:`, JSON.parse(JSON.stringify(item)));
      if (!item.filePath) {
-         item.filePath = state.value.configPath || undefined;
-         console.warn(`[Store addItem] Item missing filePath, assigned: ${item.filePath}`);
+         item.filePath = state.value.configPath || undefined; // Assign default path if missing
+         console.warn(`[Store addItem] Item missing filePath, assigned default: ${item.filePath}`);
          if (!item.filePath) {
              console.error("[Store addItem] Cannot add item without a filePath and no active configPath.");
+             showToast('无法添加项目：缺少文件路径', 'error');
              return;
          }
      }
-     // TODO: Implement proper addition to state AND tree
-     // Temporarily reverting to a function-based update
-     const updateFn = (config: EspansoConfig) => {
-        if (item.type === 'match') {
-            config.matches.push(item);
-        } else {
-            config.groups.push(item);
-        }
-     };
-      try {
-        console.log('[Store addItem] Starting state update (temp logic)...');
-        if (!state.value.config) {
-            // Handle case where config is null, maybe initialize it?
-             console.error("Cannot add item, config is null.");
-             return;
-        }
-        const newConfig = cloneDeep(state.value.config);
-        updateFn(newConfig);
-        state.value.config = newConfig;
-        // TODO: Also add to configTree!
-        console.warn('[Store addItem] Item added to config, but NOT to configTree. Tree is out of sync!')
-        state.value.hasUnsavedChanges = true;
-        state.value.autoSaveStatus = 'idle';
-        console.log('配置状态更新完成 (add - temp logic)，标记为未保存');
-    } catch (error: any) {
-        console.error('更新配置状态失败 (add - temp logic): ', error);
-    }
-    // Need to trigger save after addition if required
-    // await saveItemToFile(item);
-  };
-
-  // --- Tree Manipulation Action --- 
-  const moveTreeItem = (itemId: string, oldParentId: string | null, newParentId: string | null, oldIndex: number, newIndex: number) => {
-    console.log(`[Store moveTreeItem] Moving item ${itemId} from parent ${oldParentId} (index ${oldIndex}) to parent ${newParentId} (index ${newIndex})`);
-    
-    try {
-      // 根据ID查找需要移动的节点
-      const itemToMove = findNodeById(state.value.configTree, itemId);
-      if (!itemToMove) {
-        console.error(`[Store moveTreeItem] Failed to find item with ID ${itemId}`);
-        return;
+      if (!item.id) {
+          item.id = generateId(item.type); // Ensure ID exists
       }
 
-      // 根据ID查找旧父节点
-      const oldParent = oldParentId ? findNodeById(state.value.configTree, oldParentId) : { children: state.value.configTree };
-      if (!oldParent || !oldParent.children) {
-        console.error(`[Store moveTreeItem] Failed to find old parent with ID ${oldParentId}`);
-        return;
-      }
+     if (!state.value.config) {
+         console.error("Cannot add item, config is null.");
+         showToast('无法添加项目：配置未加载', 'error');
+         return;
+     }
 
-      // 根据ID查找新父节点
-      const newParent = newParentId ? findNodeById(state.value.configTree, newParentId) : { children: state.value.configTree };
-      if (!newParent || !newParent.children) {
-        console.error(`[Store moveTreeItem] Failed to find new parent with ID ${newParentId}`);
-        return;
-      }
-
-      // 1. 从旧位置删除节点
-      if (oldIndex >= 0 && oldIndex < oldParent.children.length) {
-        // 创建节点的副本，断开原始引用
-        const itemCopy = JSON.parse(JSON.stringify(itemToMove));
-        oldParent.children.splice(oldIndex, 1);
-        
-        // 2. 插入到新位置
-        // 确保新位置索引有效 
-        const safeNewIndex = Math.min(Math.max(0, newIndex), newParent.children.length);
-        newParent.children.splice(safeNewIndex, 0, itemCopy);
-        
-        // 3. 更新节点的filePath（如果需要）
-        if (itemCopy.type === 'match' || itemCopy.type === 'group') {
-          // 确定新的filePath
-          const newFilePath = determineNewFilePath(itemCopy, newParent);
-          if (newFilePath) {
-            // 更新节点及其子节点的filePath
-            updateNodeFilePath(itemCopy, newFilePath);
-          }
-        }
-        
-        // 4. 更新guiOrder
-        updateGuiOrderForChildren(newParent.children);
-        
-        // 5. 标记为未保存状态
-        state.value.hasUnsavedChanges = true;
-        state.value.autoSaveStatus = 'idle';
-        
-        console.log('[Store moveTreeItem] Successfully moved item');
+      // --- Add to flat list ---
+      if (item.type === 'match') {
+         state.value.config.matches.push(item);
       } else {
-        console.error(`[Store moveTreeItem] Invalid oldIndex: ${oldIndex}`);
+         // Add to top-level groups for now. Adding to nested groups needs parent context.
+         state.value.config.groups.push(item);
+      }
+
+      // --- Add to tree structure ---
+      // Find the target file node in the tree
+      const targetFileNode = findFileNode(state.value.configTree, item.filePath);
+      if (targetFileNode) {
+          if (item.type === 'match') {
+              if (!targetFileNode.matches) targetFileNode.matches = [];
+              targetFileNode.matches.push(item); // Add reference to the item from flat list
+          } else {
+              if (!targetFileNode.groups) targetFileNode.groups = [];
+              targetFileNode.groups.push(item); // Add reference
+          }
+          console.log(`[Store addItem] Added item ${item.id} to tree node for file ${item.filePath}`);
+      } else {
+          console.error(`[Store addItem] Could not find target file node in tree for path ${item.filePath}. Tree is out of sync!`);
+          // Attempt to create a new file node? Risky.
+          // For now, item exists in flat list but not tree. Save will still work.
+      }
+
+      // --- Save the file ---
+      try {
+        await saveItemToFile(item);
+        state.value.hasUnsavedChanges = false;
+        state.value.autoSaveStatus = 'idle';
+        showToast('项目已添加并保存', 'success');
+      } catch (error) {
+         console.error('[Store addItem] Failed to save file after adding item:', error);
+         state.value.hasUnsavedChanges = true; // Keep marked as unsaved
+         state.value.autoSaveStatus = 'error';
+         showToast('添加项目后保存文件失败', 'error');
+      }
+       // Optionally select the newly added item
+      state.value.selectedItemId = item.id;
+  };
+
+
+  // --- Tree Manipulation Action (REVISED) ---
+  const moveTreeItem = async (itemId: string, oldParentId: string | null, newParentId: string | null, oldIndex: number, newIndex: number) => {
+    console.log(`[Store moveTreeItem REV] Moving item ${itemId} from parent ${oldParentId} (index ${oldIndex}) to parent ${newParentId} (index ${newIndex})`);
+
+    if (!state.value.config || !state.value.configTree) {
+        console.error("[Store moveTreeItem REV] Config or ConfigTree is not loaded.");
+        return;
+    }
+
+    try {
+      const movedItemRef = findItemById(itemId);
+      if (!movedItemRef) {
+        console.error(`[Store moveTreeItem REV] Failed to find item ref with ID ${itemId} in config.`);
+        showToast('拖拽失败：找不到项目引用', 'error');
+        return;
+      }
+      const originalFilePath = movedItemRef.filePath;
+
+      const oldParentNode = oldParentId ? findNodeById(state.value.configTree, oldParentId) : { type: 'root', id: null, children: state.value.configTree };
+      const newParentNode = newParentId ? findNodeById(state.value.configTree, newParentId) : { type: 'root', id: null, children: state.value.configTree };
+
+      if (!oldParentNode || !newParentNode) {
+        console.error(`[Store moveTreeItem REV] Failed to find parent tree node(s). Old: ${oldParentId}, New: ${newParentId}`);
+         showToast('拖拽失败：找不到父节点', 'error');
+        return;
+      }
+
+      let effectiveNewFilePath: string | null = null;
+      if (newParentNode.type === 'file') {
+          effectiveNewFilePath = newParentNode.path;
+      } else if (newParentNode.type === 'folder' || newParentNode.type === 'group') {
+          effectiveNewFilePath = getFilePathForNode(state.value.configTree, newParentNode.id);
+      } else if (newParentNode.type === 'root') {
+          effectiveNewFilePath = originalFilePath;
+      }
+       if (!effectiveNewFilePath && newParentNode.type !== 'root') {
+            effectiveNewFilePath = state.value.configPath;
+       }
+
+      let oldParentArray: Array<Match | Group | ConfigTreeNode>;
+      if (oldParentNode.type === 'file') oldParentArray = movedItemRef.type === 'match' ? (oldParentNode.matches ??= []) : (oldParentNode.groups ??= []);
+      else oldParentArray = oldParentNode.children ??= [];
+
+      let newParentArray: Array<Match | Group | ConfigTreeNode>;
+       if (newParentNode.type === 'file') newParentArray = movedItemRef.type === 'match' ? (newParentNode.matches ??= []) : (newParentNode.groups ??= []);
+       else newParentArray = newParentNode.children ??= [];
+
+      if (oldIndex >= 0 && oldIndex < oldParentArray.length) {
+        const movedTreeNode = oldParentArray[oldIndex];
+        if (!movedTreeNode || movedTreeNode.id !== itemId) {
+            console.error(`[Store moveTreeItem REV] Item at oldIndex ${oldIndex} does not match moved item ID ${itemId}. Aborting.`);
+            showToast('拖拽失败：树结构索引错误', 'error');
+            return;
+        }
+        oldParentArray.splice(oldIndex, 1);
+        const safeNewIndex = Math.min(Math.max(0, newIndex), newParentArray.length);
+        newParentArray.splice(safeNewIndex, 0, movedTreeNode);
+        updateGuiOrderForChildren(newParentArray);
+        if (oldParentArray !== newParentArray) {
+           updateGuiOrderForChildren(oldParentArray);
+        }
+
+        const filesToSave = new Set<string>();
+        if (originalFilePath !== effectiveNewFilePath && effectiveNewFilePath) {
+           console.log(`[Store moveTreeItem REV] Cross-file move detected: ${originalFilePath} -> ${effectiveNewFilePath}`);
+           movedItemRef.filePath = effectiveNewFilePath;
+           console.log(`[Store moveTreeItem REV] Updated filePath for item ${itemId} in flat list to ${effectiveNewFilePath}`);
+           if (originalFilePath) filesToSave.add(originalFilePath);
+           filesToSave.add(effectiveNewFilePath);
+        } else if (originalFilePath) {
+           console.log(`[Store moveTreeItem REV] Same-file move/reorder: ${originalFilePath}`);
+           filesToSave.add(originalFilePath);
+        } else {
+            if (effectiveNewFilePath) filesToSave.add(effectiveNewFilePath);
+        }
+
+        state.value.hasUnsavedChanges = true;
+        state.value.autoSaveStatus = 'idle';
+
+        if (filesToSave.size > 0) {
+           console.log(`[Store moveTreeItem REV] Files to save:`, Array.from(filesToSave));
+           const savePromises = Array.from(filesToSave).map(async (filePath) => {
+            try {
+                let triggerItem: Match | Group | undefined;
+                const config = state.value.config;
+                if (config) {
+                    triggerItem = config.matches.find(m => m.filePath === filePath)
+                               || config.groups.find(g => g.filePath === filePath);
+                    if (!triggerItem) {
+                         const findAnyInGroups = (groups: Group[]): Match | Group | undefined => {
+                             for (const group of groups) {
+                                 if (group.filePath === filePath) return group;
+                                 const foundMatch = group.matches?.find(m => m.filePath === filePath);
+                                 if (foundMatch) return foundMatch;
+                                 if (group.groups) {
+                                     const found = findAnyInGroups(group.groups);
+                                     if (found) return found;
+                                 }
+                             }
+                             return undefined;
+                         }
+                         triggerItem = findAnyInGroups(config.groups);
+                    }
+                }
+                if (triggerItem) {
+                  console.log(`[Store moveTreeItem REV] Saving file ${filePath} (triggered by item ${triggerItem.id})`);
+                  await saveItemToFile(triggerItem);
+                } else {
+                  console.log(`[Store moveTreeItem REV] No items found for file ${filePath}. Writing empty/cleaned file.`);
+                  const fileNode = findFileNode(state.value.configTree, filePath);
+                  let otherKeysData: YamlData = {};
+                  if (fileNode && fileNode.content) {
+                     Object.keys(fileNode.content).forEach(key => {
+                        if (key !== 'matches' && key !== 'groups') {
+                           otherKeysData[key] = fileNode.content![key];
+                        }
+                     });
+                  }
+                  const yamlContent = Object.keys(otherKeysData).length > 0 ? await serializeYaml(otherKeysData) : '';
+                  await writeFile(filePath, yamlContent);
+                  console.log(`[Store moveTreeItem REV] Successfully wrote empty/cleaned file: ${filePath}`);
+                }
+            } catch (error) {
+               console.error(`[Store moveTreeItem REV] Failed to save file ${filePath}:`, error);
+               throw error;
+            }
+           });
+
+           try {
+              await Promise.all(savePromises);
+              console.log(`[Store moveTreeItem REV] All modified files saved successfully.`);
+              state.value.hasUnsavedChanges = false;
+              state.value.autoSaveStatus = 'saved';
+              showToast('拖拽操作已保存', 'success');
+           } catch (error) {
+              console.error(`[Store moveTreeItem REV] One or more files failed to save during move operation.`, error);
+              state.value.autoSaveStatus = 'error';
+              showToast('部分文件保存失败，请检查控制台', 'error', 5000, true);
+           }
+        } else {
+            console.log('[Store moveTreeItem REV] No files marked for saving.');
+            state.value.hasUnsavedChanges = true;
+        }
+      } else {
+        console.error(`[Store moveTreeItem REV] Invalid oldIndex: ${oldIndex} for array length ${oldParentArray.length}`);
+        showToast('拖拽失败：无效的起始位置', 'error');
       }
     } catch (error: any) {
-      console.error('[Store moveTreeItem] Error during move operation:', error);
+      console.error('[Store moveTreeItem REV] Error during move operation:', error);
+       showToast('拖拽操作失败，请检查控制台', 'error', 5000, true);
     }
   };
 
-  // 根据ID在树中查找节点
-  const findNodeById = (tree: any[], id: string): any => {
-    // 参数验证
-    if (!tree || !Array.isArray(tree) || !id) return null;
-    
-    // 遍历树的第一层
-    for (const node of tree) {
-      // 检查当前节点
-      if (node.id === id) {
-        return node;
-      }
-      
-      // 如果有子节点，递归搜索
-      if (node.children && Array.isArray(node.children)) {
-        const foundInChildren = findNodeById(node.children, id);
-        if (foundInChildren) {
-          return foundInChildren;
+  // 根据ID在树中查找节点 (Revised)
+  const findNodeById = (nodes: ConfigTreeNode[], id: string): ConfigTreeNode | Match | Group | null => {
+     if (!nodes || !Array.isArray(nodes) || !id) return null;
+     for (const node of nodes) {
+        if (node.id === id) return node;
+        if (node.type === 'file') {
+            if (node.matches) {
+                const found = node.matches.find(m => m.id === id);
+                if (found) return found;
+            }
+            if (node.groups) {
+                for(const group of node.groups) {
+                    const found = findItemByIdRecursive(group, id);
+                    if(found) return found;
+                }
+            }
         }
-      }
-    }
-    
-    // 未找到返回null
-    return null;
+        else if (node.type === 'folder' && node.children) {
+            const found = findNodeById(node.children, id);
+            if (found) return found;
+        }
+        else if (node.type === 'group') {
+             const found = findItemByIdRecursive(node as Group, id);
+             if(found) return found;
+        }
+     }
+     return null;
   };
 
-  // 确定节点移动后的新文件路径
+  // Deprecated determineNewFilePath
   const determineNewFilePath = (node: any, newParent: any): string | null => {
-    // 如果新父节点是文件
+    console.warn("[determineNewFilePath] Deprecated, use getFilePathForNode instead.");
     if (newParent.type === 'file' && newParent.path) {
       return newParent.path;
     }
-    
-    // 如果新父节点是文件夹，需要寻找默认文件或第一个文件
     if (newParent.type === 'folder') {
-      const defaultFile = newParent.children?.find((child: any) => 
+      const defaultFile = newParent.children?.find((child: any) =>
         child.type === 'file' && child.name.toLowerCase() === 'base.yml');
-      
-      // 有默认文件，使用它的路径
       if (defaultFile && defaultFile.path) {
         return defaultFile.path;
       }
-      
-      // 否则使用第一个文件的路径
       const firstFile = newParent.children?.find((child: any) => child.type === 'file');
       if (firstFile && firstFile.path) {
         return firstFile.path;
       }
     }
-    
-    // 找不到合适的路径
-    return null;
+    return state.value.configPath;
   };
 
-  // 递归更新节点及其子节点的文件路径
+  // Commented out updateNodeFilePath
+  /*
   const updateNodeFilePath = (node: any, newFilePath: string): void => {
+    // This function might cause inconsistencies if not used carefully.
+    // Updating the flat list's filePath should be the primary mechanism.
+    console.warn("updateNodeFilePath called - ensure this doesn't conflict with flat list updates.");
     if (!node) return;
-    
-    // 更新当前节点的filePath
     if (node.type === 'match' || node.type === 'group') {
       node.filePath = newFilePath;
     }
-    
-    // 递归更新子节点
     if (node.children && Array.isArray(node.children)) {
       for (const child of node.children) {
         updateNodeFilePath(child, newFilePath);
       }
     }
-  };
-
-  // 更新子节点的guiOrder
-  const updateGuiOrderForChildren = (children: any[]): void => {
-    if (!children || !Array.isArray(children)) return;
-    
-    // 遍历所有子节点，更新guiOrder
-    children.forEach((child, index) => {
-      if (child.type === 'match' || child.type === 'group') {
-        child.guiOrder = index + 1; // 从1开始
-      }
-      
-      // 递归处理子节点的子节点
-      if (child.children && Array.isArray(child.children)) {
-        updateGuiOrderForChildren(child.children);
-      }
-    });
-  };
-
-  // --- Comment out initialization action --- 
-  /*
-  const initializePlatformAndFullscreenListener = () => {
-    const api = window.preloadApi as PreloadApi | undefined;
-    if (api) { 
-      try {
-        const currentPlatform = api.getPlatform(); 
-        state.value.platform = currentPlatform;
-        console.log('Platform detected:', currentPlatform);
-        const removeListener = api.onFullScreenChange((isFullScreen: boolean) => { 
-          console.log('Fullscreen state changed:', isFullScreen);
-          state.value.isFullscreen = isFullScreen;
-        });
-      } catch (error) {
-        console.error("Error setting up platform/fullscreen listener:", error);
-      }
-    } else {
-      console.warn("Preload API not available for platform/fullscreen detection.");
-      state.value.platform = null; 
+    if (node.matches && Array.isArray(node.matches)) {
+       for (const child of node.matches) updateNodeFilePath(child, newFilePath);
+    }
+    if (node.groups && Array.isArray(node.groups)) {
+       for (const child of node.groups) updateNodeFilePath(child, newFilePath);
     }
   };
   */
-  // --- End comment out action --- 
 
-  // Save a specific item (Match or Group) to its corresponding file
-  const saveItemToFile = async (itemToSave: Match | Group) => {
-    console.log(`[Store saveItemToFile] Attempting to save item ID: ${itemToSave.id} to its file.`);
-    // 调试触发词
-    if (itemToSave.type === 'match') {
-      if ((itemToSave as Match).triggers) {
-        console.log('[Store saveItemToFile] 调试 - 发现多触发词:', (itemToSave as Match).triggers);
-      } else if ((itemToSave as Match).trigger) {
-        console.log('[Store saveItemToFile] 调试 - 发现单触发词:', (itemToSave as Match).trigger);
-      } else {
-        console.log('[Store saveItemToFile] 调试 - 未找到触发词!');
+  const updateGuiOrderForChildren = (children: any[]): void => {
+     if (!children || !Array.isArray(children)) return;
+
+    // 遍历所有子节点，更新guiOrder
+    children.forEach((child, index) => {
+      // Only update guiOrder if it exists on the object
+      if (child && typeof child === 'object' && 'guiOrder' in child) {
+        child.guiOrder = index + 1; // 从1开始
       }
-    }
-    
-    state.value.autoSaveStatus = 'saving';
 
+      // 递归处理子节点的子节点 (match nodes don't have children array)
+      if (child?.children && Array.isArray(child.children)) {
+        updateGuiOrderForChildren(child.children);
+      }
+       // Also update order for matches/groups within groups if needed visually
+       if (child?.type === 'group') {
+          if(child.matches) updateGuiOrderForChildren(child.matches);
+          if(child.groups) updateGuiOrderForChildren(child.groups);
+       }
+    });
+  };
+
+  // Save a specific item (Match or Group) to its corresponding file (REVISED)
+  const saveItemToFile = async (itemToSave: Match | Group) => {
+    console.log(`[Store saveItemToFile REV] Saving file containing item ID: ${itemToSave.id}`);
+    state.value.autoSaveStatus = 'saving';
     const targetFilePath = itemToSave.filePath;
     if (!targetFilePath) {
-      console.error('[Store saveItemToFile] Item is missing filePath. Cannot save.', itemToSave);
+      console.error('[Store saveItemToFile REV] Item is missing filePath. Cannot save.', itemToSave);
       state.value.error = '保存失败：项目缺少文件路径信息。';
       state.value.autoSaveStatus = 'error';
-      return;
+      throw new Error('Item is missing filePath.');
     }
-
-    console.log(`[Store saveItemToFile] Target file path: ${targetFilePath}`);
-
+    console.log(`[Store saveItemToFile REV] Target file path: ${targetFilePath}`);
     try {
-      // 1. Get all items belonging to the target file from the current state
-      const allMatchesForFile = (state.value.config?.matches || []).filter(m => m.filePath === targetFilePath);
-      const allGroupsForFile = (state.value.config?.groups || []).filter(g => g.filePath === targetFilePath);
-      console.log(`[Store saveItemToFile] Found ${allMatchesForFile.length} matches and ${allGroupsForFile.length} groups for file ${targetFilePath}`);
-
-      // Ensure the item being saved is included (update or add)
-      let itemFound = false;
-      if (itemToSave.type === 'match') {
-        const index = allMatchesForFile.findIndex(m => m.id === itemToSave.id);
-        if (index !== -1) {
-          allMatchesForFile[index] = itemToSave; // Update existing
-          itemFound = true;
-        } else {
-          allMatchesForFile.push(itemToSave); // Add new
-        }
-      } else {
-        const index = allGroupsForFile.findIndex(g => g.id === itemToSave.id);
-        if (index !== -1) {
-          allGroupsForFile[index] = itemToSave; // Update existing
-          itemFound = true;
-        } else {
-          allGroupsForFile.push(itemToSave); // Add new
-        }
+      const allMatchesForFile: Match[] = [];
+      const allGroupsForFile: Group[] = [];
+      if (state.value.config) {
+          state.value.config.matches.forEach(m => {
+              if (m.filePath === targetFilePath) {
+                  allMatchesForFile.push(m);
+              }
+          });
+           state.value.config.groups.forEach(g => {
+              if (g.filePath === targetFilePath) {
+                  allGroupsForFile.push(g);
+              }
+              const collectNestedMatches = (group: Group) => {
+                  group.matches?.forEach(match => {
+                     if (match.filePath === targetFilePath && !allMatchesForFile.some(m => m.id === match.id)) {
+                         allMatchesForFile.push(match);
+                     }
+                  });
+                  group.groups?.forEach(collectNestedMatches);
+              };
+              collectNestedMatches(g);
+           });
       }
-      console.log(`[Store saveItemToFile] Item ${itemToSave.id} ${itemFound ? 'updated' : 'added'} in the list for saving.`);
+      console.log(`[Store saveItemToFile REV] Collected ${allMatchesForFile.length} matches and ${allGroupsForFile.length} top-level groups for file ${targetFilePath}.`);
 
-      // 2. Prepare data for YAML serialization (cleaning and merging)
+      // Sort collected items by guiOrder before saving
+      allMatchesForFile.sort((a, b) => (a.guiOrder ?? Infinity) - (b.guiOrder ?? Infinity));
+      allGroupsForFile.sort((a, b) => (a.guiOrder ?? Infinity) - (b.guiOrder ?? Infinity));
+
+
       const saveData: YamlData = {};
 
-      // Recursive cleaner function for groups (same as before)
       const cleanNested = (g: Group): any => {
-        const { id, type, filePath, updatedAt, matches, groups, ...rest } = g;
-        const cleanedGroup: any = { ...rest };
-        if (matches && matches.length > 0) {
-          cleanedGroup.matches = matches.map((m: Match) => {
-            // Use the new cleaner function for matches
-            return cleanMatchForSaving(m);
-          });
+        // Explicitly copy known/savable group properties
+        const cleanedGroup: any = {
+           name: g.name,
+           prefix: g.prefix,
+           label: g.label,
+           // Add any other standard Espanso group keys here if needed
+        };
+        // Clean and add matches if they exist
+        if (g.matches && g.matches.length > 0) {
+           cleanedGroup.matches = g.matches.map(cleanMatchForSaving);
         }
-        if (groups && groups.length > 0) {
-          cleanedGroup.groups = groups.map((subG: Group) => cleanNested(subG));
+         // Clean and add nested groups if they exist
+        if (g.groups && g.groups.length > 0) {
+           cleanedGroup.groups = g.groups.map(cleanNested);
         }
+         // Remove empty arrays ONLY if they are optional in Espanso spec
+         if (!cleanedGroup.matches || cleanedGroup.matches.length === 0) delete cleanedGroup.matches;
+         if (!cleanedGroup.groups || cleanedGroup.groups.length === 0) delete cleanedGroup.groups;
+         // Remove other optional fields if empty/null/undefined
+         if (!cleanedGroup.prefix) delete cleanedGroup.prefix;
+         if (!cleanedGroup.label) delete cleanedGroup.label;
+
         return cleanedGroup;
       };
 
-      // Helper function to clean a Match object for YAML serialization
       const cleanMatchForSaving = (match: Match): any => {
-        const { id, type, filePath, updatedAt, content, contentType, ...rest } = match;
-        const cleanedMatch: any = { ...rest };
+         const { id, type, filePath, updatedAt, content, contentType, guiOrder, _guiMeta, ...rest } = match;
+         const cleanedMatch: any = { ...rest };
 
-        // 处理带有换行符的trigger字段，将其转换为triggers数组
-        if (cleanedMatch.trigger && typeof cleanedMatch.trigger === 'string') {
-          // 检查trigger是否包含换行符或逗号
-          if (cleanedMatch.trigger.includes('\n') || cleanedMatch.trigger.includes(',')) {
-            console.log('[cleanMatchForSaving] 发现包含换行符或逗号的trigger:', cleanedMatch.trigger);
-            // 按换行符和逗号分割
-            const triggerItems = cleanedMatch.trigger
-              .split(/[,\n]/)
-              .map((t: string) => t.trim())
-              .filter((t: string) => t !== '');
-            
-            // 如果分割后有多个项目，则使用triggers数组
-            if (triggerItems.length > 1) {
-              cleanedMatch.triggers = triggerItems;
-              delete cleanedMatch.trigger;
-              console.log('[cleanMatchForSaving] 已转换为triggers数组:', cleanedMatch.triggers);
+         // Handle trigger vs triggers logic
+          if (cleanedMatch.trigger && typeof cleanedMatch.trigger === 'string') {
+            if (cleanedMatch.trigger.includes('\n') || cleanedMatch.trigger.includes(',')) {
+              const triggerItems = cleanedMatch.trigger.split(/[\n,]/).map((t: string) => t.trim()).filter((t: string) => t);
+              if (triggerItems.length > 1) {
+                cleanedMatch.triggers = triggerItems;
+                delete cleanedMatch.trigger;
+              } else {
+                 cleanedMatch.trigger = triggerItems[0] || ''; // Use first or empty
+                 delete cleanedMatch.triggers;
+              }
+            } else {
+               delete cleanedMatch.triggers; // Ensure triggers is removed if single trigger exists
             }
+         } else if (cleanedMatch.triggers && Array.isArray(cleanedMatch.triggers) && cleanedMatch.triggers.length > 0) {
+            delete cleanedMatch.trigger; // Ensure single trigger is removed if array exists
+              if (cleanedMatch.triggers.length === 0) {
+                 cleanedMatch.trigger = '';
+                  delete cleanedMatch.triggers;
+              }
+          } else {
+              cleanedMatch.trigger = '';
+              delete cleanedMatch.triggers;
           }
-        }
 
-        // 确保只包含trigger或triggers中的一个，不同时包含两者
-        if (cleanedMatch.triggers && Array.isArray(cleanedMatch.triggers) && cleanedMatch.triggers.length > 0) {
-          // 如果triggers数组存在且不为空，删除单个trigger字段
-          delete cleanedMatch.trigger;
-        } else if (cleanedMatch.trigger) {
-          // 如果单个trigger存在，删除triggers数组字段
-          delete cleanedMatch.triggers;
-        } else {
-          // 如果两者都不存在，默认设置为空trigger
-          cleanedMatch.trigger = '';
-          delete cleanedMatch.triggers;
-        }
-
-        // Remove null/undefined optional fields explicitly if needed (example: uppercase_style)
-        if (cleanedMatch.uppercase_style === null || cleanedMatch.uppercase_style === undefined || cleanedMatch.uppercase_style === '') {
-          delete cleanedMatch.uppercase_style;
-        }
-        // Add similar checks for other optional fields like force_mode, priority, hotkey etc. if they might be empty strings or 0
-        if (cleanedMatch.force_mode === 'default') { // Assuming 'default' means don't include in YAML
-          delete cleanedMatch.force_mode;
-        }
-        if (cleanedMatch.priority === 0) { // Assuming 0 priority is default and shouldn't be saved
-          delete cleanedMatch.priority;
-        }
-        // ... add more checks as needed ...
-
-        return cleanedMatch;
+          // Remove other null/undefined/default optional fields
+          Object.keys(cleanedMatch).forEach(key => {
+             const value = cleanedMatch[key];
+             if (value === null || value === undefined) {
+                delete cleanedMatch[key];
+             } else if (Array.isArray(value) && value.length === 0) {
+                 delete cleanedMatch[key];
+             } else if (typeof value === 'string' && value.trim() === '') {
+                 if(['label', 'description', 'hotkey', 'image_path', 'markdown', 'html'].includes(key)) {
+                    delete cleanedMatch[key];
+                 }
+             } else if (key === 'priority' && value === 0) {
+                 delete cleanedMatch[key];
+             } else if (key === 'force_mode' && value === 'default') {
+                 delete cleanedMatch[key];
+             } else if (key === 'uppercase_style' && value === '') {
+                  delete cleanedMatch[key];
+             }
+          });
+           if (!('replace' in cleanedMatch)) {
+               cleanedMatch.replace = '';
+           }
+         return cleanedMatch;
       };
 
-      // 调试触发词处理
-      console.log('[Store saveItemToFile] Matches before cleaning:', JSON.stringify(allMatchesForFile.map(m => ({
-        id: m.id,
-        trigger: m.trigger,
-        triggers: m.triggers
-      })), null, 2));
-
-      // Add matches if any
       if (allMatchesForFile.length > 0) {
-        // Use the cleaner function for each match
         saveData.matches = allMatchesForFile.map(cleanMatchForSaving);
+        if (saveData.matches.length === 0) delete saveData.matches;
       }
-
-      // 调试清理后的结果
-      console.log('[Store saveItemToFile] Matches after cleaning:', JSON.stringify(saveData.matches, null, 2));
-
-      // Add groups if any
       if (allGroupsForFile.length > 0) {
-        saveData.groups = allGroupsForFile.map(cleanNested);
+         saveData.groups = allGroupsForFile.map(cleanNested);
+          if (saveData.groups.length === 0) delete saveData.groups;
       }
 
-      // 3. Merge other top-level keys from original file content
       const fileNode = findFileNode(state.value.configTree, targetFilePath);
       if (fileNode && fileNode.content) {
         Object.keys(fileNode.content).forEach(key => {
           if (key !== 'matches' && key !== 'groups' && !(key in saveData)) {
-            if (fileNode.content) { // Double check content exists
-               saveData[key] = fileNode.content[key];
-            }
+              saveData[key] = fileNode.content![key];
           }
         });
-        console.log("[Store saveItemToFile] Merged other keys from original file content.");
       } else {
-        console.warn("[Store saveItemToFile] Could not find original file node or content to merge other keys for path:", targetFilePath);
+        console.warn("[Store saveItemToFile REV] Could not find original file node or content in tree to merge other keys for path:", targetFilePath);
       }
 
-      // 4. Serialize and Write File
-      console.log('[Store saveItemToFile] Preparing to write file with saveData:', JSON.parse(JSON.stringify(saveData)));
       const purifiedSaveData = JSON.parse(JSON.stringify(saveData));
       const yamlContent = Object.keys(purifiedSaveData).length === 0 ? '' : await serializeYaml(purifiedSaveData);
-      
-      // 调试生成的YAML字符串
-      console.log('[Store saveItemToFile] Generated YAML:\n', yamlContent);
-
       await writeFile(targetFilePath, yamlContent);
-      console.log('[Store saveItemToFile] File written successfully:', targetFilePath);
-
-      // 5. Update state: mark as saved
-      state.value.hasUnsavedChanges = false;
-      state.value.autoSaveStatus = 'saved';
-      // Optional: update lastSavedState if needed, though it might be complex now
-      // state.value.lastSavedState = JSON.stringify(state.value.config, null, 2);
+      console.log('[Store saveItemToFile REV] File written successfully:', targetFilePath);
 
     } catch (error: any) {
-      console.error(`[Store saveItemToFile] Failed to save file ${targetFilePath}:`, error);
+      console.error(`[Store saveItemToFile REV] Failed to save file ${targetFilePath}:`, error);
       state.value.error = `保存文件 ${targetFilePath} 失败: ${error.message || '未知错误'}`;
       state.value.autoSaveStatus = 'error';
+      throw error;
     }
   };
 
   // Action to show toast
   const showToast = (message: string, type: 'success' | 'error' = 'success', duration: number = 3000, persistent: boolean = false) => {
+    // ... existing implementation ...
     // Clear previous timeout if exists
     if (state.value.toastTimeoutId) {
       clearTimeout(state.value.toastTimeoutId);
@@ -1197,6 +1335,7 @@ export const useEspansoStore = defineStore('espanso', () => {
 
   // Action to hide toast
   const hideToast = () => {
+    // ... existing implementation ...
     state.value.toastVisible = false;
     // Clear timeout just in case it was set (e.g., if hiding manually before timeout)
     if (state.value.toastTimeoutId) {
@@ -1222,16 +1361,12 @@ export const useEspansoStore = defineStore('espanso', () => {
     updateItem,
     deleteItem,
     addItem,
-    getAllMatchesFromTree: getAllMatchesFromTree,
-    getAllGroupsFromTree: getAllGroupsFromTree,
+    getAllMatchesFromTree,
+    getAllGroupsFromTree,
     getConfigFileByPath: (path: string) => findFileNode(state.value.configTree, path),
-    findFileNode,
     saveItemToFile,
-    showToast, // Expose the action
-    hideToast, // Expose the new action
-    // --- Comment out exposure --- 
-    // initializePlatformAndFullscreenListener
-    // --- End comment out --- 
-    moveTreeItem, // Expose the new action
+    showToast,
+    hideToast,
+    moveTreeItem,
   };
 });
