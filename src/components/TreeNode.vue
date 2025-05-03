@@ -13,7 +13,14 @@
       <!-- Non-match nodes (group, folder, file) -->
       <div v-if="node.type !== 'match'" class="w-full">
         <div
-          :class="[node.type + '-node', (node.type === 'file' || node.type === 'folder') ? 'file-folder-node' : '']"
+          :class="[
+            node.name === 'Packages'
+              ? 'package-node'
+              : node.type + '-node',
+            node.type === 'file' || node.type === 'folder'
+              ? 'bg-gray-200'
+              : '',
+          ]"
           @click="handleClick"
           class="cursor-pointer w-full"
         >
@@ -44,22 +51,22 @@
               class="text-sm font-medium flex-grow cursor-pointer"
               @click.stop="selectNode"
             >
-                <HighlightText
-                  v-if="searchQuery"
-                  :text="displayName"
-                  :searchQuery="selfMatchesSearch ? searchQuery : ''"
-                />
-                <template v-else>{{ displayName }}</template>
-              </span>
-              <span
-                v-if="visibleChildCount > 0 && shouldShowCount"
-                class="ml-2 text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full"
-              >
-                {{ visibleChildCount }}
-              </span>
-              <span class="ml-auto pl-2 mr-4">
+              <HighlightText
+                v-if="searchQuery"
+                :text="displayName"
+                :searchQuery="selfMatchesSearch ? searchQuery : ''"
+              />
+              <template v-else>{{ displayName }}</template>
+            </span>
+            <span
+              v-if="visibleChildCount > 0 && shouldShowCount"
+              class="ml-2 text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full"
+            >
+              {{ visibleChildCount }}
+            </span>
+            <span class="ml-auto pl-2 mr-4">
               <!-- Icon based on type -->
-                <component
+              <component
                 :is="
                   node.type === 'group'
                     ? GitBranchIcon
@@ -67,12 +74,12 @@
                     ? FolderIcon
                     : FileIcon
                 "
-                  class="h-4 w-4 text-muted-foreground"
-                />
-              </span>
-            </div>
+                class="h-4 w-4 text-muted-foreground"
+              />
+            </span>
           </div>
-    </div>
+        </div>
+      </div>
 
       <!-- Match node -->
       <div v-else class="w-full">
@@ -82,7 +89,7 @@
             :class="{
               'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
                 isSelected,
-              'hover:text-accent-foreground': !isSelected,
+                'hover:text-accent-foreground bg-gray-50': !isSelected,
             }"
             :style="{
               paddingLeft: nodeLevel * 20 + 8 + 'px',
@@ -123,16 +130,32 @@
 
     <!-- Children (recursive TreeNode) -->
     <Transition name="expand">
-      <div
+      <VueDraggable
         v-if="hasChildren && isOpen"
-        class="children w-full drop-zone" 
-        :class="{'shadow-[inset_0_6px_6px_-6px_rgba(0,0,0,0.21),_inset_0_-6px_6px_-6px_rgba(0,0,0,0.21)]': 
-          node.type === 'file' || 
-          (node.type === 'folder' && node.path && node.path.toLowerCase().startsWith('packages/') && node.path.toLowerCase() !== 'packages')
+        v-model="node.children"
+        class="children w-full drop-zone"
+        :class="{
+          'shadow-[inset_0_6px_6px_-6px_rgba(0,0,0,0.21),_inset_0_-6px_6px_-6px_rgba(0,0,0,0.21)]':
+            node.type === 'file' ||
+            (node.type === 'folder' &&
+              node.path &&
+              node.path.toLowerCase().startsWith('packages/') &&
+              node.path.toLowerCase() !== 'packages'),
         }"
-        v-sortable="childSortableOptions"
+        :group="{ name: 'configTreeGroup', pull: true, put: true }"
+        :animation="150"
+        handle=".cursor-grab"
+        :move="handleDragMove"
+        @end="handleDragEnd"
+        item-key="id"
+        tag="div"
         :data-parent-id="node.id"
         :data-container-type="node.type"
+        :disabled="!props.draggable"
+        :fallbackOnBody="true"
+        :swapThreshold="0.65"
+        filter=".ignore-drag"
+        :preventOnFilter="true"
       >
         <TreeNode
           v-for="child in node.children"
@@ -149,8 +172,9 @@
           @moveNode="$emit('moveNode', $event)"
           @request-rename="$emit('request-rename', $event)"
           @toggle-node="$emit('toggle-node', $event)"
+          class="drag-item"
         />
-      </div>
+      </VueDraggable>
     </Transition>
   </div>
 </template>
@@ -186,11 +210,9 @@ import {
 import type { TreeNodeItem } from "@/components/ConfigTree.vue";
 import type { Match, Group } from "@/types/espanso";
 import HighlightText from "@/components/common/HighlightText.vue";
-import Sortable from "sortablejs";
+import { VueDraggable } from "vue-draggable-plus";
 import NodeContextMenu from "@/components/NodeContextMenu.vue";
 import { useEspansoStore } from "@/store/useEspansoStore";
-import { toast } from "vue-sonner";
-import ClipboardManager from "@/utils/ClipboardManager";
 import TreeNodeRegistry from "@/utils/TreeNodeRegistry";
 
 const props = defineProps<{
@@ -230,9 +252,9 @@ const isOpen = ref(true);
 watch(
   () => props.searchQuery,
   (newQuery) => {
-  if (newQuery && newQuery.trim() !== "") {
-    isOpen.value = true;
-  }
+    if (newQuery && newQuery.trim() !== "") {
+      isOpen.value = true;
+    }
   },
   { immediate: true }
 );
@@ -240,7 +262,16 @@ watch(
 const toggleFolder = (event?: MouseEvent) => {
   if (props.node.type !== "match" && hasChildren.value) {
     emit("toggle-node", props.node.id);
-  isOpen.value = !isOpen.value;
+    isOpen.value = !isOpen.value;
+    
+    // 同步更新 TreeNodeRegistry 中的状态
+    if (isOpen.value) {
+      // 如果展开，则展开当前节点及子节点
+      TreeNodeRegistry.expandNodeAndChildren(props.node.id);
+    } else {
+      // 如果收起，则收起当前节点及子节点
+      TreeNodeRegistry.collapseNodeAndChildren(props.node.id);
+    }
   }
 };
 
@@ -318,14 +349,15 @@ const selfMatchesSearch = computed(() => {
 
 const descendantMatchesSearch = computed(() => {
   const query = props.searchQuery?.trim();
-  if (!query || !hasChildren.value || props.node.children.length === 0) return false;
+  if (!query || !hasChildren.value || props.node.children.length === 0)
+    return false;
 
   try {
     const escapedQuery = escapeRegex(query);
     const regex = new RegExp(escapedQuery, "i");
 
     const checkDescendants = (nodes: TreeNodeItem[]): boolean => {
-      return nodes.some(childNode => {
+      return nodes.some((childNode) => {
         if (childNode.type !== "match" && checkMatch(childNode.name, regex)) {
           return true;
         } else if (childNode.type === "match" && childNode.match) {
@@ -344,9 +376,9 @@ const descendantMatchesSearch = computed(() => {
 
         if (childNode.children && childNode.children.length > 0) {
           return checkDescendants(childNode.children);
-          }
-        
-      return false;
+        }
+
+        return false;
       });
     };
 
@@ -359,11 +391,11 @@ const descendantMatchesSearch = computed(() => {
 
 const isVisible = computed(() => {
   if (!props.searchQuery?.trim()) return true;
-  
+
   if (props.parentMatches) return true;
-  
+
   if (selfMatchesSearch.value) return true;
-  
+
   return descendantMatchesSearch.value;
 });
 
@@ -383,12 +415,12 @@ const visibleChildCount = computed(() => {
     if (props.node.type === "folder" || props.node.type === "file") {
       // 使用节点ID作为缓存键
       const cacheKey = props.node.id;
-      
+
       // 检查缓存
       if (nodeCountCache.has(cacheKey)) {
         return nodeCountCache.get(cacheKey)!;
       }
-      
+
       let count = 0;
       // 简化递归计算
       const countItems = (nodes: TreeNodeItem[]) => {
@@ -401,71 +433,82 @@ const visibleChildCount = computed(() => {
         }
       };
       countItems(props.node.children);
-      
+
       // 存入缓存
       nodeCountCache.set(cacheKey, count);
       return count;
     } else if (props.node.type === "group") {
       // 直接统计节点下的匹配项
-      return props.node.children.filter((child) => child.type === "match").length;
+      return props.node.children.filter((child) => child.type === "match")
+        .length;
     }
 
     return 0;
   }
 
   // 搜索时简化计算逻辑
-      const query = props.searchQuery!.toLowerCase();
+  const query = props.searchQuery!.toLowerCase();
 
   // 只计算匹配的数量，无需处理视觉效果
   return props.node.children.reduce((count, node) => {
     let matches = 0;
-    
+
     // 检查节点自身是否匹配
-      if (node.name && node.name.toLowerCase().includes(query)) {
+    if (node.name && node.name.toLowerCase().includes(query)) {
       if (node.type === "match") matches++;
-    } 
-    else if (node.type === "match" && node.match) {
-        const match = node.match;
+    } else if (node.type === "match" && node.match) {
+      const match = node.match;
       // 只检查关键字段
-        if (
-          (match.trigger && match.trigger.toLowerCase().includes(query)) ||
-          (match.label && match.label.toLowerCase().includes(query)) ||
-        (match.description && match.description.toLowerCase().includes(query)) ||
-        (match.replace && match.replace.toString().toLowerCase().includes(query))
+      if (
+        (match.trigger && match.trigger.toLowerCase().includes(query)) ||
+        (match.label && match.label.toLowerCase().includes(query)) ||
+        (match.description &&
+          match.description.toLowerCase().includes(query)) ||
+        (match.replace &&
+          match.replace.toString().toLowerCase().includes(query))
       ) {
         matches++;
       }
     }
-    
+
     // 只有父节点类型才递归检查子节点
-    if ((node.type === "folder" || node.type === "file" || node.type === "group") && 
-        node.children && node.children.length > 0) {
+    if (
+      (node.type === "folder" ||
+        node.type === "file" ||
+        node.type === "group") &&
+      node.children &&
+      node.children.length > 0
+    ) {
       // 创建一个临时TreeNode实例并复用visibleChildCount逻辑
       const tempProps = {
         node,
         searchQuery: props.searchQuery,
-        parentMatches: node.name && node.name.toLowerCase().includes(query)
+        parentMatches: node.name && node.name.toLowerCase().includes(query),
       };
-      
+
       // 简化递归调用
       let childMatches = 0;
       for (const child of node.children) {
         if (child.type === "match") {
           // 匹配检查
           const childMatch = child.match;
-          if (childMatch && (
-            (childMatch.trigger && childMatch.trigger.toLowerCase().includes(query)) ||
-            (childMatch.label && childMatch.label.toLowerCase().includes(query)) ||
-            (childMatch.description && childMatch.description.toLowerCase().includes(query))
-          )) {
+          if (
+            childMatch &&
+            ((childMatch.trigger &&
+              childMatch.trigger.toLowerCase().includes(query)) ||
+              (childMatch.label &&
+                childMatch.label.toLowerCase().includes(query)) ||
+              (childMatch.description &&
+                childMatch.description.toLowerCase().includes(query)))
+          ) {
             childMatches++;
           }
         }
       }
-      
+
       matches += childMatches;
     }
-    
+
     return count + matches;
   }, 0);
 });
@@ -473,78 +516,78 @@ const visibleChildCount = computed(() => {
 watch(
   () => props.parentMatches,
   (newValue) => {
-  if (newValue && props.searchQuery?.trim()) {
-    isOpen.value = true;
-  }
+    if (newValue && props.searchQuery?.trim()) {
+      isOpen.value = true;
+    }
   },
   { immediate: true }
 );
 
-const handleChildSortUpdate = (event: Sortable.SortableEvent) => {
-  console.log("[TreeNode SortableJS onUpdate]", event);
-  const { item, from, to, oldIndex, newIndex } = event;
+const handleDragEnd = (event: any) => {
+  console.log("[TreeNode handleDragEnd] Event triggered:", event);
+  const { item, to, from, oldIndex, newIndex } = event;
 
-  if (oldIndex === undefined || newIndex === undefined) return;
+  if (oldIndex === undefined || newIndex === undefined) {
+    console.log(
+      "[TreeNode handleDragEnd] Exiting: oldIndex or newIndex is undefined."
+    );
+    return;
+  }
 
   const itemId = item.dataset.id;
-  if (!itemId) {
-    console.error("Dragged item missing data-id!");
-    return;
-  }
-
-  const draggedType = item.dataset.nodeType;
-
-  const targetContainerType = to.dataset.containerType || "";
-
-  const isCrossContainer = from !== to;
-
-  if (
-    (draggedType === "match" || draggedType === "group") &&
-    targetContainerType === "folder"
-  ) {
-    console.log("禁止拖拽：match/group不能拖入folder");
-    return;
-  }
-
-  if (
-    (draggedType === "match" || draggedType === "group") &&
-    targetContainerType !== "file" &&
-    targetContainerType !== "group" &&
-    targetContainerType !== "root"
-  ) {
-    console.log("禁止拖拽：match/group只能拖入file/group/root");
-    return;
-  }
-
-  const oldParentId = from.dataset.parentId || null;
-  const newParentId = to.dataset.parentId || null;
+  const itemType = item.dataset.nodeType as TreeNodeItem["type"] | undefined;
+  const oldParentId =
+    from.dataset.parentId === "root" || from.dataset.parentId === undefined
+      ? null
+      : from.dataset.parentId;
+  const newParentId =
+    to.dataset.parentId === "root" || to.dataset.parentId === undefined
+      ? null
+      : to.dataset.parentId;
 
   console.log(
-    `[TreeNode handleChildSortUpdate] 拖拽项 ${itemId} (${draggedType}) 从 ${oldParentId} (${from.dataset.containerType}) 到 ${newParentId} (${targetContainerType})`
+    `[TreeNode handleDragEnd] Processing - Item ID: ${itemId}, Type: ${itemType}, Old Parent: ${oldParentId}, New Parent: ${newParentId}, Old Index: ${oldIndex}, New Index: ${newIndex}`
   );
 
-  emit("move", {
-    itemId: itemId,
-    oldParentId: oldParentId,
-    newParentId: newParentId,
-    oldIndex: oldIndex,
-    newIndex: newIndex,
-  });
+  if (!itemId || !itemType) {
+    console.error("[TreeNode handleDragEnd] Exiting: Missing item ID or type.");
+    return;
+  }
+
+  if (from === to && oldIndex === newIndex) {
+    console.log("[TreeNode handleDragEnd] Exiting: No actual move detected.");
+    return;
+  }
+
+  if (itemType === "match" || itemType === "group") {
+    console.log(
+      `[TreeNode handleDragEnd] Emitting 'move' for ${itemType} with ID ${itemId}`
+    );
+    emit("move", {
+      itemId,
+      oldParentId,
+      newParentId,
+      oldIndex,
+      newIndex,
+    });
+  } else if (itemType === "file" || itemType === "folder") {
+    console.log(
+      `[TreeNode handleDragEnd] Emitting 'moveNode' for ${itemType} with ID ${itemId}`
+    );
+    const numericNewIndex = typeof newIndex === "number" ? newIndex : 0;
+    emit("moveNode", {
+      nodeId: itemId,
+      targetParentId: newParentId,
+      newIndex: numericNewIndex,
+    });
+  } else {
+    console.warn(
+      `[TreeNode handleDragEnd] Exiting: Unknown itemType: ${itemType}`
+    );
+  }
 };
 
-const childSortableOptions = computed(() => ({
-  group: "configTreeGroup",
-  animation: 150,
-  fallbackOnBody: true,
-  swapThreshold: 0.65,
-  handle: ".cursor-grab",
-  onMove: handleDragMove,
-  onEnd: handleSortEnd,
-  filter: ".ignore-drag",
-  preventOnFilter: true,
-}));
-
-const handleDragMove = (event: Sortable.MoveEvent): boolean => {
+const handleDragMove = (event: any): boolean => {
   const draggedElement = event.dragged;
   const targetContainer = event.to;
 
@@ -574,7 +617,7 @@ const handleDragMove = (event: Sortable.MoveEvent): boolean => {
       "folder",
       "root",
     ];
-     if (!allowedContainerTypes.includes(targetContainerType)) {
+    if (!allowedContainerTypes.includes(targetContainerType)) {
       return false;
     }
   } else if (draggedNodeType === "folder") {
@@ -593,131 +636,39 @@ const handleDragMove = (event: Sortable.MoveEvent): boolean => {
   return true;
 };
 
-const handleSortEnd = (event: Sortable.SortableEvent) => {
-  console.log("[TreeNode handleSortEnd] Event triggered:", event);
-  const { item, from, to, oldIndex, newIndex } = event;
-
-  if (oldIndex === undefined || newIndex === undefined) {
-    console.log(
-      "[TreeNode handleSortEnd] Exiting: oldIndex or newIndex is undefined."
-    );
-      return;
-  }
-
-  const itemId = item.dataset.id;
-  const itemType = item.dataset.nodeType as TreeNodeItem["type"] | undefined;
-  const oldParentId =
-    from.dataset.parentId === "root" || from.dataset.parentId === undefined
-      ? null
-      : from.dataset.parentId;
-  const newParentId =
-    to.dataset.parentId === "root" || to.dataset.parentId === undefined
-      ? null
-      : to.dataset.parentId;
-
-  console.log(
-    `[TreeNode handleSortEnd] Processing - Item ID: ${itemId}, Type: ${itemType}, Old Parent: ${oldParentId}, New Parent: ${newParentId}, Old Index: ${oldIndex}, New Index: ${newIndex}`
-  );
-
-  if (!itemId || !itemType) {
-    console.error("[TreeNode handleSortEnd] Exiting: Missing item ID or type.");
-    return;
-  }
-
-  if (from === to && oldIndex === newIndex) {
-    console.log("[TreeNode handleSortEnd] Exiting: No actual move detected.");
-    return;
-  }
-
-  if (itemType === "match" || itemType === "group") {
-    console.log(
-      `[TreeNode handleSortEnd] Emitting 'move' for ${itemType} with ID ${itemId}`
-    );
-    emit("move", {
-      itemId,
-      oldParentId,
-      newParentId,
-      oldIndex,
-      newIndex,
-    });
-  } else if (itemType === "file" || itemType === "folder") {
-    console.log(
-      `[TreeNode handleSortEnd] Emitting 'moveNode' for ${itemType} with ID ${itemId}`
-    );
-    emit("moveNode", {
-      nodeId: itemId,
-      targetParentId: newParentId,
-      newIndex,
-    });
-  } else {
-    console.warn(
-      `[TreeNode handleSortEnd] Exiting: Unknown itemType: ${itemType}`
-    );
-  }
-};
-
 watch(
   () => props.selectedId,
   (newId) => {
-  // 监听选中状态变化
+    // 监听选中状态变化
   }
 );
 
 onMounted(() => {
+  // 恢复 TreeNodeRegistry 注册
   if (props.node.id) {
-    // 注册到全局注册表，同时传递节点元数据
-    const metadata = {
-      id: props.node.id,
-      parentId: props.parentId || null,
-      type: props.node.type,
-      filePath:
-        props.node.type === "match" && props.node.match
-          ? props.node.match.filePath
-          : props.node.type === "group" && props.node.group
-          ? props.node.group.filePath
-          : props.node.type === "file"
-          ? props.node.path
-          : undefined,
-    };
-    TreeNodeRegistry.register(props.node.id, { isOpen }, metadata);
+    // 注册节点到 TreeNodeRegistry
+    TreeNodeRegistry.register(
+      props.node.id, 
+      { isOpen }, 
+      {
+        id: props.node.id,
+        parentId: props.parentId,
+        filePath: props.node.path,
+        type: props.node.type
+      }
+    );
   }
 });
 
 onUnmounted(() => {
+  // 恢复 TreeNodeRegistry 注销
   if (props.node.id) {
-    // 从全局注册表中注销
     TreeNodeRegistry.unregister(props.node.id);
   }
 });
 
-const findTreeNodeComponent = (element: HTMLElement): any => {
-  const treeNodeEl = element.closest(".tree-node");
-  if (!treeNodeEl) return null;
-
-  const nodeId = treeNodeEl.getAttribute("data-id");
-  if (!nodeId) return null;
-
-  const instance = TreeNodeRegistry.get(nodeId);
-  if (instance) {
-    return instance;
-  }
-
-  const chevronIcon = treeNodeEl.querySelector(
-    ".ChevronDownIcon, .ChevronRightIcon"
-  );
-  if (chevronIcon) {
-    chevronIcon.dispatchEvent(
-      new MouseEvent("click", {
-      bubbles: true,
-      cancelable: true,
-        view: window,
-      })
-    );
-    return true;
-  }
-
-  return null;
-};
+// Remove findTreeNodeComponent function if it relied on TreeNodeRegistry
+// const findTreeNodeComponent = (element: HTMLElement): any => { ... };
 
 // 折叠当前节点
 const collapseNode = () => {
@@ -744,11 +695,13 @@ const nodeLevel = computed(() => props.level || 0);
 const shouldShowCount = computed(() => {
   // 如果是最外层节点（level === 0），则显示
   if (nodeLevel.value === 0) return true;
-  
+
   // 判断是否为叶子节点的上一级
   // 检查所有子节点，如果至少有一个是match类型，则是叶子节点的上一级
-  const hasMatchChild = props.node.children?.some(child => child.type === 'match');
-  
+  const hasMatchChild = props.node.children?.some(
+    (child) => child.type === "match"
+  );
+
   return hasMatchChild;
 });
 </script>
@@ -780,8 +733,11 @@ const shouldShowCount = computed(() => {
   background-color: rgba(0, 0, 0, 0.03);
 }
 
+.match-node {
+  background-color: rgba(79, 79, 79, 0.03);
+}
+
 .node-row {
-  position: relative;
   overflow: visible;
   box-sizing: border-box;
   width: 100%;
@@ -854,7 +810,22 @@ const shouldShowCount = computed(() => {
 /* Ensure children div itself doesn't have conflicting transition */
 .children {
   /* Remove any potential transition property if added elsewhere */
-  /* transition: none; */ 
+  /* transition: none; */
   overflow: hidden; /* Important for smooth height transition */
+}
+
+.cursor-grab {
+  cursor: grab;
+}
+
+.drag-item {
+  /* Add styles for the item being dragged if needed */
+}
+.package-node::before {
+  content: "";
+  display: block;
+  width: 100%;
+  height: 3px;
+  background-image: linear-gradient(to right, #5aceff, #ee38ff);
 }
 </style>

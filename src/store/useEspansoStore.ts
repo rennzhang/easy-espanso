@@ -663,6 +663,7 @@ export const useEspansoStore = defineStore('espanso', () => {
     }
 
     try {
+      // 查找要移动的项目
       const movedItemRef = findItemById(itemId);
       if (!movedItemRef) {
         console.error(`[Store moveTreeItem REV] Failed to find item ref with ID ${itemId} in config.`);
@@ -670,63 +671,112 @@ export const useEspansoStore = defineStore('espanso', () => {
       }
       const originalFilePath = movedItemRef.filePath;
 
-      // Explicitly define the structure for the root pseudo-node
-      const rootNode = { type: 'root' as const, id: null, children: state.value.configTree };
+      // 定义根节点
+      const rootNode = {
+        type: 'root' as const,
+        id: null,
+        children: state.value.configTree
+      };
 
-      // Find parent nodes, ensuring they are folders or the root
-      const oldParentNode: ConfigFolderNode | typeof rootNode | null = oldParentId
-        ? findNodeById(state.value.configTree, oldParentId, ['folder']) as ConfigFolderNode | null
-        : rootNode;
-      const newParentNode: ConfigFolderNode | ConfigFileNode | typeof rootNode | null = newParentId
-        ? findNodeById(state.value.configTree, newParentId, ['folder', 'file']) as ConfigFolderNode | ConfigFileNode | null
-        : rootNode;
+      // 查找父节点
+      let oldParentNode: { type: string } | null = null;
+      let newParentNode: { type: string } | null = null;
+      
+      // 处理旧父节点
+      if (oldParentId === null) {
+        oldParentNode = rootNode;
+        console.log('[Store moveTreeItem REV] Old parent is root node.');
+      } else if (oldParentId.startsWith('file-')) {
+        // 查找文件节点
+        const filePath = oldParentId.substring(5); // 移除 'file-' 前缀
+        const fileNode = findFileNode(state.value.configTree, filePath);
+        if (fileNode) {
+          oldParentNode = fileNode;
+          console.log(`[Store moveTreeItem REV] Found old parent file node: ${fileNode.path}`);
+        }
+      } else {
+        // 尝试在树中查找节点
+        const treeNode = findNodeById(state.value.configTree, oldParentId, ['folder', 'file']);
+        if (treeNode) {
+          oldParentNode = treeNode;
+          console.log(`[Store moveTreeItem REV] Found old parent tree node: ${treeNode.type} ${treeNode.id}`);
+        }
+      }
+      
+      // 处理新父节点
+      if (newParentId === null) {
+        newParentNode = rootNode;
+        console.log('[Store moveTreeItem REV] New parent is root node.');
+      } else if (newParentId.startsWith('file-')) {
+        // 查找文件节点
+        const filePath = newParentId.substring(5); // 移除 'file-' 前缀
+        const fileNode = findFileNode(state.value.configTree, filePath);
+        if (fileNode) {
+          newParentNode = fileNode;
+          console.log(`[Store moveTreeItem REV] Found new parent file node: ${fileNode.path}`);
+        }
+      } else {
+        // 尝试在树中查找节点
+        const treeNode = findNodeById(state.value.configTree, newParentId, ['folder', 'file']);
+        if (treeNode) {
+          newParentNode = treeNode;
+          console.log(`[Store moveTreeItem REV] Found new parent tree node: ${treeNode.type} ${treeNode.id}`);
+        }
+      }
 
+      // 确保找到了父节点
       if (!oldParentNode || !newParentNode) {
-        console.error(`[Store moveTreeItem REV] Failed to find parent tree node(s). Old: ${oldParentId}, New: ${newParentId}`);
+        console.error(`[Store moveTreeItem REV] Failed to find parent node(s). Old: ${oldParentId}, New: ${newParentId}`);
         return;
       }
 
-      // Determine new file path based on the NEW parent node type
+      // 获取要移动项目的新文件路径
       let effectiveNewFilePath: string | null = null;
       if (newParentNode.type === 'file') {
-        effectiveNewFilePath = newParentNode.path; // Use the file's path
+        effectiveNewFilePath = (newParentNode as ConfigFileNode).path;
       } else {
-        // If moving to folder or root, item keeps its original file path reference
-        // Use original path if it exists, otherwise keep it null
-        effectiveNewFilePath = originalFilePath ? originalFilePath : null;
+        effectiveNewFilePath = originalFilePath;
       }
 
-      // Determine the correct array to modify based on parent type
-      let oldParentArray: Array<Match | Group | ConfigTreeNode>;
-      if (oldParentNode.type === 'folder' || oldParentNode.type === 'root') {
-          oldParentArray = oldParentNode.children; // Should always exist for folder/root
-      } else {
-           console.error('[Store moveTreeItem REV] Old parent must be a folder or root.');
-           return; // Old parent must be folder or root
+      // 确定要操作的数组
+      let oldParentArray: any[] = [];
+      let newParentArray: any[] = [];
+      
+      // 获取旧父节点的数组
+      if (oldParentNode.type === 'root' || oldParentNode.type === 'folder') {
+        oldParentArray = (oldParentNode as any).children || [];
+      } else if (oldParentNode.type === 'file') {
+        const fileNode = oldParentNode as ConfigFileNode;
+        if (movedItemRef.type === 'match') {
+          oldParentArray = fileNode.matches || [];
+        } else {
+          oldParentArray = fileNode.groups || [];
+        }
+      }
+      
+      // 获取新父节点的数组
+      if (newParentNode.type === 'root' || newParentNode.type === 'folder') {
+        newParentArray = (newParentNode as any).children || [];
+      } else if (newParentNode.type === 'file') {
+        const fileNode = newParentNode as ConfigFileNode;
+        if (movedItemRef.type === 'match') {
+          newParentArray = fileNode.matches || (fileNode.matches = []);
+        } else {
+          newParentArray = fileNode.groups || (fileNode.groups = []);
+        }
       }
 
-      let newParentArray: Array<Match | Group | ConfigTreeNode>;
-       if (newParentNode.type === 'file') {
-           // Add item to the file node's logical matches/groups array
-           if (movedItemRef.type === 'match') {
-               newParentArray = (newParentNode.matches ??= []);
-           } else { // type === 'group'
-               newParentArray = (newParentNode.groups ??= []);
-           }
-       } else if (newParentNode.type === 'folder' || newParentNode.type === 'root') {
-           newParentArray = newParentNode.children; // Add item to folder/root children
-       } else {
-           console.error('[Store moveTreeItem REV] Invalid new parent type.');
-           return;
-       }
+      console.log(`[Store moveTreeItem REV] Arrays determined. Old array(${oldParentNode.type}) length: ${oldParentArray.length}, New array(${newParentNode.type}) length: ${newParentArray.length}`);
 
       // Perform the splice operation
       if (oldIndex >= 0 && oldIndex < oldParentArray.length) {
         const movedTreeNode = oldParentArray[oldIndex];
         if (!movedTreeNode || movedTreeNode.id !== itemId) {
-          console.error(`[Store moveTreeItem REV] Item at oldIndex ${oldIndex} does not match moved item ID ${itemId}. Aborting.`);
+          console.error(`[Store moveTreeItem REV] Item at oldIndex ${oldIndex} does not match moved item ID ${itemId}. Found:`, movedTreeNode);
           return;
         }
+        
+        console.log(`[Store moveTreeItem REV] Found item to move:`, { id: movedTreeNode.id, type: movedTreeNode.type });
         oldParentArray.splice(oldIndex, 1);
 
         // Adjust newIndex if moving within the same array upwards
@@ -736,6 +786,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         }
 
         const safeNewIndex = Math.min(Math.max(0, adjustedNewIndex), newParentArray.length);
+        console.log(`[Store moveTreeItem REV] Inserting at index ${safeNewIndex} of ${newParentArray.length}`);
         newParentArray.splice(safeNewIndex, 0, movedTreeNode);
 
         // Update GUI order (only makes sense if parent contains Match/Group items)
@@ -746,6 +797,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         }
 
         // Update filePath reference if moved to a different FILE node
+        console.log(`[Store moveTreeItem REV] Checking for cross-file move. Original: ${originalFilePath}, New: ${effectiveNewFilePath}`);
         const filesToSave = new Set<string>();
         if (newParentNode.type === 'file' && originalFilePath !== effectiveNewFilePath && effectiveNewFilePath) {
             console.log(`[Store moveTreeItem REV] Cross-file move detected: ${originalFilePath} -> ${effectiveNewFilePath}`);
@@ -759,7 +811,37 @@ export const useEspansoStore = defineStore('espanso', () => {
              filesToSave.add(originalFilePath);
         }
 
-        // ... (rest of the saving logic) ...
+        // Save all affected files
+        console.log(`[Store moveTreeItem REV] Files to save:`, Array.from(filesToSave));
+        for (const filePath of filesToSave) {
+          try {
+            // Find any item in the file to trigger a save
+            // 使用已有的 findFileNode 根据文件路径找到对应的文件节点，然后获取一个匹配项或分组项作为保存触发器
+            const fileNode = findFileNode(state.value.configTree, filePath);
+            if (fileNode && (fileNode.matches?.length || fileNode.groups?.length)) {
+              let itemToTriggerSave: Match | Group | undefined;
+              if (fileNode.matches?.length) {
+                itemToTriggerSave = fileNode.matches[0]; 
+              } else if (fileNode.groups?.length) {
+                itemToTriggerSave = fileNode.groups[0];
+              }
+              
+              if (itemToTriggerSave) {
+                console.log(`[Store moveTreeItem REV] Saving file ${filePath} using item ${itemToTriggerSave.id}`);
+                await saveItemToFile(itemToTriggerSave);
+              } else {
+                console.warn(`[Store moveTreeItem REV] File node found but no items to save for ${filePath}`);
+              }
+            } else {
+              console.warn(`[Store moveTreeItem REV] Could not find file node or items for ${filePath}`);
+            }
+          } catch (err) {
+             console.error(`[Store moveTreeItem REV] Error saving file ${filePath}:`, err);
+          }
+        }
+
+        console.log(`[Store moveTreeItem REV] Move operation completed successfully.`);
+        state.value.hasUnsavedChanges = false; // Reset unsaved changes flag
       } else {
         console.error(`[Store moveTreeItem REV] Invalid oldIndex: ${oldIndex} for array length ${oldParentArray.length}`);
       }
@@ -775,10 +857,26 @@ export const useEspansoStore = defineStore('espanso', () => {
       allowedTypes: Array<'file' | 'folder' | 'match' | 'group'>
   ): ConfigTreeNode | Match | Group | null => {
       if (!nodes || !Array.isArray(nodes) || !id) return null;
+      
+      console.log(`[findNodeById] Searching for node with ID: "${id}", allowedTypes:`, allowedTypes);
+      
       for (const node of nodes) {
-          // Check the node itself first if its type is allowed
-          if (allowedTypes.includes(node.type) && node.id === id) {
-              return node;
+          // 如果是文件节点，可能需要检查 ID 是否包含文件路径
+          if (allowedTypes.includes(node.type)) {
+              // 常规 ID 检查
+              if (node.id === id) {
+                  console.log(`[findNodeById] Direct match found: ${node.type} with ID ${node.id}`);
+                  return node;
+              }
+              
+              // 特殊处理文件 ID，尝试进行"file-"前缀+路径匹配
+              if (node.type === 'file' && id.startsWith('file-') && node.path) {
+                  const pathPart = id.substring(5); // Remove 'file-' prefix
+                  if (node.path === pathPart) {
+                      console.log(`[findNodeById] Path match found: ${node.type} with path ${node.path}`);
+                      return node;
+                  }
+              }
           }
 
           // If the node is a file, search within its matches/groups
@@ -786,12 +884,18 @@ export const useEspansoStore = defineStore('espanso', () => {
               const fileNode = node as ConfigFileNode; // Explicit cast
               if (allowedTypes.includes('match') && fileNode.matches) {
                   const foundMatch = fileNode.matches.find(m => m.id === id);
-                  if (foundMatch) return foundMatch;
+                  if (foundMatch) {
+                      console.log(`[findNodeById] Found match in file ${node.path}: ${foundMatch.id}`);
+                      return foundMatch;
+                  }
               }
               if (allowedTypes.includes('group') && fileNode.groups) {
                   for (const group of fileNode.groups) {
                       const foundInGroup = findItemByIdRecursive(group, id);
-                      if (foundInGroup) return foundInGroup;
+                      if (foundInGroup) {
+                          console.log(`[findNodeById] Found group in file ${node.path}: ${foundInGroup.id}`);
+                          return foundInGroup;
+                      }
                   }
               }
           } 
@@ -804,6 +908,8 @@ export const useEspansoStore = defineStore('espanso', () => {
               }
           }
       }
+      
+      console.log(`[findNodeById] No node found with ID: ${id}`);
       return null;
   };
 
