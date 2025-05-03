@@ -1,0 +1,52 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Override vue-sonner default styles for a cleaner look */
+[data-sonner-toast][data-theme='light'],
+[data-sonner-toast][data-theme='dark'] {
+  background-color: hsl(var(--card)); /* Use card background color from theme */
+  color: hsl(var(--card-foreground)); /* Use card foreground color */
+  border: 1px solid hsl(var(--border)); /* Use standard border color */
+  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); /* Subtle shadow */
+  border-radius: 0.375rem; /* Slightly less rounded corners - adjust as needed */
+  padding: 0.75rem 1rem; /* Adjust padding */
+}
+
+/* Ensure icons have appropriate color */
+[data-sonner-toast] [data-icon] {
+  color: hsl(var(--foreground)); /* Or adjust based on toast type */
+}
+
+/* Style links inside toasts if needed */
+[data-sonner-toast] a {
+  color: hsl(var(--primary));
+  text-decoration: underline;
+}
+
+/* Specific styling for success/error using richColors */
+/* These might already be handled well by richColors, but you can override */
+/* 
+[data-sonner-toast][data-type='success'] {
+  background-color: hsl(var(--success-bg, var(--card))); 
+  border-left: 4px solid hsl(var(--success));
+}
+
+[data-sonner-toast][data-type='error'] {
+   background-color: hsl(var(--destructive-bg, var(--card))); 
+   border-left: 4px solid hsl(var(--destructive));
+}
+*/
+
+/* Adjust close button if needed */
+[data-sonner-toast] [data-close-button] {
+  background-color: transparent;
+  border: 1px solid transparent;
+  color: hsl(var(--muted-foreground));
+  right: 0.5rem; /* Adjust position slightly if needed */
+  top: 0.5rem;
+}
+[data-sonner-toast] [data-close-button]:hover {
+   background-color: hsl(var(--muted));
+   color: hsl(var(--foreground));
+} 
