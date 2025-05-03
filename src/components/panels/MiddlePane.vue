@@ -1,6 +1,6 @@
 <template>
   <div class="middle-pane flex flex-col h-full bg-card">
-    <div class="flex flex-col py-2 px-4 border-b border-border">
+    <div class="flex flex-col py-2 px-4 border-b">
       <div class="flex items-center justify-between">
         <div class="flex items-center">
           <h3 class="text-lg font-semibold text-foreground m-0">规则列表</h3>

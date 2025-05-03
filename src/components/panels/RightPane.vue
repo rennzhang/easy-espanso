@@ -1,6 +1,6 @@
 <template>
   <div class="right-pane flex flex-col h-full bg-card">
-    <div class="py-2 px-4 border-b border-border">
+    <div class="py-2 px-4 border-b">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-semibold text-foreground m-0" v-html="headerTitle"></h3>
         <div class="flex gap-2" v-if="selectedItem">
