@@ -212,8 +212,19 @@ const treeData = computed(() => {
     .filter((item: TreeNodeItem | null): item is TreeNodeItem => item !== null) // Filter out null results
     // Filter top-level 'config' folder (moved here to happen *after* conversion)
     .filter(node => !(node.type === 'folder' && node.name === 'config'));
-  console.log('[ConfigTree] 转换后的 treeData:', JSON.stringify(tree, null, 2));
-  return tree;
+  
+  // 重新排序，将 Packages 文件夹移到最后
+  const packagesNode = tree.find(node => node.type === 'folder' && node.name === 'Packages');
+  const otherNodes = tree.filter(node => !(node.type === 'folder' && node.name === 'Packages'));
+  
+  // 如果找到 Packages 节点，将其添加到数组末尾
+  const sortedTree = [...otherNodes];
+  if (packagesNode) {
+    sortedTree.push(packagesNode);
+  }
+  
+  console.log('[ConfigTree] 转换后的 treeData:', JSON.stringify(sortedTree, null, 2));
+  return sortedTree;
 });
 
 const handleSelect = (item: TreeNodeItem) => {
