@@ -307,15 +307,16 @@
     >
       <div class="flex items-center justify-between px-4 space-x-3">
         <div class="flex items-center justify-end">
+          <!-- 高级设置按钮 -->
           <Button
             type="button"
             variant="outline"
             size="sm"
-            @click="showAdvancedModal = true"
+            @click="showAdvancedDialog = true"
             class="h-9 px-3 focus:outline-none"
           >
             <SettingsIcon class="h-4 w-4 mr-2" />
-            <span>更多设置</span>
+            <span>高级设置</span>
           </Button>
         </div>
       </div>
@@ -354,242 +355,215 @@
       </div>
     </div>
 
-    <!-- 高级设置模态框 -->
-    <div
-      v-if="showAdvancedModal"
-      class="fixed inset-0 z-50 flex items-center justify-center"
-    >
-      <div
-        class="absolute inset-0 bg-black/70"
-        @click="showAdvancedModal = false"
-      ></div>
-      <div
-        class="relative bg-background rounded-none shadow-lg w-full max-w-4xl max-h-[90vh] overflow-hidden"
-      >
-        <div class="flex items-center justify-between p-4 border-b">
-          <h2 class="text-lg font-semibold">高级设置</h2>
-          <button
-            @click="showAdvancedModal = false"
-            class="text-gray-500 hover:text-gray-700"
-          >
-            <XIcon class="h-5 w-5" />
-          </button>
-        </div>
 
-        <div class="p-6 overflow-auto max-h-[calc(90vh-120px)]">
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-            <!-- 左侧列 -->
-            <div class="space-y-6">
-              <!-- 词边界设置 -->
-              <div class="space-y-3">
-                <div class="flex items-center">
-                  <h3 class="text-base font-medium mr-2">词边界设置</h3>
-                  <HelpTip
-                    content="控制触发词在什么情况下被识别，例如是否需要在单词边界处"
-                  />
-                </div>
-                <div class="space-y-3 pl-1">
-                  <div class="flex items-center space-x-2">
-                    <Checkbox id="word" v-model="formState.word" />
-                    <label for="word" class="text-sm font-medium leading-none">
-                      仅在词边界触发 (word)
-                    </label>
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <Checkbox id="leftWord" v-model="formState.leftWord" />
-                    <label
-                      for="leftWord"
-                      class="text-sm font-medium leading-none"
-                    >
-                      左侧词边界 (left_word)
-                    </label>
-                  </div>
-                  <div class="flex items-center space-x-2">
-                    <Checkbox id="rightWord" v-model="formState.rightWord" />
-                    <label
-                      for="rightWord"
-                      class="text-sm font-medium leading-none"
-                    >
-                      右侧词边界 (right_word)
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 大小写处理 -->
-              <div class="space-y-3">
-                <div class="flex items-center">
-                  <h3 class="text-base font-medium mr-2">大小写处理</h3>
-                  <HelpTip content="控制替换内容的大小写处理方式" />
-                </div>
-                <div class="space-y-3 pl-1">
-                  <div class="flex items-center space-x-2">
-                    <Checkbox
-                      id="propagateCase"
-                      v-model="formState.propagateCase"
-                    />
-                    <label
-                      for="propagateCase"
-                      class="text-sm font-medium leading-none"
-                    >
-                      传播大小写 (propagate_case)
-                    </label>
-                  </div>
-                  <div class="space-y-1.5">
-                    <label
-                      for="uppercaseStyle"
-                      class="text-sm font-medium leading-none"
-                    >
-                      大写样式 (uppercase_style)
-                    </label>
-                    <Select v-model="formState.uppercaseStyle">
-                      <SelectTrigger id="uppercaseStyle" class="h-9">
-                        <SelectValue placeholder="选择样式..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem
-                          v-for="option in uppercaseStyleOptions"
-                          :key="option.value"
-                          :value="option.value"
-                        >
-                          {{ option.label }}
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
-
-              <!-- 其他设置 -->
-              <div class="space-y-3">
-                <div class="flex items-center">
-                  <h3 class="text-base font-medium mr-2">其他设置</h3>
-                </div>
-                <div class="grid grid-cols-1 gap-4 pl-1">
-                  <!-- 优先级 -->
-                  <div class="space-y-1.5">
-                    <div class="flex items-center">
-                      <label
-                        for="priority"
-                        class="text-sm font-medium leading-none mr-2"
-                      >
-                        优先级 (priority)
-                      </label>
-                      <HelpTip
-                        content="当多个片段可能匹配时，优先级高的会被优先使用"
-                      />
-                    </div>
-                    <Input
-                      id="priority"
-                      v-model.number="formState.priority"
-                      type="number"
-                      placeholder="0"
-                      class="h-9 px-3 py-2"
-                    />
-                  </div>
-
-                  <!-- 快捷键 -->
-                  <div class="space-y-1.5">
-                    <div class="flex items-center">
-                      <label
-                        for="hotkey"
-                        class="text-sm font-medium leading-none mr-2"
-                      >
-                        快捷键 (hotkey)
-                      </label>
-                      <HelpTip content="设置快捷键来触发此片段，例如 alt+h" />
-                    </div>
-                    <Input
-                      id="hotkey"
-                      v-model="formState.hotkey"
-                      placeholder="例如: alt+h"
-                      class="h-9 px-3 py-2"
-                    />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <!-- 右侧列 -->
-            <div class="space-y-6">
-              <!-- 应用限制 -->
-              <div class="space-y-3">
-                <div class="flex items-center">
-                  <h3 class="text-base font-medium mr-2">应用限制</h3>
-                  <HelpTip content="限制片段在哪些应用中生效或不生效" />
-                </div>
-                <div class="space-y-4 pl-1">
-                  <div class="space-y-1.5">
-                    <label class="text-sm font-medium leading-none">
-                      生效的应用 (apps)
-                    </label>
-                    <TagInput
-                      :modelValue="formState.apps || []"
-                      @update:modelValue="(val: string[]) => formState.apps = val"
-                      placeholder="添加应用名称，回车确认"
-                      class="py-1"
-                    />
-                  </div>
-
-                  <div class="space-y-1.5">
-                    <label class="text-sm font-medium leading-none">
-                      排除的应用 (exclude_apps)
-                    </label>
-                    <TagInput
-                      :modelValue="formState.exclude_apps || []"
-                      @update:modelValue="(val: string[]) => formState.exclude_apps = val"
-                      placeholder="添加应用名称，回车确认"
-                      class="py-1"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <!-- 搜索设置 -->
-              <div class="space-y-3">
-                <div class="flex items-center">
-                  <h3 class="text-base font-medium mr-2">搜索设置</h3>
-                  <HelpTip content="添加额外的关键词，用于在搜索时匹配此片段" />
-                </div>
-                <div class="space-y-1.5 pl-1">
-                  <label class="text-sm font-medium leading-none">
-                    额外搜索词 (search_terms)
-                  </label>
-                  <TagInput
-                    :modelValue="formState.search_terms || []"
-                    @update:modelValue="(val: string[]) => formState.search_terms = val"
-                    placeholder="添加搜索词，回车确认"
-                    class="py-1"
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 底部按钮 -->
-          <div class="flex justify-end mt-8 pt-4 border-t">
-            <Button
-              type="button"
-              variant="outline"
-              @click="showAdvancedModal = false"
-              class="mr-2"
-            >
-              关闭
-            </Button>
-            <Button
-              type="button"
-              variant="default"
-              @click="showAdvancedModal = false"
-            >
-              应用
-            </Button>
-          </div>
-        </div>
-      </div>
-    </div>
   </form>
   <!-- VariableSelector Component moved inside TooltipProvider -->
   <VariableSelector ref="variableSelectorRef" @select="insertVariable" />
+
+  <!-- 高级设置对话框 -->
+  <Dialog :open="showAdvancedDialog" @update:open="showAdvancedDialog = $event">
+    <DialogContent class="sm:max-w-[800px]">
+      <DialogHeader>
+        <DialogTitle>高级设置</DialogTitle>
+        <DialogDescription>
+          配置片段的高级选项和行为
+        </DialogDescription>
+      </DialogHeader>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto py-4">
+        <!-- 左侧列 -->
+        <div class="space-y-6">
+          <!-- 词边界设置 -->
+          <div class="space-y-3">
+            <div class="flex items-center">
+              <h3 class="text-base font-medium mr-2">词边界设置</h3>
+              <HelpTip
+                content="控制触发词在什么情况下被识别，例如是否需要在单词边界处"
+              />
+            </div>
+            <div class="space-y-3 pl-1">
+              <div class="flex items-center space-x-2">
+                <Checkbox id="word" v-model="formState.word" />
+                <label for="word" class="text-sm font-medium leading-none">
+                  仅在词边界触发 (word)
+                </label>
+              </div>
+              <div class="flex items-center space-x-2">
+                <Checkbox id="leftWord" v-model="formState.leftWord" />
+                <label
+                  for="leftWord"
+                  class="text-sm font-medium leading-none"
+                >
+                  左侧词边界 (left_word)
+                </label>
+              </div>
+              <div class="flex items-center space-x-2">
+                <Checkbox id="rightWord" v-model="formState.rightWord" />
+                <label
+                  for="rightWord"
+                  class="text-sm font-medium leading-none"
+                >
+                  右侧词边界 (right_word)
+                </label>
+              </div>
+            </div>
+          </div>
+
+          <!-- 大小写处理 -->
+          <div class="space-y-3">
+            <div class="flex items-center">
+              <h3 class="text-base font-medium mr-2">大小写处理</h3>
+              <HelpTip content="控制替换内容的大小写处理方式" />
+            </div>
+            <div class="space-y-3 pl-1">
+              <div class="flex items-center space-x-2">
+                <Checkbox
+                  id="propagateCase"
+                  v-model="formState.propagateCase"
+                />
+                <label
+                  for="propagateCase"
+                  class="text-sm font-medium leading-none"
+                >
+                  传播大小写 (propagate_case)
+                </label>
+              </div>
+              <div class="space-y-1.5">
+                <label
+                  for="uppercaseStyle"
+                  class="text-sm font-medium leading-none"
+                >
+                  大写样式 (uppercase_style)
+                </label>
+                <Select v-model="formState.uppercaseStyle">
+                  <SelectTrigger id="uppercaseStyle" class="h-9">
+                    <SelectValue placeholder="选择样式..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem
+                      v-for="option in uppercaseStyleOptions"
+                      :key="option.value"
+                      :value="option.value"
+                    >
+                      {{ option.label }}
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <!-- 其他设置 -->
+          <div class="space-y-3">
+            <div class="flex items-center">
+              <h3 class="text-base font-medium mr-2">其他设置</h3>
+            </div>
+            <div class="grid grid-cols-1 gap-4 pl-1">
+              <!-- 优先级 -->
+              <div class="space-y-1.5">
+                <div class="flex items-center">
+                  <label
+                    for="priority"
+                    class="text-sm font-medium leading-none mr-2"
+                  >
+                    优先级 (priority)
+                  </label>
+                  <HelpTip
+                    content="当多个片段可能匹配时，优先级高的会被优先使用"
+                  />
+                </div>
+                <Input
+                  id="priority"
+                  v-model.number="formState.priority"
+                  type="number"
+                  placeholder="0"
+                  class="h-9 px-3 py-2"
+                />
+              </div>
+
+              <!-- 快捷键 -->
+              <div class="space-y-1.5">
+                <div class="flex items-center">
+                  <label
+                    for="hotkey"
+                    class="text-sm font-medium leading-none mr-2"
+                  >
+                    快捷键 (hotkey)
+                  </label>
+                  <HelpTip content="设置快捷键来触发此片段，例如 alt+h" />
+                </div>
+                <Input
+                  id="hotkey"
+                  v-model="formState.hotkey"
+                  placeholder="例如: alt+h"
+                  class="h-9 px-3 py-2"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 右侧列 -->
+        <div class="space-y-6">
+          <!-- 应用限制 -->
+          <div class="space-y-3">
+            <div class="flex items-center">
+              <h3 class="text-base font-medium mr-2">应用限制</h3>
+              <HelpTip content="限制片段在哪些应用中生效或不生效" />
+            </div>
+            <div class="space-y-4 pl-1">
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium leading-none">
+                  生效的应用 (apps)
+                </label>
+                <TagInput
+                  :modelValue="formState.apps || []"
+                  @update:modelValue="(val: string[]) => formState.apps = val"
+                  placeholder="添加应用名称，回车确认"
+                  class="py-1"
+                />
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-sm font-medium leading-none">
+                  排除的应用 (exclude_apps)
+                </label>
+                <TagInput
+                  :modelValue="formState.exclude_apps || []"
+                  @update:modelValue="(val: string[]) => formState.exclude_apps = val"
+                  placeholder="添加应用名称，回车确认"
+                  class="py-1"
+                />
+              </div>
+            </div>
+          </div>
+
+          <!-- 搜索设置 -->
+          <div class="space-y-3">
+            <div class="flex items-center">
+              <h3 class="text-base font-medium mr-2">搜索设置</h3>
+              <HelpTip content="添加额外的关键词，用于在搜索时匹配此片段" />
+            </div>
+            <div class="space-y-1.5 pl-1">
+              <label class="text-sm font-medium leading-none">
+                额外搜索词 (search_terms)
+              </label>
+              <TagInput
+                :modelValue="formState.search_terms || []"
+                @update:modelValue="(val: string[]) => formState.search_terms = val"
+                placeholder="添加搜索词，回车确认"
+                class="py-1"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+      <DialogFooter>
+        <Button type="button" variant="outline" @click="showAdvancedDialog = false">
+          关闭
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -615,6 +589,14 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "../ui/tooltip";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "../ui/dialog";
 import HelpTip from "../common/HelpTip.vue";
 import {
   CalendarIcon,
@@ -800,7 +782,7 @@ const cmOptions = computed(() => {
 const currentContentType = ref<ContentType>("plain"); // Use defined ContentType
 
 // 高级选项显示状态
-const showAdvancedModal = ref(false);
+const showAdvancedDialog = ref(false);
 
 // 预览模态框状态
 const showPreviewModal = ref(false);
@@ -999,7 +981,8 @@ onMounted(() => {
     (formState.value.exclude_apps && formState.value.exclude_apps.length > 0) ||
     (formState.value.search_terms && formState.value.search_terms.length > 0)
   ) {
-    showAdvancedModal.value = true;
+    // 不自动展开高级设置弹窗
+    // showAdvancedPopover.value = true;
   }
 
   // 使用 nextTick 确保初始化完成后再保存原始数据和重置状态
