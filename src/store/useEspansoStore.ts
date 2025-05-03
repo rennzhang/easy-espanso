@@ -23,6 +23,7 @@ import {
   findAndUpdateInTree,
   updateDescendantPathsAndFilePaths
 } from '@/utils/configTreeUtils';
+import ClipboardManager from '@/utils/ClipboardManager';
 import type { ConfigTreeNode, ConfigFileNode, ConfigFolderNode } from '@/utils/configTreeUtils';
 
 declare global {
@@ -461,6 +462,58 @@ export const useEspansoStore = defineStore('espanso', () => {
       }
   };
 
+  // --- Helper to find any item associated with a specific file path ---
+  // Moved from deleteItem to be reusable
+  const findAnyItemForFile = (path: string): Match | Group | undefined => {
+      const findRecursive = (items: (Match | Group)[]): Match | Group | undefined => {
+          for (const item of items) {
+              // Check top-level item
+              if (item.filePath === path) return item;
+              // Check matches within a group
+              if (item.type === 'group' && item.matches) {
+                 const foundMatch = item.matches.find(m => m.filePath === path);
+                 if (foundMatch) return foundMatch;
+              }
+              // Recursively check nested groups
+               if (item.type === 'group' && item.groups) {
+                   const found = findRecursive(item.groups);
+                   if (found) return found;
+               }
+          }
+          return undefined;
+      };
+      // Search in both top-level matches and groups
+      return findRecursive([...(state.value.config?.matches || []), ...(state.value.config?.groups || [])]);
+  }
+
+  // --- Helper to add item to nested group in flat list ---
+  const findAndAddInFlatList = (groups: Group[], parentId: string, newItem: Match | Group): boolean => {
+      const parentGroup = groups.find(g => g.id === parentId);
+      if (parentGroup) {
+          if (newItem.type === 'match') {
+              if (!parentGroup.matches) parentGroup.matches = [];
+              if (!parentGroup.matches.some(m => m.id === newItem.id)) {
+                  parentGroup.matches.push(newItem);
+                  return true;
+              }
+          } else { // newItem.type === 'group'
+              if (!parentGroup.groups) parentGroup.groups = [];
+              if (!parentGroup.groups.some(g => g.id === newItem.id)) {
+                  parentGroup.groups.push(newItem);
+                  return true;
+              }
+          }
+          return false; // Already exists in this parent
+      }
+      // Recursive search (Optional - keeping it simple for now)
+      // for (const group of groups) {
+      //   if (group.groups && findAndAddInFlatList(group.groups, parentId, newItem)) {
+      //      return true;
+      //   }
+      // }
+      return false;
+  };
+
   // --- Item CRUD Actions (call updateConfigState or specific logic) ---
 
   const updateItem = async (item: Match | Group) => {
@@ -535,25 +588,8 @@ export const useEspansoStore = defineStore('espanso', () => {
         try {
             console.log(`[Store deleteItem] Saving file ${filePathToSave} after deletion.`);
             // --- Simplified Trigger Item Search ---
-            let triggerItem: Match | Group | undefined;
-            const findAnyItemForFile = (path: string): Match | Group | undefined => {
-                const findRecursive = (items: (Match | Group)[]): Match | Group | undefined => {
-                    for (const item of items) {
-                        if (item.filePath === path) return item;
-                        if (item.type === 'group' && item.matches) {
-                           const foundMatch = item.matches.find(m => m.filePath === path);
-                           if (foundMatch) return foundMatch;
-                        }
-                         if (item.type === 'group' && item.groups) {
-                             const found = findRecursive(item.groups);
-                             if (found) return found;
-                         }
-                    }
-                    return undefined;
-                };
-                return findRecursive([...(state.value.config?.matches || []), ...(state.value.config?.groups || [])]);
-            }
-            triggerItem = findAnyItemForFile(filePathToSave);
+            // Use the refactored helper function
+            const triggerItem = findAnyItemForFile(filePathToSave);
             // --- End Simplified Search ---
 
             if (triggerItem) {
@@ -592,64 +628,140 @@ export const useEspansoStore = defineStore('espanso', () => {
   };
 
 
-  const addItem = async (item: Match | Group) => {
-    // Needs update to add to flat list, tree structure, and save file.
-     console.log(`[Store addItem] Adding new ${item.type}:`, JSON.parse(JSON.stringify(item)));
-     if (!item.filePath) {
-         item.filePath = state.value.configPath || undefined; // Assign default path if missing
-         console.warn(`[Store addItem] Item missing filePath, assigned default: ${item.filePath}`);
-         if (!item.filePath) {
-             console.error("[Store addItem] Cannot add item without a filePath and no active configPath.");
-             return;
-         }
-     }
-      if (!item.id) {
-          item.id = generateId(item.type); // Ensure ID exists
+  // 修改 addItem 函数以接受可选的 parentGroupId
+  const addItem = async (item: Match | Group, parentGroupId?: string | null) => {
+    console.log(`[Store addItem] ENTERED. Item ID: ${item.id}, Type: ${item.type}, Target Parent Group ID: ${parentGroupId}`);
+    if (!item.filePath) {
+      item.filePath = state.value.configPath || undefined; // Assign default path if missing
+      console.warn(`[Store addItem] Item missing filePath, assigned default: ${item.filePath}`);
+      if (!item.filePath) {
+        console.error("[Store addItem] Cannot add item without a filePath and no active configPath.");
+        return;
       }
+    }
+    if (!item.id) {
+      item.id = generateId(item.type); // Ensure ID exists
+    }
+    if (!state.value.config) {
+      console.error("Cannot add item, config is null.");
+      return;
+    }
 
-     if (!state.value.config) {
-         console.error("Cannot add item, config is null.");
-         return;
-     }
+    let addedToParentGroupInTree = false;
 
-      // --- Add to flat list ---
-      if (item.type === 'match') {
-         state.value.config.matches.push(item);
-      } else {
-         // Add to top-level groups for now. Adding to nested groups needs parent context.
-         state.value.config.groups.push(item);
-      }
+    // --- Find target parent (File Node or specific Group) and Add to Tree ---
+    const targetFileNode = findFileNode(state.value.configTree, item.filePath!);
+    console.log(`[Store addItem] Found targetFileNode: ${targetFileNode?.path}`);
 
-      // --- Add to tree structure ---
-      // Use imported findFileNode
-      const targetFileNode = findFileNode(state.value.configTree, item.filePath!);
-      if (targetFileNode) {
-          if (item.type === 'match') {
-              if (!targetFileNode.matches) targetFileNode.matches = [];
-              targetFileNode.matches.push(item); // Add reference to the item from flat list
-          } else {
-              if (!targetFileNode.groups) targetFileNode.groups = [];
-              targetFileNode.groups.push(item); // Add reference
-          }
-          console.log(`[Store addItem] Added item ${item.id} to tree node for file ${item.filePath}`);
-      } else {
-          console.error(`[Store addItem] Could not find target file node in tree for path ${item.filePath}. Tree is out of sync!`);
-          // Attempt to create a new file node? Risky.
-          // For now, item exists in flat list but not tree. Save will still work.
-      }
+    if (targetFileNode) {
+        let targetArrayInTree: Match[] | Group[] | undefined;
+        let parentGroupInTree: Group | null = null;
 
-      // --- Save the file ---
+        if (parentGroupId) {
+            // Find the specific parent group DIRECTLY within the file node's groups array
+            // Removed recursive search here for simplicity and to fix type error
+            parentGroupInTree = targetFileNode.groups?.find(g => g.id === parentGroupId) ?? null;
+            if (parentGroupInTree) {
+                if (item.type === 'match') {
+                    if (!parentGroupInTree.matches) parentGroupInTree.matches = [];
+                    targetArrayInTree = parentGroupInTree.matches;
+                } else { // item.type === 'group'
+                    if (!parentGroupInTree.groups) parentGroupInTree.groups = [];
+                    targetArrayInTree = parentGroupInTree.groups;
+                }
+                console.log(`[Store addItem] Tree Target: Group ${parentGroupId} in file ${item.filePath}`);
+            } else {
+                console.warn(`[Store addItem] Parent group ${parentGroupId} not found in tree or not a group. Adding to file root.`);
+                parentGroupId = null; // Fallback to file root for tree addition
+            }
+        }
+
+        // If not adding to a specific group, add to the file's root in the tree
+        if (!parentGroupId) {
+            if (item.type === 'match') {
+                if (!targetFileNode.matches) targetFileNode.matches = [];
+                targetArrayInTree = targetFileNode.matches;
+            } else { // item.type === 'group'
+                if (!targetFileNode.groups) targetFileNode.groups = [];
+                targetArrayInTree = targetFileNode.groups;
+            }
+             console.log(`[Store addItem] Tree Target: File ${item.filePath}`);
+        }
+
+        // Add item to the determined target array in the tree
+        if (targetArrayInTree) {
+           if (!targetArrayInTree.some(existingItem => existingItem.id === item.id)) {
+              targetArrayInTree.push(item as any); // Use 'as any' or improve typing
+              addedToParentGroupInTree = !!parentGroupId; // Mark if added to a group
+              console.log(`[Store addItem] Added item ${item.id} to targetArrayInTree.`);
+           } else {
+               console.warn(`[Store addItem] Item with ID ${item.id} already exists in the target tree array. Skipping add.`);
+           }
+        } else {
+            console.error(`[Store addItem] Could not determine target array in tree for item ${item.id}.`);
+        }
+
+    } else {
+        console.error(`[Store addItem] Could not find target file node in tree for path ${item.filePath}. Tree might be out of sync!`);
+    }
+
+    // --- Update flat list (state.config) --- Needs careful handling for nesting
+    let addedToFlatList = false;
+    // REMOVED internal definition of findAndAddInFlatList
+
+    if (addedToParentGroupInTree && parentGroupId) { // Use parentGroupId determined for tree
+        // Call the extracted helper function
+        if (findAndAddInFlatList(state.value.config.groups, parentGroupId, item)) {
+            console.log(`[Store addItem] Added item ${item.id} to parent group ${parentGroupId} in flat list.`);
+            addedToFlatList = true;
+        } else {
+            console.warn(`[Store addItem] Added item ${item.id} to parent group ${parentGroupId} in tree, but failed to add to flat list (maybe already exists?).`);
+        }
+    }
+
+    // If not added to a parent group in the flat list OR if it wasn't meant for a parent group
+    if (!addedToFlatList && !parentGroupId) {
+        if (item.type === 'match') {
+            if (!state.value.config.matches.some(m => m.id === item.id)) {
+                state.value.config.matches.push(item);
+                addedToFlatList = true;
+                console.log(`[Store addItem] Added item ${item.id} to top-level matches in flat list.`);
+            }
+        } else { // item.type === 'group'
+            if (!state.value.config.groups.some(g => g.id === item.id)) {
+                state.value.config.groups.push(item);
+                addedToFlatList = true;
+                console.log(`[Store addItem] Added item ${item.id} to top-level groups in flat list.`);
+            }
+        }
+    }
+
+    if (!addedToFlatList) {
+        console.warn(`[Store addItem] Item ${item.id} was not added to the flat list (state.config). It might already exist there.`);
+    }
+
+
+    // --- Save the file --- Only save if item was actually added somewhere
+    if (addedToFlatList || addedToParentGroupInTree) { // Check if added to either structure
       try {
-        await saveItemToFile(item);
+        console.log(`[Store addItem] Calling saveItemToFile for item ${item.id} in file ${item.filePath}`);
+        await saveItemToFile(item); // Save the file containing the new/moved item
         state.value.hasUnsavedChanges = false;
         state.value.autoSaveStatus = 'idle';
       } catch (error) {
-         console.error('[Store addItem] Failed to save file after adding item:', error);
-         state.value.hasUnsavedChanges = true; // Keep marked as unsaved
-         state.value.autoSaveStatus = 'error';
+        console.error('[Store addItem] Failed to save file after adding item:', error);
+        state.value.hasUnsavedChanges = true;
+        state.value.autoSaveStatus = 'error';
       }
-       // Optionally select the newly added item
+      // Optionally select the newly added item
       state.value.selectedItemId = item.id;
+    } else {
+        console.log(`[Store addItem] Item ${item.id} not added to state, skipping save.`);
+        // Maybe select existing item if it was detected?
+        if (state.value.config.matches.some(m => m.id === item.id) || state.value.config.groups.some(g => g.id === item.id)){
+            state.value.selectedItemId = item.id;
+        }
+    }
   };
 
 
@@ -663,6 +775,36 @@ export const useEspansoStore = defineStore('espanso', () => {
     }
 
     try {
+      // 处理剪贴板操作
+      if (oldParentId === 'clipboard') {
+        console.log(`[Store moveTreeItem REV] Clipboard operation detected for item ${itemId}`);
+        // 获取剪贴板中的项目
+        const { item: clipboardItem, operation } = ClipboardManager.getItem();
+
+        if (!clipboardItem || clipboardItem.id !== itemId) {
+          console.error(`[Store moveTreeItem REV] Item ${itemId} not found in clipboard or ID mismatch.`);
+          return;
+        }
+
+        try {
+          if (operation === 'copy') {
+            // 复制操作 - 创建新项目
+            const newItemId = await pasteItemCopy(clipboardItem, newParentId);
+            console.log(`[Store moveTreeItem REV] Successfully copied item. New ID: ${newItemId}`);
+            return;
+          } else if (operation === 'cut') {
+            // 剪切操作 - 移动项目
+            const movedItemId = await pasteItemCut(itemId, newParentId);
+            console.log(`[Store moveTreeItem REV] Successfully cut and pasted item: ${movedItemId}`);
+            return;
+          }
+        } catch (error: any) {
+          console.error(`[Store moveTreeItem REV] Error during clipboard operation:`, error);
+          state.value.error = `剪贴板操作失败: ${error.message || '未知错误'}`;
+          return;
+        }
+      }
+
       // 查找要移动的项目
       const movedItemRef = findItemById(itemId);
       if (!movedItemRef) {
@@ -769,7 +911,11 @@ export const useEspansoStore = defineStore('espanso', () => {
       console.log(`[Store moveTreeItem REV] Arrays determined. Old array(${oldParentNode.type}) length: ${oldParentArray.length}, New array(${newParentNode.type}) length: ${newParentArray.length}`);
 
       // Perform the splice operation
-      if (oldIndex >= 0 && oldIndex < oldParentArray.length) {
+      // 特殊处理 oldIndex 为 -1 的情况（快捷键粘贴）
+      if (oldIndex === -1) {
+        console.log(`[Store moveTreeItem REV] Special case: oldIndex is -1, likely a clipboard operation.`);
+        // 不需要从 oldParentArray 中移除项目，因为它可能来自剪贴板
+      } else if (oldIndex >= 0 && oldIndex < oldParentArray.length) {
         const movedTreeNode = oldParentArray[oldIndex];
         if (!movedTreeNode || movedTreeNode.id !== itemId) {
           console.error(`[Store moveTreeItem REV] Item at oldIndex ${oldIndex} does not match moved item ID ${itemId}. Found:`, movedTreeNode);
@@ -779,12 +925,16 @@ export const useEspansoStore = defineStore('espanso', () => {
         console.log(`[Store moveTreeItem REV] Found item to move:`, { id: movedTreeNode.id, type: movedTreeNode.type });
         oldParentArray.splice(oldIndex, 1);
 
-        // Adjust newIndex if moving within the same array upwards
+        // 调整新索引
         let adjustedNewIndex = newIndex;
+
+        // 如果在同一数组内移动，并且是向后移动（oldIndex < newIndex）
         if (oldParentArray === newParentArray && oldIndex < newIndex) {
-           adjustedNewIndex--; // Decrement index if removing from earlier in the same array
+           // 由于我们已经从数组中移除了项目，所以后面的索引都会减1
+           // 这里不需要再减1，因为数组长度已经变化
         }
 
+        // 确保索引在安全范围内
         const safeNewIndex = Math.min(Math.max(0, adjustedNewIndex), newParentArray.length);
         console.log(`[Store moveTreeItem REV] Inserting at index ${safeNewIndex} of ${newParentArray.length}`);
         newParentArray.splice(safeNewIndex, 0, movedTreeNode);
@@ -1110,6 +1260,375 @@ export const useEspansoStore = defineStore('espanso', () => {
     // ... rest of the implementation involving preloadApi.readFile/writeFile etc.
   };
 
+  // --- NEW Action: Paste Item Copy ---
+   const pasteItemCopy = async (itemDataToCopy: Match | Group, targetParentId: string | null) => {
+    console.log(`[Store pasteItemCopy] ENTERED. Pasting copy of ${itemDataToCopy.type} ${itemDataToCopy.id} to parent ${targetParentId}`);
+    if (!state.value.config || !state.value.configTree) {
+        console.error("[Store pasteItemCopy] Config or ConfigTree not loaded.");
+        return;
+    }
+
+    try {
+      // 1. Deep clone the item data
+      const newItemData = JSON.parse(JSON.stringify(itemDataToCopy));
+
+      // 2. Generate a new unique ID
+      newItemData.id = generateId(newItemData.type); // Ensure generateId is imported/available
+      console.log(`[Store pasteItemCopy] Cloned data with new ID: ${newItemData.id}`);
+
+      // 3. Determine target file path and parent node context
+      let targetFilePath: string | undefined = undefined;
+      let targetParentNode: ConfigTreeNode | Group | null = null; // Can be File, Folder, or Group
+
+      if (targetParentId) {
+        const foundNode = findNodeById(state.value.configTree, targetParentId, ['folder', 'file', 'group']);
+        // Explicitly check if the found node is NOT a Match before assigning
+        if (foundNode && foundNode.type !== 'match') {
+          targetParentNode = foundNode as ConfigTreeNode | Group; // Type assertion after check
+          // Determine filePath based on the valid parent
+          if (targetParentNode.type === 'file') targetFilePath = targetParentNode.path;
+          else if (targetParentNode.type === 'group') targetFilePath = targetParentNode.filePath; // Use group's file path
+          // Folder case needs fallback path decision
+          else if (targetParentNode.type === 'folder') {
+             console.warn(`[Store pasteItemCopy] Pasting into a folder (${targetParentId}) is ambiguous. Using root default path.`);
+             // targetFilePath will be assigned fallback below
+          }
+        } else if (foundNode && foundNode.type === 'match') {
+           console.warn(`[Store pasteItemCopy] Target parent node ${targetParentId} is a Match, which is invalid. Using root default path.`);
+           targetParentNode = null; // No valid parent node
+        } else {
+           console.warn(`[Store pasteItemCopy] Target parent node ${targetParentId} not found in tree. Using root default path.`);
+           targetParentNode = null; // No valid parent node
+        }
+        // Assign fallback filePath if needed (not found, folder ambiguity, or invalid match parent)
+        if (!targetFilePath) {
+            targetFilePath = state.value.configPath || 'config/default.yml';
+            console.warn(`[Store pasteItemCopy] Using fallback file path: ${targetFilePath}`);
+        }
+      } else { // Pasting to root
+         targetFilePath = state.value.configPath || 'config/default.yml';
+         targetParentNode = null;
+      }
+
+       if (!targetFilePath) { // Final check, though unlikely now
+         throw new Error("无法确定用于粘贴副本的目标文件路径。");
+       }
+
+      newItemData.filePath = targetFilePath;
+      newItemData.guiOrder = 9999; // Assign high order initially
+      newItemData.updatedAt = new Date().toISOString(); // Set new timestamp
+
+      console.log(`[Store pasteItemCopy] Determined targetFilePath: ${targetFilePath}`);
+      console.log(`[Store pasteItemCopy] Determined targetParentNode type: ${targetParentNode?.type}, id: ${targetParentNode?.id}`);
+
+      // 4. Add the new item to the store and tree
+      //    Modify `addItem` or create a specific helper if needed to handle adding to nested groups
+      console.log(`[Store pasteItemCopy] Calling addItem with new item ID ${newItemData.id} and parent group ID ${targetParentNode?.type === 'group' ? targetParentNode.id : null}`);
+      await addItem(newItemData, targetParentNode?.type === 'group' ? targetParentNode.id : null ); // Pass parent group ID if applicable
+
+      // 5. 选择新创建的项目
+      state.value.selectedItemId = newItemData.id;
+      state.value.selectedItemType = newItemData.type;
+
+      console.log(`[Store pasteItemCopy] Successfully finished pasteItemCopy for new ID ${newItemData.id}`);
+      // Assuming addItem handles saving the file
+      // toast can be triggered here or after addItem completes if addItem returns status
+
+      return newItemData.id; // 返回新创建的项目ID
+    } catch (error: any) {
+       console.error('[Store pasteItemCopy] Error during paste operation:', error);
+       // Handle error (e.g., show toast)
+       state.value.error = `粘贴副本失败: ${error.message}`;
+       throw error; // 重新抛出错误，让调用者处理
+    }
+  };
+
+  // --- NEW Action: Paste Item Cut ---
+   const pasteItemCut = async (itemId: string, newParentId: string | null) => {
+    console.log(`[Store pasteItemCut] ENTERED. Cutting item ${itemId} and pasting to parent ${newParentId}`);
+    if (!state.value.config || !state.value.configTree) {
+      console.error("[Store pasteItemCut] Config or ConfigTree not loaded.");
+      return;
+    }
+
+    try {
+      // 1. Find the item to move
+      const movedItemRef = findItemById(itemId);
+      if (!movedItemRef) {
+        throw new Error(`要剪切的项目 ID ${itemId} 未找到。`);
+      }
+      const originalFilePath = movedItemRef.filePath;
+      console.log(`[Store pasteItemCut] Found item ${itemId}, original path: ${originalFilePath}`);
+
+      // 2. Find new parent node and determine new file path (similar to pasteItemCopy)
+      let newParentNode: ConfigTreeNode | Group | null = null;
+      let effectiveNewFilePath: string | undefined = undefined;
+      const defaultPath = state.value.configPath || 'config/default.yml'; // Define default path
+
+      if (newParentId) {
+        const foundNode = findNodeById(state.value.configTree, newParentId, ['folder', 'file', 'group']);
+        if (foundNode && foundNode.type !== 'match') {
+          newParentNode = foundNode as ConfigTreeNode | Group;
+          if (newParentNode.type === 'file') effectiveNewFilePath = newParentNode.path;
+          else if (newParentNode.type === 'group') effectiveNewFilePath = newParentNode.filePath;
+          else if (newParentNode.type === 'folder') {
+              // Decide policy: Use root default path when pasting cut item into folder
+              console.warn(`[Store pasteItemCut] Pasting cut item into a folder (${newParentId}) is ambiguous. Using root default path.`);
+              effectiveNewFilePath = defaultPath;
+          }
+        } else {
+           console.warn(`[Store pasteItemCut] New parent node ${newParentId} not found or invalid. Item will keep original path.`);
+           // Keep original path if parent is invalid/not found?
+           effectiveNewFilePath = originalFilePath;
+        }
+      } else { // Pasting to root
+         newParentNode = null; // Representing root
+         effectiveNewFilePath = defaultPath;
+      }
+      // Final fallback if still undefined (shouldn't happen with above logic)
+      if (!effectiveNewFilePath) effectiveNewFilePath = originalFilePath || defaultPath;
+      console.log(`[Store pasteItemCut] New parent node type: ${newParentNode?.type}, id: ${newParentNode?.id}, effective new path: ${effectiveNewFilePath}`);
+
+      // --- 3. Remove item from original location ---
+      let removedFromTree = false;
+      let removedFromFlatList = false;
+
+      // 3a. Remove from Tree Structure
+      const removeFromTree = (nodes: ConfigTreeNode[], targetId: string): boolean => {
+        for (let i = nodes.length - 1; i >= 0; i--) {
+          const node = nodes[i];
+          if (node.id === targetId) {
+            nodes.splice(i, 1);
+            return true; // Found and removed directly
+          }
+          if (node.type === 'file') {
+            if (node.matches) {
+              const matchIndex = node.matches.findIndex(m => m.id === targetId);
+              if (matchIndex !== -1) {
+                node.matches.splice(matchIndex, 1);
+                return true;
+              }
+            }
+            if (node.groups) {
+              const groupIndex = node.groups.findIndex(g => g.id === targetId);
+              if (groupIndex !== -1) {
+                node.groups.splice(groupIndex, 1);
+                return true;
+              }
+              // Recursively search within groups in the file
+              for (const group of node.groups) {
+                  if (removeFromNestedGroup(group, targetId)) return true;
+              }
+            }
+          } else if (node.type === 'folder' && node.children) {
+            if (removeFromTree(node.children, targetId)) return true;
+          }
+        }
+        return false;
+      };
+       const removeFromNestedGroup = (group: Group, targetId: string): boolean => {
+           if (group.matches) {
+               const matchIndex = group.matches.findIndex(m => m.id === targetId);
+               if (matchIndex !== -1) {
+                   group.matches.splice(matchIndex, 1);
+                   return true;
+               }
+           }
+           if (group.groups) {
+               const groupIndex = group.groups.findIndex(g => g.id === targetId);
+               if (groupIndex !== -1) {
+                   group.groups.splice(groupIndex, 1);
+                   return true;
+               }
+               for (const subGroup of group.groups) {
+                   if (removeFromNestedGroup(subGroup, targetId)) return true;
+               }
+           }
+           return false;
+       };
+      removedFromTree = removeFromTree(state.value.configTree, itemId);
+      console.log(`[Store pasteItemCut] Removed item ${itemId} from tree: ${removedFromTree}`);
+
+      // 3b. Remove from Flat List Structure
+      const removeFromFlatListRecursive = (items: (Match | Group)[], targetId: string): boolean => {
+          for (let i = items.length - 1; i >= 0; i--) {
+              const item = items[i];
+              if (item.id === targetId) {
+                  items.splice(i, 1);
+                  return true;
+              }
+              if (item.type === 'group' && item.groups) {
+                  if (removeFromFlatListRecursive(item.groups, targetId)) return true;
+              }
+              // Also check matches within groups in the flat list
+              if (item.type === 'group' && item.matches) {
+                  const matchIndex = item.matches.findIndex(m => m.id === targetId);
+                  if (matchIndex !== -1) {
+                      item.matches.splice(matchIndex, 1);
+                      return true;
+                  }
+              }
+          }
+          return false;
+      };
+      if (state.value.config) {
+        if (movedItemRef.type === 'match') {
+            // Search in top-level matches and nested matches
+            removedFromFlatList = removeFromFlatListRecursive(state.value.config.matches, itemId) ||
+                                  removeFromFlatListRecursive(state.value.config.groups, itemId); // Search within groups too
+        } else { // type === 'group'
+            removedFromFlatList = removeFromFlatListRecursive(state.value.config.groups, itemId);
+        }
+      }
+      console.log(`[Store pasteItemCut] Removed item ${itemId} from flat list: ${removedFromFlatList}`);
+
+      if (!removedFromTree && !removedFromFlatList) {
+         console.warn(`[Store pasteItemCut] Item ${itemId} could not be removed from its original location.`);
+         // Optionally throw an error or proceed cautiously
+      }
+
+      // --- 4. Update item's file path ---
+      movedItemRef.filePath = effectiveNewFilePath; // Use the determined effective path
+      movedItemRef.updatedAt = new Date().toISOString();
+      console.log(`[Store pasteItemCut] Updated item ${itemId} filePath to ${effectiveNewFilePath}`);
+
+      // --- 5. Add item to new location ---
+      let addedToTree = false;
+      let addedToFlatList = false;
+      // Use a specific variable to track if the target is a group, separate from newParentId which could be file/folder ID
+      const targetParentGroupId = newParentNode?.type === 'group' ? newParentNode.id : null;
+
+      // 5a. Add to Tree structure
+      // Find the target file node using the *new* path
+      const targetFileNodeForAdd = findFileNode(state.value.configTree, effectiveNewFilePath);
+      if (targetFileNodeForAdd) {
+          let targetArrayInTree: Match[] | Group[] | undefined;
+          let parentGroupInTree: Group | null = null;
+          // Check if we are adding to a group using targetParentGroupId
+          if (targetParentGroupId) {
+              // Find the group within the target file node
+              parentGroupInTree = targetFileNodeForAdd.groups?.find(g => g.id === targetParentGroupId) ?? null;
+              if (parentGroupInTree) {
+                  if (movedItemRef.type === 'match') {
+                      if (!parentGroupInTree.matches) parentGroupInTree.matches = [];
+                      targetArrayInTree = parentGroupInTree.matches;
+                  } else {
+                      if (!parentGroupInTree.groups) parentGroupInTree.groups = [];
+                      targetArrayInTree = parentGroupInTree.groups;
+                  }
+                  console.log(`[Store pasteItemCut] Tree Target: Group ${targetParentGroupId} in file ${effectiveNewFilePath}`);
+              } else {
+                   console.warn(`[Store pasteItemCut] Target parent group ${targetParentGroupId} not found in target file ${effectiveNewFilePath}. Adding to file root.`);
+                   // Fallback: Add to file root if target group not found in target file
+                   if (movedItemRef.type === 'match') {
+                      if (!targetFileNodeForAdd.matches) targetFileNodeForAdd.matches = [];
+                      targetArrayInTree = targetFileNodeForAdd.matches;
+                  } else {
+                      if (!targetFileNodeForAdd.groups) targetFileNodeForAdd.groups = [];
+                      targetArrayInTree = targetFileNodeForAdd.groups;
+                  }
+                  console.log(`[Store pasteItemCut] Tree Target (Fallback): File ${effectiveNewFilePath}`);
+              }
+          } else { // Add to file root
+              if (movedItemRef.type === 'match') {
+                  if (!targetFileNodeForAdd.matches) targetFileNodeForAdd.matches = [];
+                  targetArrayInTree = targetFileNodeForAdd.matches;
+              } else {
+                  if (!targetFileNodeForAdd.groups) targetFileNodeForAdd.groups = [];
+                  targetArrayInTree = targetFileNodeForAdd.groups;
+              }
+              console.log(`[Store pasteItemCut] Tree Target: File ${effectiveNewFilePath}`);
+          }
+
+          if (targetArrayInTree) {
+             // Ensure item is not already there before pushing
+             if (!targetArrayInTree.some(i => i.id === movedItemRef.id)) {
+                targetArrayInTree.push(movedItemRef as any); // Add the actual moved item
+                addedToTree = true;
+                console.log(`[Store pasteItemCut] Added item ${itemId} to tree.`);
+             } else {
+                 console.warn(`[Store pasteItemCut] Item ${itemId} already exists in target tree array.`);
+             }
+          } else { console.error(`[Store pasteItemCut] Could not determine target array in tree for adding.`); }
+      } else { console.error(`[Store pasteItemCut] Could not find target file node ${effectiveNewFilePath} for adding.`); }
+
+      // 5b. Add to Flat List structure
+      // Use the same targetParentGroupId determined above
+      if (targetParentGroupId) {
+          if (findAndAddInFlatList(state.value.config.groups, targetParentGroupId, movedItemRef)) {
+              addedToFlatList = true;
+              console.log(`[Store pasteItemCut] Added item ${itemId} to parent group ${targetParentGroupId} in flat list.`);
+          } else { console.warn(`[Store pasteItemCut] Failed to add item ${itemId} to parent group ${targetParentGroupId} in flat list.`); }
+      } else { // Add to top level
+          if (movedItemRef.type === 'match') {
+              if (!state.value.config.matches.some(m => m.id === itemId)) {
+                 state.value.config.matches.push(movedItemRef);
+                 addedToFlatList = true;
+                 console.log(`[Store pasteItemCut] Added item ${itemId} to top-level matches flat list.`);
+              }
+          } else { // type === 'group'
+              if (!state.value.config.groups.some(g => g.id === itemId)) {
+                 state.value.config.groups.push(movedItemRef);
+                 addedToFlatList = true;
+                 console.log(`[Store pasteItemCut] Added item ${itemId} to top-level groups flat list.`);
+              }
+          }
+      }
+      if (!addedToTree && !addedToFlatList) {
+          console.error(`[Store pasteItemCut] Failed to add item ${itemId} to the new location.`);
+          // Optionally revert changes or throw error
+      }
+
+      // --- 6. Save Files ---
+      console.log(`[Store pasteItemCut] Saving files... Original: ${originalFilePath}, New: ${effectiveNewFilePath}`);
+      const filesToSave = new Set<string>();
+      if (originalFilePath) filesToSave.add(originalFilePath); // 保存原始文件
+      if (effectiveNewFilePath) filesToSave.add(effectiveNewFilePath); // 保存新文件
+
+      for (const filePath of filesToSave) {
+         try {
+            // Find any item remaining/added in the file to trigger save
+            const triggerItem = findAnyItemForFile(filePath); // Reuse helper from deleteItem
+            if (triggerItem) {
+               console.log(`[Store pasteItemCut] Saving file ${filePath} using trigger item ${triggerItem.id}`);
+               await saveItemToFile(triggerItem);
+            } else {
+                console.log(`[Store pasteItemCut] No items left for file ${filePath}. Writing empty/cleaned file.`);
+                 const fileNode = findFileNode(state.value.configTree, filePath);
+                 let otherKeysData: YamlData = {};
+                  if (fileNode && fileNode.content) {
+                     Object.keys(fileNode.content).forEach(key => {
+                        if (key !== 'matches' && key !== 'groups') {
+                           otherKeysData[key] = fileNode.content![key];
+                        }
+                     });
+                  }
+                 const yamlContent = Object.keys(otherKeysData).length > 0 ? await serializeYaml(otherKeysData) : '';
+                 await writeFile(filePath, yamlContent);
+                 console.log(`[Store pasteItemCut] Wrote empty/cleaned file: ${filePath}`);
+            }
+         } catch (saveError) {
+             console.error(`[Store pasteItemCut] Error saving file ${filePath}:`, saveError);
+             // Continue trying to save other files if needed
+         }
+      }
+
+      // 7. 选择移动后的项目
+      state.value.selectedItemId = itemId;
+      state.value.selectedItemType = movedItemRef.type;
+
+      state.value.hasUnsavedChanges = false;
+      state.value.autoSaveStatus = 'idle';
+      console.log(`[Store pasteItemCut] Finished cut-paste for item ${itemId}.`);
+
+      return itemId; // 返回移动的项目ID
+    } catch (error: any) {
+      console.error('[Store pasteItemCut] Error during cut-paste operation:', error);
+      state.value.error = `剪切粘贴失败: ${error.message}`;
+      throw error; // 重新抛出错误，让调用者处理
+    }
+  };
+
   return {
     state,
     allItems,
@@ -1129,5 +1648,7 @@ export const useEspansoStore = defineStore('espanso', () => {
     saveItemToFile,
     moveTreeItem,
     moveTreeNode,
+    pasteItemCopy,
+    pasteItemCut // Export the new action
   };
 });

@@ -36,7 +36,7 @@
       <MainLayout />
 
       <!-- Global Sonner Toaster -->
-      <Toaster position="top-right" richColors />
+      <Toaster position="top-right" richColors :duration="2500" />
     </template>
   </div>
 </template>

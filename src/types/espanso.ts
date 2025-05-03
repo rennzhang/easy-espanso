@@ -27,6 +27,7 @@ export interface Match {
   filePath?: string; // Added path tracking
   updatedAt?: string; // Added timestamp
   guiOrder?: number; // Added for UI display sorting only
+  lineNumber?: number; // 添加行号，用于复制路径时显示
 }
 
 export interface Group {
@@ -58,4 +59,4 @@ export interface EspansoConfig {
   backend?: string;
   auto_restart?: boolean;
   [key: string]: any;
-} 
+}
