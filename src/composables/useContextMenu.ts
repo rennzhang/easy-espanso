@@ -223,12 +223,16 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     const newFilePath = `${folderPath}/${newFileName}`;
 
     try {
+      // 生成唯一ID用于后续选中
+      const matchId = `match-${timestamp}`;
+
       // 创建默认内容（包含一个默认片段）
       const defaultContent = {
         matches: [
           {
             trigger: ':hello',
-            replace: 'Hello World!'
+            replace: 'Hello World!',
+            id: matchId // 添加ID以便后续选中
           }
         ]
       };
@@ -243,6 +247,12 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
       if (store.state.configRootDir) {
         await store.loadConfig(store.state.configRootDir);
         toast.success(`配置文件 ${newFileName} 已创建`);
+
+        // 选中新创建的片段
+        setTimeout(() => {
+          store.state.selectedItemId = matchId;
+          store.state.selectedItemType = 'match';
+        }, 100); // 短暂延迟确保DOM已更新
       } else {
         toast.error('无法重新加载配置');
       }

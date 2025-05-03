@@ -17,23 +17,24 @@ export interface PreloadApi {
   // 文件操作
   readFile: (filePath: string) => Promise<string>;
   writeFile: (filePath: string, content: string) => Promise<void>;
+  renameFile: (oldPath: string, newPath: string) => Promise<void>;
   existsFile: (filePath: string) => Promise<boolean>;
   listFiles: (dirPath: string) => Promise<FileInfo[]>;
-  
+
   // 对话框
   showOpenDialog: (options: OpenDialogOptions) => Promise<OpenDialogResult>;
   showSaveDialog: (options: SaveDialogOptions) => Promise<SaveDialogResult>;
   showMessageBox: (options: MessageBoxOptions) => Promise<MessageBoxResult>;
-  
+
   // 系统操作
   platform: () => Promise<string>;
-  
+
   // 配置文件
   parseYaml: (content: string) => Promise<YamlData>;
   serializeYaml: (data: YamlData) => Promise<string>;
   getEspansoConfigFiles: () => Promise<EspansoFile[]>;
   showNotification: (title: string, body: string) => Promise<void>;
-  
+
   // 新增API
   getDefaultEspansoConfigPath: () => Promise<{ success: boolean; path: string | null; error?: string }>;
   scanDirectory: (dirPath: string) => Promise<FileSystemNode[]>;
@@ -110,4 +111,4 @@ export interface YamlData {
     [key: string]: any;
   }>;
   [key: string]: any;
-} 
+}

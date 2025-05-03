@@ -107,6 +107,18 @@ export async function writeFile(filePath: string, content: string): Promise<void
   return Promise.resolve();
 }
 
+// 重命名文件
+export async function renameFile(oldPath: string, newPath: string): Promise<void> {
+  if (window.preloadApi?.renameFile) {
+    return window.preloadApi.renameFile(oldPath, newPath);
+  }
+
+  // 如果preloadApi不可用，返回一个模拟的Promise
+  console.warn('preloadApi.renameFile不可用，使用模拟数据');
+  console.log(`模拟重命名文件: ${oldPath} -> ${newPath}`);
+  return Promise.resolve();
+}
+
 // 检查文件是否存在
 export async function fileExists(filePath: string): Promise<boolean> {
   if (window.preloadApi && typeof window.preloadApi.existsFile === 'function') {
@@ -197,11 +209,11 @@ export async function serializeYaml(data: YamlData): Promise<string> {
     if (Array.isArray(obj)) {
       return obj.map(item => prepareData(item));
     }
-    
+
     // 如果是对象，递归处理每个属性
     if (obj && typeof obj === 'object') {
       const result: any = {};
-      
+
       for (const key in obj) {
         // 特殊处理triggers数组，确保输出为YAML流式数组
         if (key === 'triggers' && Array.isArray(obj[key])) {
@@ -211,17 +223,17 @@ export async function serializeYaml(data: YamlData): Promise<string> {
           result[key] = prepareData(obj[key]);
         }
       }
-      
+
       return result;
     }
-    
+
     // 原始类型直接返回
     return obj;
   };
-  
+
   // 预处理数据
   const processedData = prepareData(data);
-  
+
   // 首先尝试使用预加载脚本
   if (window.preloadApi?.serializeYaml) {
     try {
@@ -231,13 +243,13 @@ export async function serializeYaml(data: YamlData): Promise<string> {
       // 如果预加载脚本失败，尝试备用方法
     }
   }
-  
+
   // 如果预加载脚本不可用或失败，尝试使用js-yaml直接实现
   try {
     // 动态导入js-yaml
     const yamlModule = await import('js-yaml');
     const yaml = yamlModule.default;
-    
+
     // 使用js-yaml直接序列化，指定特殊选项确保数组正确格式化
     const result = yaml.dump(processedData, {
       indent: 2,
@@ -245,17 +257,17 @@ export async function serializeYaml(data: YamlData): Promise<string> {
       noRefs: true, // 避免YAML别名/锚点
       flowLevel: 1, // 设置为流式风格，触发器数组采用[item1, item2]形式
     });
-    
+
     console.log('[serializeYaml] 使用直接js-yaml序列化成功');
-    
+
     // 最后的修正：确保YAML表示的triggers数组格式正确
     const fixedResult = result.replace(/triggers: \|-\n\s+/g, 'triggers:\n  ');
-    
+
     return fixedResult;
   } catch (importError) {
     console.error('[serializeYaml] 动态导入js-yaml失败:', importError);
   }
-  
+
   // 如果上面的方法都失败，使用模拟数据
   console.warn('serializeYaml 所有方法都失败，使用模拟数据');
   return '# 无法序列化数据\n# 请检查您的环境设置\nmatches:\n  - trigger: ":error"\n    replace: "序列化失败"';
@@ -399,6 +411,13 @@ class FileService {
     return this.preloadApi.writeFile(filePath, content);
   }
 
+  async renameFile(oldPath: string, newPath: string): Promise<void> {
+    if (!this.preloadApi) {
+      return Promise.resolve();
+    }
+    return this.preloadApi.renameFile(oldPath, newPath);
+  }
+
   async readYamlFile(filePath: string): Promise<any> {
     try {
       const content = await this.readFile(filePath);
@@ -512,7 +531,7 @@ export const getDefaultEspansoConfigPath = async (): Promise<string | null> => {
       const result = await window.preloadApi.getDefaultEspansoConfigPath();
       console.log('[fileService] getDefaultEspansoConfigPath result:', result);
       // 处理返回的对象
-      if (result && typeof result === 'object' && 'success' in result) { 
+      if (result && typeof result === 'object' && 'success' in result) {
           if (result.success && result.path) {
               return result.path;
           } else {

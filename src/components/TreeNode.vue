@@ -74,8 +74,24 @@
               />
             </span>
             <span
+              v-if="isEditing && (node.type === 'file' || node.type === 'folder')"
+              class="text-sm font-medium flex-grow"
+              @click.stop
+            >
+              <input
+                ref="editNameInput"
+                v-model="editingName"
+                class="w-full px-1 py-0.5 border border-primary rounded focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                @keydown.enter="saveNodeName"
+                @blur="saveNodeName"
+                @click.stop
+              />
+            </span>
+            <span
+              v-else
               class="text-sm font-medium flex-grow cursor-pointer"
               @click.stop="selectNode"
+              @dblclick.stop="startEditing"
             >
               <HighlightText
                 v-if="searchQuery"
@@ -214,6 +230,7 @@ import {
   watch,
   onMounted,
   onUnmounted,
+  nextTick
 } from "vue";
 import {
   ChevronRightIcon,
@@ -228,6 +245,8 @@ import { VueDraggable } from "vue-draggable-plus";
 import NodeContextMenu from "@/components/NodeContextMenu.vue";
 import { useEspansoStore } from "@/store/useEspansoStore";
 import TreeNodeRegistry from "@/utils/TreeNodeRegistry";
+import { renameFile } from "@/services/fileService";
+import { toast } from "vue-sonner";
 
 const props = defineProps<{
   node: TreeNodeItem;
@@ -263,6 +282,11 @@ const store = useEspansoStore();
 
 // 默认展开状态：Packages 文件夹默认收起，其他节点默认展开
 const isOpen = ref(props.node.name === 'Packages' ? false : true);
+
+// 编辑相关的状态
+const isEditing = ref(false);
+const editingName = ref('');
+const editNameInput = ref<HTMLInputElement | null>(null);
 
 watch(
   () => props.searchQuery,
@@ -696,6 +720,88 @@ const collapseNode = () => {
   }
 };
 
+// 开始编辑节点名称
+const startEditing = () => {
+  // 只允许编辑文件和文件夹类型的节点
+  if (props.node.type !== 'file' && props.node.type !== 'folder') {
+    return;
+  }
+
+  // 禁止修改 Packages 和其下文件夹的名称
+  if (props.node.name === 'Packages' ||
+      (props.node.path && props.node.path.toLowerCase().includes('/packages/'))) {
+    // 静默返回，不显示提示
+    return;
+  }
+
+  // 设置编辑状态和初始值
+  isEditing.value = true;
+  editingName.value = displayName.value;
+
+  // 在下一个 DOM 更新周期后聚焦输入框
+  nextTick(() => {
+    if (editNameInput.value) {
+      editNameInput.value.focus();
+      editNameInput.value.select(); // 全选文本
+    }
+  });
+};
+
+// 保存节点名称
+const saveNodeName = async () => {
+  if (!isEditing.value) return;
+
+  // 取消编辑状态
+  isEditing.value = false;
+
+  // 如果名称没有变化，直接返回
+  if (editingName.value === displayName.value) {
+    return;
+  }
+
+  // 验证名称是否有效
+  const newName = editingName.value.trim();
+  if (!newName) {
+    toast.error('名称不能为空');
+    return;
+  }
+
+  try {
+    const node = props.node;
+    const oldPath = node.path;
+
+    if (!oldPath) {
+      toast.error('无法获取文件路径');
+      return;
+    }
+
+    // 构建新路径
+    const pathParts = oldPath.split('/');
+    const extension = node.type === 'file' ? pathParts[pathParts.length - 1].split('.').pop() : '';
+    pathParts.pop(); // 移除最后一个部分（当前文件名）
+
+    // 添加新文件名（如果是文件，添加扩展名）
+    const newFileName = node.type === 'file' ? `${newName}.${extension}` : newName;
+    const newPath = [...pathParts, newFileName].join('/');
+
+    // 调用重命名函数
+    await renameFile(oldPath, newPath);
+
+    // 更新节点路径
+    node.path = newPath;
+    node.name = newFileName;
+
+    // 重新加载配置
+    if (store.state.configRootDir) {
+      await store.loadConfig(store.state.configRootDir);
+      toast.success(`${node.type === 'file' ? '文件' : '文件夹'}重命名成功`);
+    }
+  } catch (error: any) {
+    console.error('重命名失败:', error);
+    toast.error(`重命名失败: ${error.message || '未知错误'}`);
+  }
+};
+
 // 当点击匹配项左侧空白区域时，触发父节点的折叠/展开
 const toggleParentFolder = () => {
   if (props.parentId) {
@@ -857,7 +963,7 @@ const shouldShowCount = computed(() => {
 }
 
 .drag-item {
-  /* Add styles for the item being dragged if needed */
+  opacity: 1; /* 默认不透明度 */
 }
 .package-node::before {
   content: "";
