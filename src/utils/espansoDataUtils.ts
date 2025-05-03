@@ -26,7 +26,7 @@ export const processMatch = (match: any, filePath?: string): Match => {
       guiOrder: globalGuiOrderCounter, // Assign current order
       trigger: undefined,
       triggers: undefined,
-      replace: match.replace || '',
+      replace: match.replace,
       label: match.label,
       description: match.description,
       word: match.word,

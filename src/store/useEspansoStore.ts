@@ -731,7 +731,7 @@ export const useEspansoStore = defineStore('espanso', () => {
       }
 
       // 获取要移动项目的新文件路径
-      let effectiveNewFilePath: string | null = null;
+      let effectiveNewFilePath: string | undefined = undefined;
       if (newParentNode.type === 'file') {
         effectiveNewFilePath = (newParentNode as ConfigFileNode).path;
       } else {
@@ -1054,9 +1054,6 @@ export const useEspansoStore = defineStore('espanso', () => {
                   delete cleanedMatch[key];
              }
           });
-           if (!('replace' in cleanedMatch)) {
-               cleanedMatch.replace = '';
-           }
          return cleanedMatch;
       };
 
