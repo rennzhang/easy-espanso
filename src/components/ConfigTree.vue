@@ -1,5 +1,5 @@
 <template>
-  <div class="config-tree">
+  <div class="config-tree" tabindex="0" @focus="treeHasFocus = true" @blur="treeHasFocus = false" @click="handleTreeClick">
     <div v-if="loading" class="flex items-center justify-center p-4">
       <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
       <span>加载中...</span>
@@ -27,7 +27,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineProps, defineEmits, onMounted, watch } from 'vue';
+import { ref, computed, defineProps, defineEmits, onMounted, watch, onUnmounted } from 'vue';
 import { useEspansoStore } from '../store/useEspansoStore';
 import TreeNode from './TreeNode.vue';
 import type { Match, Group } from '../types/espanso';
@@ -337,6 +337,11 @@ watch(() => props.selectedId, (newId) => {
 onMounted(() => {
   // console.log('ConfigTree组件挂载完成');
   // console.log('当前树结构:', treeData.value);
+  document.addEventListener('click', handleDocumentClick);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleDocumentClick);
 });
 
 // 处理 SortableJS 拖拽更新事件 (顶层或从子层拖入)
@@ -498,6 +503,33 @@ const handleRequestRename = (item: TreeNodeItem) => {
   // Re-emit the event upwards
   emit('request-rename', item); 
   console.log('[ConfigTree] Emitted request-rename upwards with item:', item);
+};
+
+const treeHasFocus = ref(false);
+
+// 树组件点击处理函数
+const handleTreeClick = (event: MouseEvent) => {
+  const treeElement = event.currentTarget as HTMLElement;
+  if (treeElement) {
+    // 确保树组件获得焦点
+    treeElement.focus();
+    treeHasFocus.value = true;
+    console.log('树组件获得焦点');
+  }
+};
+
+// 暴露树组件聚焦状态，供其他组件使用
+defineExpose({
+  treeHasFocus
+});
+
+// 监听文档点击事件，检测点击是否在树外部
+const handleDocumentClick = (event: MouseEvent) => {
+  const treeElement = document.querySelector('.config-tree');
+  if (treeElement && !treeElement.contains(event.target as Node)) {
+    treeHasFocus.value = false;
+    console.log('树组件失去焦点 (外部点击)');
+  }
 };
 </script>
 

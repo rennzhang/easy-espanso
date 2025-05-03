@@ -1,6 +1,7 @@
 <template>
   <div
     class="tree-node w-full"
+    :class="{ 'tree-node-selected': isSelected }"
     v-if="isVisible"
     :id="`tree-node-${node.id}`"
     :data-id="node.id"
@@ -24,9 +25,9 @@
           <div
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
-              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
+              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground selected':
                 node.type === 'group' && isSelected,
-              'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-primary-foreground':
+              'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-primary-foreground selected':
                 (node.type === 'file' || node.type === 'folder') && isSelected,
               'hover:text-accent-foreground': !isSelected,
               'bg-gray-200': (node.type === 'file' || node.type === 'folder') && !isSelected,
@@ -117,7 +118,7 @@
           <div
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
-              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
+              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground selected':
                 isSelected,
                 'hover:text-accent-foreground bg-gray-50': !isSelected,
             }"
@@ -818,6 +819,14 @@ const toggleParentFolder = () => {
 const handleClick = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
   const iconSpan = target.closest('span[class*="mr-1"]');
+  
+  // 确保树组件获得焦点
+  const treeElement = document.querySelector('.config-tree');
+  if (treeElement && treeElement instanceof HTMLElement) {
+    treeElement.focus();
+    console.log('TreeNode点击: 树组件获得焦点');
+  }
+  
   if (!iconSpan) {
     // Click was not on the chevron, select the node
     selectNode();

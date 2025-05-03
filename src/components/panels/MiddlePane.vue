@@ -131,10 +131,11 @@
       </div>
       <div v-else class="h-full">
         <!-- 树视图 -->
-        <div v-if="viewMode === 'tree'" class="h-full m-0">
+        <div v-if="viewMode === 'tree'" class="h-full flex-1">
           <!-- Log: Rendering ConfigTree -->
           {{ console.log('[MiddlePane] Rendering ConfigTree component because viewMode is tree') }}
           <ConfigTree
+            ref="configTreeRef"
             :selected-id="selectedItemId"
             :searchQuery="searchQuery.trim()"
             @select="handleTreeItemSelect"
@@ -283,6 +284,19 @@ const inputDialogInitialValue = ref("");
 const inputDialogPlaceholder = ref("");
 let renameActionCallback: ((newValue: string) => void) | null = null;
 let renameTargetItem: Group | null = null;
+
+// 引用树组件实例
+const configTreeRef = ref<InstanceType<typeof ConfigTree> | null>(null);
+
+// 获取树组件的焦点状态
+const getTreeFocusState = (): boolean => {
+  return configTreeRef.value?.treeHasFocus || false;
+};
+
+// 暴露方法给父组件使用
+defineExpose({
+  getTreeFocusState
+});
 
 // 设置键盘快捷键来打开搜索
 onMounted(() => {

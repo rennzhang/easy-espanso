@@ -10,8 +10,14 @@
     <!-- TODO: Restore dynamic class binding based on platform and fullscreen state once store issues are resolved -->
     <!-- MiddlePane and RightPane now use bg-card for their own background, inherited from theme -->
     <div class="main-content-area flex flex-1 overflow-hidden">
-      <MiddlePane class="w-[350px] overflow-y-auto border-r border-border-color bg-main-bg" />
-      <RightPane class="flex-1 overflow-y-auto bg-card" />
+      <MiddlePane 
+        ref="middlePaneRef" 
+        class="w-[350px] overflow-y-auto border-r border-border-color bg-main-bg" 
+      />
+      <RightPane 
+        ref="rightPaneRef" 
+        class="flex-1 overflow-y-auto bg-card" 
+      />
     </div>
   </div>
 </template>
@@ -19,12 +25,23 @@
 <script setup lang="ts">
 // Remove store import if only used for dynamic padding
 // import { useEspansoStore } from '../../store/useEspansoStore';
+import { ref, onMounted } from 'vue';
 import LeftPane from '../panels/LeftPane.vue';
 import MiddlePane from '../panels/MiddlePane.vue';
 import RightPane from '../panels/RightPane.vue';
 
-// Remove store instance if not needed elsewhere
-// const store = useEspansoStore();
+// 引用组件实例
+const middlePaneRef = ref<InstanceType<typeof MiddlePane> | null>(null);
+const rightPaneRef = ref<InstanceType<typeof RightPane> | null>(null);
+
+// 在组件挂载后建立引用关系
+onMounted(() => {
+  // 将中间面板引用传递给右侧面板
+  if (rightPaneRef.value && middlePaneRef.value) {
+    // @ts-ignore 临时忽略类型错误，实际使用时需要调整类型定义
+    rightPaneRef.value.middlePaneRef = middlePaneRef.value;
+  }
+});
 </script>
 
 <style scoped>

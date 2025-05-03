@@ -209,6 +209,9 @@ const headerTitle = computed(() => {
   return '详情';
 });
 
+// 引用中间面板组件
+const middlePaneRef = ref<InstanceType<typeof import('./MiddlePane.vue').default> | null>(null);
+
 // --- Keyboard Shortcut Handler ---
 const handleGlobalKeyDown = (event: KeyboardEvent) => {
   const key = event.key;
@@ -225,41 +228,64 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
     return;
   }
 
-  if (isTextInput && !(key === 'Delete' || key === 'Backspace')) {
-    if(isModKey && ['c', 'v', 'x'].includes(key.toLowerCase())) return;
-  } else if (isTextInput && (key === 'Delete' || key === 'Backspace')) {
-     return;
-  } else if (targetElement.tagName === 'SELECT') {
-     return;
+  // 如果是文本输入元素或下拉框，不处理复制剪切粘贴和删除快捷键
+  if (isTextInput || targetElement.tagName === 'SELECT') {
+    return;
+  }
+
+  // 检查树组件是否聚焦
+  const isTreeFocused = middlePaneRef.value?.getTreeFocusState() || false;
+  
+  // 添加日志，帮助调试
+  if (isModKey && (key.toLowerCase() === 'c' || key.toLowerCase() === 'x' || key.toLowerCase() === 'v' || key === 'Delete' || key === 'Backspace')) {
+    console.log('快捷键检测：', key, '树组件聚焦状态:', isTreeFocused);
+  }
+
+  // 如果树组件未聚焦，不处理复制剪切粘贴和删除快捷键
+  if (!isTreeFocused) {
+    console.log('快捷键被忽略：节点树未聚焦');
+    return;
+  }
+
+  // 检查是否在右侧面板（表单区域）内
+  const rightPane = document.querySelector('.right-pane');
+  const treeContainer = document.querySelector('.config-tree');
+  const isInRightPane = rightPane && rightPane.contains(targetElement) && 
+                        !treeContainer?.contains(targetElement);
+
+  // 如果在右侧面板内但不在树节点区域，不处理复制剪切粘贴操作
+  if (isInRightPane) {
+    console.log('快捷键被忽略：在表单区域内');
+    return;
+  }
+
+  // 检查是否有选中的节点
+  if (!store.state.selectedItemId) {
+    return;
   }
 
   const currentSelectedItem = selectedItem.value;
 
   if (!currentSelectedItem) {
-     return;
+    return;
   }
-
-  let actionInvoked = false;
 
   if (isModKey && key.toLowerCase() === 'c') {
     console.log('Shortcut: Copy');
     if (currentSelectedItem.type === 'match' || currentSelectedItem.type === 'group') {
-       handleCopyItem();
-       actionInvoked = true;
+      handleCopyItem();
     }
   } else if (isModKey && key.toLowerCase() === 'x') {
     console.log('Shortcut: Cut');
-     if (currentSelectedItem.type === 'match' || currentSelectedItem.type === 'group') {
-       handleCutItem();
-       actionInvoked = true;
-     }
+    if (currentSelectedItem.type === 'match' || currentSelectedItem.type === 'group') {
+      handleCutItem();
+    }
   } else if (isModKey && key.toLowerCase() === 'v') {
     console.log('Shortcut: Paste');
     if (ClipboardManager.hasItem()) {
-        handlePasteItem();
-        actionInvoked = true;
+      handlePasteItem();
     } else {
-        console.log("Paste shortcut ignored: Clipboard empty");
+      console.log("Paste shortcut ignored: Clipboard empty");
     }
   } else if (
     // macOS: Command+Backspace
@@ -267,24 +293,22 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
     // Windows/Linux: Delete
     (!isMacOS() && key === 'Delete')
   ) {
-     console.log('Shortcut: Delete');
-     if (currentSelectedItem.type === 'match') {
-         event.preventDefault();
-         // 直接使用确认对话框，而不是通过 prepareDeleteMatch
-         if (confirm('确定要删除这个规则吗？此操作无法撤销。')) {
-           store.deleteItem(currentSelectedItem.id, 'match');
-           store.state.selectedItemId = null;
-         }
-         actionInvoked = true;
-     } else if (currentSelectedItem.type === 'group') {
-         event.preventDefault();
-         // 直接使用确认对话框，而不是通过 prepareDeleteGroup
-         if (confirm('确定要删除这个分组及其所有内容吗？此操作无法撤销。')) {
-           store.deleteItem(currentSelectedItem.id, 'group');
-           store.state.selectedItemId = null;
-         }
-         actionInvoked = true;
-     }
+    console.log('Shortcut: Delete');
+    if (currentSelectedItem.type === 'match') {
+      event.preventDefault();
+      // 直接使用确认对话框，而不是通过 prepareDeleteMatch
+      if (confirm('确定要删除这个规则吗？此操作无法撤销。')) {
+        store.deleteItem(currentSelectedItem.id, 'match');
+        store.state.selectedItemId = null;
+      }
+    } else if (currentSelectedItem.type === 'group') {
+      event.preventDefault();
+      // 直接使用确认对话框，而不是通过 prepareDeleteGroup
+      if (confirm('确定要删除这个分组及其所有内容吗？此操作无法撤销。')) {
+        store.deleteItem(currentSelectedItem.id, 'group');
+        store.state.selectedItemId = null;
+      }
+    }
   }
 };
 
@@ -610,6 +634,12 @@ const createGroupFromFileNode = (nodeId: string | null): Group => {
     filePath: getSelectedNodePath() || store.state.configPath || ''
   } as Group;
 };
+
+// 向外部暴露方法和属性
+defineExpose({
+  middlePaneRef,
+  handleGlobalKeyDown
+});
 </script>
 
 <style>
