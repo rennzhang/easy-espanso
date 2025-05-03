@@ -2,7 +2,30 @@
   <div class="right-pane flex flex-col h-full bg-card relative">
     <div class="py-2 px-4 border-b">
       <div class="flex justify-between items-center">
-        <h3 class="text-lg font-semibold text-foreground m-0" v-html="headerTitle"></h3>
+        <div class="flex items-center">
+          <!-- 未保存状态指示器 -->
+          <div v-if="store.state.hasUnsavedChanges && !userPreferences.preferences.hideUnsavedChangesWarning"
+            class="mr-2 flex items-center"
+          >
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger as-child>
+                  <div class="flex items-center">
+                    <div class="w-4 h-4 rounded-full bg-red-500 animate-pulse"></div>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p>内容已修改，请记得保存</p>
+                  <div class="flex items-center">
+                    <Checkbox id="hideWarning" v-model="hideWarning" />
+                    <label for="hideWarning" class="ml-2">不再提示</label>
+                  </div>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+          <h3 class="text-lg font-semibold text-foreground m-0" v-html="headerTitle"></h3>
+        </div>
         <div class="flex gap-2" v-if="selectedItem">
           <!-- 预览按钮 -->
           <Button
@@ -54,12 +77,12 @@
         <div class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
         <div class="text-primary font-medium">加载中...</div>
       </div>
-      <div v-else-if="!selectedItem" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
+      <div v-else-if="!selectedItem && !(selectedId && (selectedId.startsWith('file-')))" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
         <div class="text-5xl mb-4">👈</div>
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未选择项目</h4>
         <p class="m-0 max-w-md">请从左侧列表选择一个规则或分组进行编辑</p>
       </div>
-      <div v-else-if="selectedItem.type === 'match'" class="flex flex-col gap-4 h-full" >
+      <div v-else-if="selectedItem && selectedItem.type === 'match'" class="flex flex-col gap-4 h-full" >
         <RuleEditForm
           ref="ruleFormRef"
           :rule="selectedItem"
@@ -67,10 +90,10 @@
           @delete="deleteRule"
         />
       </div>
-      <div v-else-if="selectedItem.type === 'group'" >
+      <div v-else-if="(selectedItem && selectedItem.type === 'group') || (selectedId && selectedId.startsWith('file-'))" >
         <GroupEditForm
           ref="groupFormRef"
-          :group="selectedItem"
+          :group="selectedItem || createGroupFromFileNode(selectedId)"
           @cancel="cancelEdit"
           @delete="deleteGroup"
         />
@@ -80,10 +103,22 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue';
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
-import { SaveIcon, Loader2Icon, CheckIcon, XIcon, EyeIcon } from 'lucide-vue-next';
+import { useUserPreferences } from '../../store/useUserPreferences';
+import { useContextMenu } from '@/composables/useContextMenu';
+import ClipboardManager from '@/utils/ClipboardManager';
+import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
+import type { TreeNodeItem } from "@/components/ConfigTree.vue";
+import { SaveIcon, Loader2Icon, CheckIcon, XIcon, EyeIcon, FolderIcon, FileIcon, PlusIcon, GitBranchIcon } from 'lucide-vue-next';
 import { Button } from '../ui/button';
+import { Checkbox } from '../ui/checkbox';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "../ui/tooltip";
 import RuleEditForm from '../forms/RuleEditForm.vue';
 import GroupEditForm from '../forms/GroupEditForm.vue';
 import type { Match, Group } from '../../types/espanso';
@@ -94,11 +129,25 @@ const ruleFormRef = ref<InstanceType<typeof RuleEditForm> | null>(null);
 const groupFormRef = ref<InstanceType<typeof GroupEditForm> | null>(null);
 
 const store = useEspansoStore();
+const userPreferences = useUserPreferences();
+
+// 不再提示选项
+const hideWarning = ref(userPreferences.preferences.hideUnsavedChangesWarning);
+
+// 监听 hideWarning 变化
+watch(hideWarning, (newValue) => {
+  userPreferences.updatePreference('hideUnsavedChangesWarning', newValue);
+});
+
+// 检测是否为 macOS 系统
+const isMacOS = (): boolean => {
+  return /Mac|iPhone|iPad|iPod/.test(navigator.userAgent);
+};
+
 const selectedItem = computed(() => {
   const id = store.state.selectedItemId;
   if (!id) return null;
-  const item = store.findItemById(id);
-  return item;
+  return store.findItemById(id);
 });
 const loading = computed(() => false);
 
@@ -106,6 +155,29 @@ const loading = computed(() => false);
 const isSaving = ref(false);
 const saveState = ref<'idle' | 'success' | 'error'>('idle');
 let saveStateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// --- Node Tracking for Context Menu ---
+const getContextMenuNode = (): TreeNodeItem | null => {
+  const currentItem = selectedItem.value;
+  if (!currentItem) return null;
+
+  return {
+    id: currentItem.id,
+    name: currentItem.type === 'group' ? currentItem.name : (currentItem.label || currentItem.trigger || ''),
+    type: currentItem.type,
+    path: currentItem.filePath,
+    match: currentItem.type === 'match' ? currentItem : undefined,
+    group: currentItem.type === 'group' ? currentItem : undefined,
+    children: [] // 必需字段
+  } as TreeNodeItem;
+};
+
+// 使用contextMenu
+const {
+    handleCopyItem,
+    handleCutItem,
+    handlePasteItem
+} = useContextMenu({ getNode: getContextMenuNode });
 
 // 标题
 const headerTitle = computed(() => {
@@ -137,35 +209,100 @@ const headerTitle = computed(() => {
   return '详情';
 });
 
-// --- Keyboard Shortcut for Save ---
-const handleKeyDown = (event: KeyboardEvent) => {
-  if ((event.ctrlKey || event.metaKey) && event.key === 's') {
-    if (selectedItem.value) { // Only save if an item is selected
-      event.preventDefault();
-      console.log('Ctrl/Cmd+S detected, triggering save...');
-      saveItem();
+// --- Keyboard Shortcut Handler ---
+const handleGlobalKeyDown = (event: KeyboardEvent) => {
+  const key = event.key;
+  const isModKey = event.metaKey || event.ctrlKey;
+
+  const targetElement = event.target as HTMLElement;
+  const isTextInput = targetElement.tagName === 'INPUT' || targetElement.tagName === 'TEXTAREA' || targetElement.isContentEditable;
+
+  // 特殊处理保存快捷键 (Ctrl+S / Command+S)
+  if (isModKey && key.toLowerCase() === 's') {
+    console.log('Shortcut: Save');
+    event.preventDefault();
+    saveItem();
+    return;
+  }
+
+  if (isTextInput && !(key === 'Delete' || key === 'Backspace')) {
+    if(isModKey && ['c', 'v', 'x'].includes(key.toLowerCase())) return;
+  } else if (isTextInput && (key === 'Delete' || key === 'Backspace')) {
+     return;
+  } else if (targetElement.tagName === 'SELECT') {
+     return;
+  }
+
+  const currentSelectedItem = selectedItem.value;
+
+  if (!currentSelectedItem) {
+     return;
+  }
+
+  let actionInvoked = false;
+
+  if (isModKey && key.toLowerCase() === 'c') {
+    console.log('Shortcut: Copy');
+    if (currentSelectedItem.type === 'match' || currentSelectedItem.type === 'group') {
+       handleCopyItem();
+       actionInvoked = true;
     }
+  } else if (isModKey && key.toLowerCase() === 'x') {
+    console.log('Shortcut: Cut');
+     if (currentSelectedItem.type === 'match' || currentSelectedItem.type === 'group') {
+       handleCutItem();
+       actionInvoked = true;
+     }
+  } else if (isModKey && key.toLowerCase() === 'v') {
+    console.log('Shortcut: Paste');
+    if (ClipboardManager.hasItem()) {
+        handlePasteItem();
+        actionInvoked = true;
+    } else {
+        console.log("Paste shortcut ignored: Clipboard empty");
+    }
+  } else if (
+    // macOS: Command+Backspace
+    (isMacOS() && event.metaKey && key === 'Backspace') ||
+    // Windows/Linux: Delete
+    (!isMacOS() && key === 'Delete')
+  ) {
+     console.log('Shortcut: Delete');
+     if (currentSelectedItem.type === 'match') {
+         event.preventDefault();
+         // 直接使用确认对话框，而不是通过 prepareDeleteMatch
+         if (confirm('确定要删除这个规则吗？此操作无法撤销。')) {
+           store.deleteItem(currentSelectedItem.id, 'match');
+           store.state.selectedItemId = null;
+         }
+         actionInvoked = true;
+     } else if (currentSelectedItem.type === 'group') {
+         event.preventDefault();
+         // 直接使用确认对话框，而不是通过 prepareDeleteGroup
+         if (confirm('确定要删除这个分组及其所有内容吗？此操作无法撤销。')) {
+           store.deleteItem(currentSelectedItem.id, 'group');
+           store.state.selectedItemId = null;
+         }
+         actionInvoked = true;
+     }
   }
 };
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeyDown);
+  window.addEventListener('keydown', handleGlobalKeyDown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeyDown);
-  // Clear timeout on unmount as well
+  window.removeEventListener('keydown', handleGlobalKeyDown);
   if (saveStateTimeout) {
     clearTimeout(saveStateTimeout);
   }
 });
-// --- End Keyboard Shortcut ---
 
 // 保存项目
 const saveItem = async () => {
   if (!selectedItem.value || isSaving.value) return;
 
-  // Clear previous timeout if any
   if (saveStateTimeout) {
     clearTimeout(saveStateTimeout);
     saveStateTimeout = null;
@@ -177,7 +314,6 @@ const saveItem = async () => {
   let currentFormData: Partial<Match> | Partial<Group> | null = null;
   let formType: 'match' | 'group' | null = null;
 
-  // Get current data from the active form using refs
   if (selectedItem.value.type === 'match' && ruleFormRef.value) {
     currentFormData = ruleFormRef.value.getFormData();
 
@@ -206,6 +342,9 @@ const saveItem = async () => {
     saveState.value = 'success';
     saveStateTimeout = setTimeout(() => { saveState.value = 'idle'; }, 1500);
 
+    // 重置未保存状态
+    store.state.hasUnsavedChanges = false;
+
   } catch (error: any) {
     console.error('保存项目失败 (saveItem): ', error);
     isSaving.value = false;
@@ -218,7 +357,6 @@ const saveItem = async () => {
 // 保存规则 - Now calls store actions and expects success/failure
 const saveRule = async (id: string, updatedRuleData: Match & { content?: string, contentType?: string }) => {
   console.log("saveRule 更新规则数据:", updatedRuleData);
-  // Map content/contentType back to specific Match fields
   const mappedFields = mapContentToMatchFields(updatedRuleData.content, updatedRuleData.contentType);
   console.log("saveRule 映射内容字段:", mappedFields);
   const cleanedDataToMerge: Partial<Match> = {
@@ -234,26 +372,18 @@ const saveRule = async (id: string, updatedRuleData: Match & { content?: string,
   };
   console.log("saveRule 合并数据:", cleanedDataToMerge);
 
-  // 确保force_mode字段被正确设置
-    console.log("saveRule 设置force_mode字段:", cleanedDataToMerge);
-
-  // 不要删除force_mode字段，因为我们已经将其映射到force_mode
-  // delete cleanedDataToMerge.forceMode;
+  console.log("saveRule 设置force_mode字段:", cleanedDataToMerge);
 
   try {
-    // 1. Update state
     store.updateConfigState(id, cleanedDataToMerge);
-    // 2. Get item for save
     const itemToSave = store.findItemById(id);
     if (!itemToSave || itemToSave.type !== 'match') {
         throw new Error(`无法在状态中找到ID为 ${id} 的规则。`);
     }
-    // 3. Save to file
     await store.saveItemToFile(itemToSave);
-    // Success! RightPane's saveItem will handle showing confirmation.
   } catch (error) {
       console.error('保存规则失败 (saveRule):', error);
-      throw error; // Re-throw error to be caught by saveItem
+      throw error;
   }
 };
 
@@ -279,19 +409,15 @@ const mapContentToMatchFields = (content?: string, contentType?: string): Partia
 const saveGroup = async (id: string, updatedGroupData: Partial<Group>) => {
   const cleanedDataToMerge: Partial<Group> = { ...updatedGroupData };
   try {
-    // 1. Update state
     store.updateConfigState(id, cleanedDataToMerge);
-    // 2. Get item for save
     const itemToSave = store.findItemById(id);
     if (!itemToSave || itemToSave.type !== 'group') {
         throw new Error(`无法在状态中找到ID为 ${id} 的分组。`);
     }
-    // 3. Save to file
     await store.saveItemToFile(itemToSave);
-    // Success! RightPane's saveItem will handle showing confirmation.
   } catch (error) {
       console.error('保存分组失败 (saveGroup):', error);
-      throw error; // Re-throw error to be caught by saveItem
+      throw error;
   }
 };
 
@@ -304,8 +430,7 @@ const cancelEdit = () => {
 const deleteRule = (id: string) => {
   if (confirm('确定要删除这个规则吗？此操作无法撤销。')) {
     store.deleteItem(id, 'match');
-    // TODO: Trigger save after deletion?
-    store.state.selectedItemId = null; // Clear selection after delete
+    store.state.selectedItemId = null;
   }
 };
 
@@ -313,8 +438,7 @@ const deleteRule = (id: string) => {
 const deleteGroup = (id: string) => {
   if (confirm('确定要删除这个分组及其所有内容吗？此操作无法撤销。')) {
     store.deleteItem(id, 'group');
-    // TODO: Trigger save after deletion?
-    store.state.selectedItemId = null; // Clear selection after delete
+    store.state.selectedItemId = null;
   }
 };
 
@@ -323,6 +447,168 @@ const previewRule = () => {
   if (selectedItem.value?.type === 'match' && ruleFormRef.value) {
     ruleFormRef.value.showPreview();
   }
+};
+
+// New functions for file/folder handling
+const selectedId = computed(() => store.state.selectedItemId);
+
+// 从树状结构中获取节点信息
+const findNodeInTree = (nodeId: string | null): any | null => {
+  if (!nodeId) return null;
+
+  // 递归查找函数
+  const findNode = (nodes: any[]): any | null => {
+    for (const node of nodes) {
+      if (node.id === nodeId) {
+        return node;
+      }
+
+      // 递归查找子节点
+      if (node.children && Array.isArray(node.children) && node.children.length > 0) {
+        const found = findNode(node.children);
+        if (found) return found;
+      }
+
+      // 查找子级matches和groups
+      if (node.matches && Array.isArray(node.matches) && node.matches.length > 0) {
+        for (const match of node.matches) {
+          if (match.id === nodeId) {
+            return match;
+          }
+        }
+      }
+
+      if (node.groups && Array.isArray(node.groups) && node.groups.length > 0) {
+        for (const group of node.groups) {
+          if (group.id === nodeId) {
+            return group;
+          }
+
+          // 查找组内的matches
+          if (group.matches && Array.isArray(group.matches)) {
+            for (const match of group.matches) {
+              if (match.id === nodeId) {
+                return match;
+              }
+            }
+          }
+        }
+      }
+    }
+    return null;
+  };
+
+  return findNode(store.state.configTree || []);
+};
+
+const getSelectedNodeName = (): string => {
+  if (!selectedId.value) return '未命名节点';
+
+  // 先尝试从树状结构中获取
+  const treeNode = findNodeInTree(selectedId.value);
+  if (treeNode) {
+    return treeNode.name || '未命名节点';
+  }
+
+  // 如果是match或group，使用常规方法
+  const item = store.findItemById(selectedId.value);
+  if (item?.type === 'match') {
+    return item.label || item.trigger || '未命名规则';
+  } else if (item?.type === 'group') {
+    return item.name || '未命名分组';
+  }
+
+  return '未命名节点';
+};
+
+const getSelectedNodePath = (): string => {
+  if (!selectedId.value) return '';
+
+  // 先尝试从树状结构中获取
+  const treeNode = findNodeInTree(selectedId.value);
+  if (treeNode) {
+    return treeNode.path || '';
+  }
+
+  // 如果是match或group，使用filePath
+  const item = store.findItemById(selectedId.value);
+  if (item) {
+    return item.filePath || '';
+  }
+
+  return '';
+};
+
+const getNodeChildCount = (): number => {
+  if (!selectedId.value) return 0;
+
+  // 从树状结构中获取子节点数量
+  const treeNode = findNodeInTree(selectedId.value);
+  if (treeNode && treeNode.children) {
+    return treeNode.children.length;
+  }
+
+  return 0;
+};
+
+const handleCreateMatch = () => {
+  if (!selectedId.value) return;
+
+  // 调用useContextMenu中的创建规则函数
+  const contextMenuNode = getContextMenuNode();
+  if (contextMenuNode) {
+    handleCreateMatchInNode(contextMenuNode);
+  }
+};
+
+const handleCreateGroup = () => {
+  if (!selectedId.value) return;
+
+  // 调用useContextMenu中的创建分组函数
+  const contextMenuNode = getContextMenuNode();
+  if (contextMenuNode) {
+    handleCreateGroupInNode(contextMenuNode);
+  }
+};
+
+// 实现创建规则的函数
+const handleCreateMatchInNode = (node: TreeNodeItem) => {
+  console.log('在节点中创建规则:', node);
+  // 使用contextMenu中的创建规则函数
+  const { handleCreateMatch } = useContextMenu({ getNode: () => node });
+  handleCreateMatch();
+};
+
+// 实现创建片段的函数
+const handleCreateGroupInNode = (node: TreeNodeItem) => {
+  console.log('在节点中创建片段:', node);
+  // 使用contextMenu中的创建片段函数
+  const { handleCreateMatch } = useContextMenu({ getNode: () => node });
+  handleCreateMatch();
+};
+
+// New function to create a group from a file node
+const createGroupFromFileNode = (nodeId: string | null): Group => {
+  if (!nodeId) {
+    // 默认值
+    return {
+      id: `temp-group-${Date.now()}`,
+      type: 'group',
+      name: '新文件组',
+      matches: [],
+      groups: [],
+      filePath: store.state.configPath || ''
+    } as Group;
+  }
+
+  return {
+    id: nodeId,
+    type: 'group',
+    name: getSelectedNodeName(),
+    matches: [],
+    groups: [],
+    filePath: getSelectedNodePath() || store.state.configPath || ''
+  } as Group;
 };
 </script>
 
