@@ -1,0 +1,46 @@
+/* 自定义 Tooltip 样式 */
+[data-slot="tooltip-content"] {
+  /* 基础样式 */
+  background-color: rgba(50, 50, 50, 0.95) !important;
+  color: #ffffff !important;
+  border-radius: 4px !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  font-size: 12px !important;
+  line-height: 1.4 !important;
+  padding: 8px 10px !important;
+  max-width: 300px !important;
+  
+  /* 动画效果 */
+  animation-duration: 0.15s !important;
+  
+  /* 确保文本不换行 */
+  white-space: normal !important;
+  
+  /* 边框 */
+  border: none !important;
+  
+  /* 确保内容居中 */
+  text-align: left !important;
+}
+
+/* Tooltip 箭头样式 */
+[data-slot="tooltip-content"] > .bg-primary {
+  background-color: rgba(50, 50, 50, 0.95) !important;
+  fill: rgba(50, 50, 50, 0.95) !important;
+}
+
+/* 复选框样式 */
+[data-slot="tooltip-content"] .flex.items-center {
+  margin-top: 8px !important;
+}
+
+[data-slot="tooltip-content"] label {
+  color: #ffffff !important;
+  font-size: 12px !important;
+}
+
+/* 确保内容不会被截断 */
+[data-slot="tooltip-content"] p {
+  margin: 0 !important;
+  padding: 0 !important;
+}
