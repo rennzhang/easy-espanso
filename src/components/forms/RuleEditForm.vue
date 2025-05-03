@@ -5,7 +5,7 @@
     <!-- ========================= -->
     <div class="space-y-4 flex-1 flex flex-col h-full">
       <!-- 触发词和名称一行 -->
-      <div class="flex flex-col md:flex-row gap-4 mb-4 pb-4 border-b">
+      <div class="flex flex-col md:flex-row gap-4 mb-4 pb-4 border-b relative">
         <!-- 触发词 -->
         <div class="w-full md:w-1/2 space-y-1.5">
           <div class="flex items-center">
@@ -348,7 +348,24 @@
         </div>
 
         <div class="p-4 overflow-auto max-h-[calc(80vh-120px)]">
-          <div class="p-3 border rounded-md bg-muted/10">
+          <!-- 图片类型预览 -->
+          <div v-if="currentContentType === 'image'" class="space-y-4">
+            <!-- 图片路径显示 -->
+            <div class="p-3 border border-dashed rounded-md bg-muted/10">
+              <p class="text-sm font-mono break-all">{{ previewContent }}</p>
+            </div>
+            <!-- 图片预览 -->
+            <div class="flex justify-center">
+              <img
+                :src="previewContent"
+                alt="图片预览"
+                class="max-w-full max-h-[400px] object-contain border"
+                @error="(e) => { if (e.target) (e.target as HTMLElement).style.display = 'none' }"
+              />
+            </div>
+          </div>
+          <!-- 文本类型预览 -->
+          <div v-else class="p-3 border rounded-md bg-muted/10">
             <pre class="whitespace-pre-wrap text-sm">{{ previewContent }}</pre>
           </div>
         </div>
@@ -800,6 +817,13 @@ const variableSelectorRef = ref<InstanceType<typeof VariableSelector> | null>(
 const showPreview = () => {
   if (!formState.value.content) return;
 
+  // 如果是图片类型，直接显示图片路径和图片
+  if (currentContentType.value === "image") {
+    previewContent.value = formState.value.content;
+    showPreviewModal.value = true;
+    return;
+  }
+
   // 处理变量
   let content = formState.value.content;
   const variableRegex = /\{\{([^}]+)\}\}/g; // Corrected Regex
@@ -935,7 +959,7 @@ onMounted(() => {
   // --- 处理触发词: trigger or triggers --- START
   let triggerInput = "";
   if (Array.isArray(ruleData.triggers) && ruleData.triggers.length > 0) {
-    triggerInput = ruleData.triggers.join("\\n");
+    triggerInput = ruleData.triggers.join("\n");
   } else if (ruleData.trigger) {
     triggerInput = ruleData.trigger;
   }
@@ -1004,7 +1028,7 @@ watch(
     // --- 处理触发词: trigger or triggers --- START
     let triggerInput = "";
     if (Array.isArray(ruleData.triggers) && ruleData.triggers.length > 0) {
-      triggerInput = ruleData.triggers.join("\\n");
+      triggerInput = ruleData.triggers.join("\n");
     } else if (ruleData.trigger) {
       triggerInput = ruleData.trigger;
     }
