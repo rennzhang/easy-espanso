@@ -442,15 +442,20 @@
                     >
                       大写样式 (uppercase_style)
                     </label>
-                    <select
-                      id="uppercaseStyle"
-                      v-model="formState.uppercaseStyle"
-                      class="flex h-9 w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      <option value="">无</option>
-                      <option value="capitalize_words">首字母大写</option>
-                      <option value="uppercase_first">第一个字母大写</option>
-                    </select>
+                    <Select v-model="formState.uppercaseStyle">
+                      <SelectTrigger id="uppercaseStyle" class="h-9">
+                        <SelectValue placeholder="选择样式..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem
+                          v-for="option in uppercaseStyleOptions"
+                          :key="option.value"
+                          :value="option.value"
+                        >
+                          {{ option.label }}
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
@@ -611,7 +616,6 @@ import {
   TooltipTrigger,
 } from "../ui/tooltip";
 import HelpTip from "../common/HelpTip.vue";
-import FormSection from "../common/FormSection.vue";
 import {
   CalendarIcon,
   ClipboardIcon,
@@ -693,7 +697,7 @@ interface RuleFormState {
   leftWord?: boolean;
   rightWord?: boolean;
   propagateCase?: boolean;
-  uppercaseStyle?: "capitalize_words" | "uppercase_first" | "";
+  uppercaseStyle?: "" | "uppercase" | "capitalize" | "capitalize_words";
   forceMode?: "default" | "clipboard" | "keys" | "";
   apps?: string[];
   exclude_apps?: string[];
@@ -737,6 +741,14 @@ const contentTypeOptions = [
   { label: "HTML", value: "html" },
   { label: "图片", value: "image" },
   { label: "表单 (开发中)", value: "form", disabled: true },
+];
+
+// 大小写样式选项
+const uppercaseStyleOptions = [
+  { value: "", label: "无" },
+  { value: "uppercase", label: "全部大写" },
+  { value: "capitalize", label: "首字母大写" },
+  { value: "capitalize_words", label: "单词首字母大写" },
 ];
 
 // 内容编辑器引用 - REMOVED
@@ -848,10 +860,10 @@ defineExpose({
     } = {
       label: formState.value.label,
       description: formState.value.description || undefined,
-      word: formState.value.word,
-      left_word: formState.value.leftWord,
-      right_word: formState.value.rightWord,
-      propagate_case: formState.value.propagateCase,
+      word: formState.value.word || undefined,
+      left_word: formState.value.leftWord || undefined,
+      right_word: formState.value.rightWord || undefined,
+      propagate_case: formState.value.propagateCase || undefined,
       uppercase_style: formState.value.uppercaseStyle || undefined,
       force_mode:
         formState.value.forceMode === "" ||
@@ -1075,6 +1087,17 @@ watch(
   },
   { deep: true }
 );
+
+// 监听 propagateCase 的变化
+watch(() => formState.value.propagateCase, (isPropagateCaseEnabled) => {
+  // 如果 propagate_case 被取消勾选 (变为 false)
+  if (!isPropagateCaseEnabled) {
+    // 自动将 uppercase_style 设置为 "无" (空字符串)
+    formState.value.uppercaseStyle = "";
+    console.log("传播大小写已禁用，自动清空大写样式。");
+    // checkFormModified() 会被 watch(formState) 自动触发，无需手动调用
+  }
+});
 
 // 检查表单是否被修改
 const checkFormModified = () => {

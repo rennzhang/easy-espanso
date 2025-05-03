@@ -233,16 +233,11 @@ const saveRule = async (id: string, updatedRuleData: Match & { content?: string,
     force_mode: updatedRuleData.force_mode || undefined,
   };
   console.log("saveRule 合并数据:", cleanedDataToMerge);
-  // 删除UI专用字段，但保留force_mode字段
-  delete cleanedDataToMerge.left_word;
-  delete cleanedDataToMerge.right_word;
-  delete cleanedDataToMerge.propagate_case;
-  delete cleanedDataToMerge.uppercase_style;
 
   // 确保force_mode字段被正确设置
     console.log("saveRule 设置force_mode字段:", cleanedDataToMerge);
 
-  // 不要删除forceMode字段，因为我们已经将其映射到force_mode
+  // 不要删除force_mode字段，因为我们已经将其映射到force_mode
   // delete cleanedDataToMerge.forceMode;
 
   try {

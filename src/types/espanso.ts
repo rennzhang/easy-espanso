@@ -11,7 +11,7 @@ export interface Match {
   left_word?: boolean; // Added for consistency
   right_word?: boolean; // Added for consistency
   propagate_case?: boolean;
-  uppercase_style?: 'capitalize_words' | 'uppercase_first';
+  uppercase_style?: 'uppercase' | 'capitalize' | 'capitalize_words';
   force_mode?: 'default' | 'clipboard' | 'keys'; // Added default
   apps?: string[];
   exclude_apps?: string[];

@@ -44,7 +44,7 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator
 } from '@/components/ui/context-menu';
 import { useContextMenu } from '@/composables/useContextMenu';
-import { ref, defineProps, defineEmits, computed, Component } from "vue";
+import { ref, defineProps, defineEmits, computed } from "vue";
 import ClipboardManager from '@/utils/ClipboardManager';
 import type { TreeNodeItem } from "./ConfigTree.vue";
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
@@ -52,7 +52,7 @@ import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 // --- MenuItem Interface --- 
 interface MenuItem {
   label: string;
-  icon?: Component;
+  icon?: any;
   action?: () => void;
   separator?: boolean; // Indicates if a separator should follow this item
   disabled?: boolean;

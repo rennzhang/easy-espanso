@@ -1058,6 +1058,14 @@ export const useEspansoStore = defineStore('espanso', () => {
              } else if (key === 'uppercase_style' && value === '') {
                   delete cleanedMatch[key];
              }
+             // *** ADDED: Explicitly remove boolean flags when false (Espanso default) ***
+             else if (typeof value === 'boolean' && value === false) {
+                 // List of boolean keys that Espanso defaults to false
+                 const espansoBooleanFalseDefaults = ['word', 'left_word', 'right_word', 'propagate_case'];
+                 if (espansoBooleanFalseDefaults.includes(key)) {
+                     delete cleanedMatch[key];
+                 }
+             }
           });
          return cleanedMatch;
       };
