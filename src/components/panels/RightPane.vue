@@ -1,5 +1,5 @@
 <template>
-  <div class="right-pane flex flex-col h-full bg-card">
+  <div class="right-pane flex flex-col h-full bg-card relative">
     <div class="py-2 px-4 border-b">
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-semibold text-foreground m-0" v-html="headerTitle"></h3>
@@ -99,7 +99,7 @@ const headerTitle = computed(() => {
   if (selectedItem.value.type === 'match') {
     const match = selectedItem.value as Match;
     let displayTrigger = '';
-    
+
     if (match.triggers && match.triggers.length > 0) {
       if (match.triggers.length > 1) {
         displayTrigger = match.triggers.slice(0, 3).join(', ') + (match.triggers.length > 3 ? '...' : '');
@@ -111,7 +111,7 @@ const headerTitle = computed(() => {
     } else {
       displayTrigger = '[无触发词]';
     }
-    
+
     // Return HTML string with span for styling
     return `编辑规则 <span class="ml-2 text-sm text-muted-foreground">${displayTrigger}</span>`;
   } else if (selectedItem.value.type === 'group') {
@@ -122,7 +122,7 @@ const headerTitle = computed(() => {
   return '详情';
 });
 
-// --- Keyboard Shortcut for Save --- 
+// --- Keyboard Shortcut for Save ---
 const handleKeyDown = (event: KeyboardEvent) => {
   if ((event.ctrlKey || event.metaKey) && event.key === 's') {
     if (selectedItem.value) { // Only save if an item is selected
@@ -165,6 +165,7 @@ const saveItem = async () => {
   // Get current data from the active form using refs
   if (selectedItem.value.type === 'match' && ruleFormRef.value) {
     currentFormData = ruleFormRef.value.getFormData();
+    
     formType = 'match';
   } else if (selectedItem.value.type === 'group' && groupFormRef.value) {
     currentFormData = groupFormRef.value.getFormData();
@@ -182,7 +183,7 @@ const saveItem = async () => {
 
   try {
     if (formType === 'match') {
-      await saveRule(selectedItem.value.id, currentFormData as Partial<Match> & { content?: string, contentType?: string });
+      await saveRule(selectedItem.value.id, currentFormData as Match & { content?: string, contentType?: string });
     } else if (formType === 'group') {
       await saveGroup(selectedItem.value.id, currentFormData as Partial<Group>);
     }
@@ -200,25 +201,34 @@ const saveItem = async () => {
 };
 
 // 保存规则 - Now calls store actions and expects success/failure
-const saveRule = async (id: string, updatedRuleData: Partial<Match> & { content?: string, contentType?: string }) => {
+const saveRule = async (id: string, updatedRuleData: Match & { content?: string, contentType?: string }) => {
+  console.log("saveRule 更新规则数据:", updatedRuleData);
   // Map content/contentType back to specific Match fields
   const mappedFields = mapContentToMatchFields(updatedRuleData.content, updatedRuleData.contentType);
+  console.log("saveRule 映射内容字段:", mappedFields);
   const cleanedDataToMerge: Partial<Match> = {
     ...updatedRuleData,
     content: undefined,
     contentType: undefined,
     ...mappedFields,
-    left_word: updatedRuleData.leftWord,
-    right_word: updatedRuleData.rightWord,
-    propagate_case: updatedRuleData.propagateCase,
-    uppercase_style: updatedRuleData.uppercaseStyle || undefined,
-    force_mode: updatedRuleData.forceMode || undefined,
+    left_word: updatedRuleData.left_word,
+    right_word: updatedRuleData.right_word,
+    propagate_case: updatedRuleData.propagate_case,
+    uppercase_style: updatedRuleData.uppercase_style || undefined,
+    force_mode: updatedRuleData.force_mode || undefined,
   };
-  delete cleanedDataToMerge.leftWord;
-  delete cleanedDataToMerge.rightWord;
-  delete cleanedDataToMerge.propagateCase;
-  delete cleanedDataToMerge.uppercaseStyle;
-  delete cleanedDataToMerge.forceMode;
+  console.log("saveRule 合并数据:", cleanedDataToMerge);
+  // 删除UI专用字段，但保留force_mode字段
+  delete cleanedDataToMerge.left_word;
+  delete cleanedDataToMerge.right_word;
+  delete cleanedDataToMerge.propagate_case;
+  delete cleanedDataToMerge.uppercase_style;
+
+  // 确保force_mode字段被正确设置
+    console.log("saveRule 设置force_mode字段:", cleanedDataToMerge);
+
+  // 不要删除forceMode字段，因为我们已经将其映射到force_mode
+  // delete cleanedDataToMerge.forceMode;
 
   try {
     // 1. Update state

@@ -681,7 +681,7 @@ export const useEspansoStore = defineStore('espanso', () => {
       // 查找父节点
       let oldParentNode: { type: string } | null = null;
       let newParentNode: { type: string } | null = null;
-      
+
       // 处理旧父节点
       if (oldParentId === null) {
         oldParentNode = rootNode;
@@ -702,7 +702,7 @@ export const useEspansoStore = defineStore('espanso', () => {
           console.log(`[Store moveTreeItem REV] Found old parent tree node: ${treeNode.type} ${treeNode.id}`);
         }
       }
-      
+
       // 处理新父节点
       if (newParentId === null) {
         newParentNode = rootNode;
@@ -741,7 +741,7 @@ export const useEspansoStore = defineStore('espanso', () => {
       // 确定要操作的数组
       let oldParentArray: any[] = [];
       let newParentArray: any[] = [];
-      
+
       // 获取旧父节点的数组
       if (oldParentNode.type === 'root' || oldParentNode.type === 'folder') {
         oldParentArray = (oldParentNode as any).children || [];
@@ -753,7 +753,7 @@ export const useEspansoStore = defineStore('espanso', () => {
           oldParentArray = fileNode.groups || [];
         }
       }
-      
+
       // 获取新父节点的数组
       if (newParentNode.type === 'root' || newParentNode.type === 'folder') {
         newParentArray = (newParentNode as any).children || [];
@@ -775,7 +775,7 @@ export const useEspansoStore = defineStore('espanso', () => {
           console.error(`[Store moveTreeItem REV] Item at oldIndex ${oldIndex} does not match moved item ID ${itemId}. Found:`, movedTreeNode);
           return;
         }
-        
+
         console.log(`[Store moveTreeItem REV] Found item to move:`, { id: movedTreeNode.id, type: movedTreeNode.type });
         oldParentArray.splice(oldIndex, 1);
 
@@ -821,11 +821,11 @@ export const useEspansoStore = defineStore('espanso', () => {
             if (fileNode && (fileNode.matches?.length || fileNode.groups?.length)) {
               let itemToTriggerSave: Match | Group | undefined;
               if (fileNode.matches?.length) {
-                itemToTriggerSave = fileNode.matches[0]; 
+                itemToTriggerSave = fileNode.matches[0];
               } else if (fileNode.groups?.length) {
                 itemToTriggerSave = fileNode.groups[0];
               }
-              
+
               if (itemToTriggerSave) {
                 console.log(`[Store moveTreeItem REV] Saving file ${filePath} using item ${itemToTriggerSave.id}`);
                 await saveItemToFile(itemToTriggerSave);
@@ -857,9 +857,9 @@ export const useEspansoStore = defineStore('espanso', () => {
       allowedTypes: Array<'file' | 'folder' | 'match' | 'group'>
   ): ConfigTreeNode | Match | Group | null => {
       if (!nodes || !Array.isArray(nodes) || !id) return null;
-      
+
       console.log(`[findNodeById] Searching for node with ID: "${id}", allowedTypes:`, allowedTypes);
-      
+
       for (const node of nodes) {
           // 如果是文件节点，可能需要检查 ID 是否包含文件路径
           if (allowedTypes.includes(node.type)) {
@@ -868,7 +868,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                   console.log(`[findNodeById] Direct match found: ${node.type} with ID ${node.id}`);
                   return node;
               }
-              
+
               // 特殊处理文件 ID，尝试进行"file-"前缀+路径匹配
               if (node.type === 'file' && id.startsWith('file-') && node.path) {
                   const pathPart = id.substring(5); // Remove 'file-' prefix
@@ -898,9 +898,9 @@ export const useEspansoStore = defineStore('espanso', () => {
                       }
                   }
               }
-          } 
+          }
           // If the node is a folder, search recursively in its children
-          else if (node.type === 'folder') { 
+          else if (node.type === 'folder') {
               const folderNode = node as ConfigFolderNode; // Explicit cast
               if (folderNode.children) {
                   const foundInChild = findNodeById(folderNode.children, id, allowedTypes);
@@ -908,7 +908,7 @@ export const useEspansoStore = defineStore('espanso', () => {
               }
           }
       }
-      
+
       console.log(`[findNodeById] No node found with ID: ${id}`);
       return null;
   };
@@ -1048,8 +1048,13 @@ export const useEspansoStore = defineStore('espanso', () => {
                  }
              } else if (key === 'priority' && value === 0) {
                  delete cleanedMatch[key];
-             } else if (key === 'force_mode' && value === 'default') {
-                 delete cleanedMatch[key];
+             } else if (key === 'force_mode') {
+                 // 保留force_mode字段，无论它的值是什么
+                 console.log("保存force_mode字段:", value);
+                 // 只有当值为'default'或空字符串时才删除
+                 if (value === 'default' || value === '') {
+                     delete cleanedMatch[key];
+                 }
              } else if (key === 'uppercase_style' && value === '') {
                   delete cleanedMatch[key];
              }

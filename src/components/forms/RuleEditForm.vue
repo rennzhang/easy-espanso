@@ -4,22 +4,45 @@
     <!-- 1. 基本信息区 (始终可见) -->
     <!-- ========================= -->
     <div class="space-y-4">
-      <!-- 触发词 -->
-      <FormSection
-        label="触发词"
-        helpContent="输入规则的触发词，多个请用英文逗号或换行分隔。"
-        inputId="trigger"
-      >
-        <textarea
-          id="trigger"
-          v-model="formState.trigger"
-          placeholder="例如: :hello, :你好\n:hi"
-          required
-          rows="3"
-          spellcheck="false"
-          class="flex min-h-[60px] w-full rounded-none border border-input bg-transparent px-3 py-2 text-sm placeholder:text-muted-foreground focus:outline-none focus:border-gray-500 focus:shadow-lg transition-colors duration-150 disabled:cursor-not-allowed disabled:opacity-50 resize-y"
-        ></textarea>
-      </FormSection>
+      <!-- 触发词和名称一行 -->
+      <div class="flex flex-col md:flex-row gap-4 mb-4  pb-4 border-b">
+        <!-- 触发词 -->
+        <div class="w-full md:w-1/2 space-y-1.5">
+          <div class="flex items-center">
+            <label
+              for="trigger"
+              class="text-sm font-medium text-foreground mr-2"
+              >触发词</label
+            >
+            <HelpTip content="输入规则的触发词，多个请用英文逗号或换行分隔" />
+          </div>
+          <Textarea
+            id="trigger"
+            v-model="formState.trigger"
+            placeholder="例如: :hello, :你好&#10;:hi"
+            required
+            rows="2"
+            spellcheck="false"
+          />
+        </div>
+
+        <!-- 名称 -->
+        <div class="w-full md:w-1/2 space-y-1.5">
+          <div class="flex items-center">
+            <label for="label" class="text-sm font-medium text-foreground mr-2"
+              >名称</label
+            >
+            <HelpTip content="为规则添加简短描述，方便识别和管理" />
+          </div>
+          <Textarea
+            id="label"
+            v-model="formState.label"
+            placeholder="输入规则名称..."
+            rows="2"
+            spellcheck="false"
+          />
+        </div>
+      </div>
 
       <!-- 内容类型选择器 & 替换内容 -->
       <div class="space-y-2">
@@ -43,8 +66,10 @@
                     currentContentType === option.value,
                   'text-muted-foreground hover:bg-accent hover:text-accent-foreground':
                     currentContentType !== option.value,
+                  'opacity-50 cursor-not-allowed': option.disabled,
                 }"
-                @click="setContentType(option.value)"
+                @click="!option.disabled && setContentType(option.value)"
+                :title="option.disabled ? '此功能正在开发中' : ''"
               >
                 {{ option.label }}
               </MenubarTrigger>
@@ -86,7 +111,14 @@
               @change="handleImageUpload"
               class="w-full h-auto px-2 py-1 mb-2"
             />
-            <div v-if="formState.content" class="mt-2">
+            <div v-if="isImageUrl(formState.content || '')" class="mt-2">
+              <!-- 显示图片路径 -->
+              <div class="p-2 bg-gray-100 rounded mb-2 text-sm">
+                <p class="font-medium">图片路径:</p>
+                <p class="text-gray-600 break-all">{{ formState.content }}</p>
+              </div>
+
+              <!-- 如果是URL或Base64，尝试显示预览 -->
               <img
                 :src="formState.content"
                 alt="预览"
@@ -98,116 +130,131 @@
           <!-- Bottom Toolbar -->
           <TooltipProvider :delay-duration="200">
             <div class="flex items-center gap-1 p-1.5 border-t bg-muted/50">
-              <!-- Replacement Mode Label and HelpTip (Moved Left & Renamed) -->
-              <div class="flex items-center mr-2">
-                <Label class="text-xs font-medium mr-1">替换模式</Label>
-                <HelpTip
-                  content="控制内容如何替换触发词，通过剪贴板或模拟按键"
-                />
-              </div>
+              <!-- 替换模式和插入按钮 - 仅在非图片类型下显示 -->
+              <template v-if="currentContentType !== 'image'">
+                <!-- Replacement Mode Label and HelpTip (Moved Left & Renamed) -->
+                <div class="flex items-center mr-2">
+                  <Label class="text-xs font-medium mr-1">替换模式</Label>
+                  <HelpTip
+                    content="控制内容如何替换触发词，通过剪贴板或模拟按键"
+                  />
+                </div>
 
-              <!-- Insertion Mode Menubar (Moved Left) -->
-              <Menubar
-                class="border rounded-none overflow-hidden p-0 shadow-none mr-2"
-              >
-                <template
-                  v-for="(option, index) in insertionModeOptions"
-                  :key="option.value"
+                <!-- Insertion Mode Menubar (Moved Left) -->
+                <Menubar
+                  class="border rounded-none overflow-hidden p-0 shadow-none mr-2"
                 >
-                  <MenubarMenu>
-                    <TooltipProvider
-                      v-if="option.value === 'default'"
-                      :delay-duration="100"
-                    >
-                      <Tooltip>
-                        <TooltipTrigger as-child>
-                          <MenubarTrigger
-                            @click="setForceMode('')"
-                            class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
-                            :class="[
-                              { 'border-l': index > 0 },
-                              formState.forceMode === ''
-                                ? 'bg-primary text-primary-foreground'
-                                : 'hover:bg-muted',
-                            ]"
-                          >
-                            {{ option.label }}
-                          </MenubarTrigger>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p>
-                            自动模式: Espanso 会根据内容长度 (阈值默认100字符)
-                            自动选择插入方式 (按键或剪贴板)。
-                          </p>
-                        </TooltipContent>
-                      </Tooltip>
-                    </TooltipProvider>
-                    <MenubarTrigger
-                      v-else
-                      @click="setForceMode(option.value)"
-                      class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
-                      :class="[
-                        { 'border-l': index > 0 },
-                        formState.forceMode === option.value
-                          ? 'bg-primary text-primary-foreground'
-                          : 'hover:bg-muted',
-                      ]"
-                    >
-                      {{ option.label }}
-                    </MenubarTrigger>
-                  </MenubarMenu>
-                </template>
-              </Menubar>
-
-              <div class="flex-grow"></div>
-              <!-- Spacer -->
-
-              <!-- New Insert Dropdown -->
-              <DropdownMenu>
-                <DropdownMenuTrigger as-child>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    class="h-7 px-2 focus:outline-none"
-                    style="
-                      outline: none !important;
-                      box-shadow: none !important;
-                    "
+                  <template
+                    v-for="(option, index) in insertionModeOptions"
+                    :key="option.value"
                   >
-                    <span>插入</span>
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem @click="insertCommonVariable('clipboard')">
-                    <ClipboardIcon class="mr-2 h-4 w-4" />
-                    <span>插入剪贴板</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    @click="
-                      insertVariable({
-                        id: '$|$',
-                        name: '光标',
-                        description: '插入光标位置',
-                      })
-                    "
-                  >
-                    <MousePointerClickIcon class="mr-2 h-4 w-4" />
-                    <span>插入光标</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem @click="insertCommonVariable('date')">
-                    <CalendarIcon class="mr-2 h-4 w-4" />
-                    <span>插入日期</span>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem @click="variableSelectorRef?.showModal()">
-                    <MoreHorizontalIcon class="mr-2 h-4 w-4" />
-                    <span>更多</span>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    <MenubarMenu>
+                      <TooltipProvider
+                        v-if="option.value === 'default'"
+                        :delay-duration="100"
+                      >
+                        <Tooltip>
+                          <TooltipTrigger as-child>
+                            <MenubarTrigger
+                              @click="setForceMode('')"
+                              class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
+                              :class="[
+                                { 'border-l': index > 0 },
+                                formState.forceMode === ''
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'hover:bg-muted',
+                              ]"
+                            >
+                              {{ option.label }}
+                            </MenubarTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              自动模式: Espanso 会根据内容长度 (阈值默认100字符)
+                              自动选择插入方式 (按键或剪贴板)。
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <MenubarTrigger
+                        v-else
+                        @click="setForceMode(option.value)"
+                        class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
+                        :class="[
+                          { 'border-l': index > 0 },
+                          formState.forceMode === option.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted',
+                        ]"
+                      >
+                        {{ option.label }}
+                      </MenubarTrigger>
+                    </MenubarMenu>
+                  </template>
+                </Menubar>
 
-              <!-- Preview Button -->
+                <div class="flex-grow"></div>
+                <!-- Spacer -->
+
+                <!-- New Insert Dropdown -->
+                <DropdownMenu>
+                  <DropdownMenuTrigger as-child>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      class="h-7 px-2 focus:outline-none"
+                      style="
+                        outline: none !important;
+                        box-shadow: none !important;
+                      "
+                    >
+                      <span>插入</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem
+                      @click="insertCommonVariable('clipboard')"
+                    >
+                      <ClipboardIcon class="mr-2 h-4 w-4" />
+                      <span>插入剪贴板</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      @click="
+                        insertVariable({
+                          id: '$|$',
+                          name: '光标',
+                          description: '插入光标位置',
+                        })
+                      "
+                    >
+                      <MousePointerClickIcon class="mr-2 h-4 w-4" />
+                      <span>插入光标</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem @click="insertCommonVariable('date')">
+                      <CalendarIcon class="mr-2 h-4 w-4" />
+                      <span>插入日期</span>
+                    </DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem @click="variableSelectorRef?.showModal()">
+                      <MoreHorizontalIcon class="mr-2 h-4 w-4" />
+                      <span>更多变量</span>
+                      <span class="ml-2 text-xs text-yellow-600 italic"
+                        >(开发中)</span
+                      >
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </template>
+
+              <!-- 图片类型下只显示预览按钮 -->
+              <div
+                v-if="currentContentType === 'image'"
+                class="flex-grow"
+              ></div>
+              <!-- 竖分割线 -->
+              <div class="hidden md:block border-r h-[16px]"></div>
+              <!-- Preview Button - 所有类型都显示 -->
               <Tooltip>
                 <TooltipTrigger as-child>
                   <Button
@@ -239,34 +286,6 @@
     <!-- 2. 常用选项区 (默认展开)  -->
     <!-- ========================= -->
     <div class="space-y-4 border-t pt-4">
-      <!-- 标签 (描述) -->
-      <FormSection
-        label="标签 (描述)"
-        helpContent="为规则添加简短描述，方便识别和管理"
-        inputId="label"
-      >
-        <Input
-          id="label"
-          v-model="formState.label"
-          placeholder="可选的规则描述"
-          class="h-8 px-2 py-1"
-        />
-      </FormSection>
-
-      <!-- Tag Input -->
-      <FormSection
-        label="Tags"
-        helpContent="添加标签用于分类和过滤"
-        inputId="tags"
-      >
-        <TagInput
-          :modelValue="formState.tags || []"
-          @update:modelValue="(val: string[]) => { formState.tags = val; checkFormModified(); }"
-          placeholder="添加标签，回车确认"
-          class="py-1"
-        />
-      </FormSection>
-
       <!-- 词边界设置 -->
       <div class="space-y-2">
         <div class="flex items-center">
@@ -480,6 +499,7 @@ import { EspansoRule } from "../../types/espanso-config";
 import { useEspansoStore } from "../../store/useEspansoStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import Textarea from "../ui/textarea.vue";
 import { Checkbox } from "../ui/checkbox";
 import TagInput from "../common/TagInput.vue";
 import VariableSelector from "./VariableSelector.vue";
@@ -612,10 +632,10 @@ const insertionModeOptions = [
 // 内容类型选项
 const contentTypeOptions = [
   { label: "纯文本", value: "plain" },
-  { label: "富文本", value: "markdown" },
+  { label: "Markdown", value: "markdown" },
   { label: "HTML", value: "html" },
   { label: "图片", value: "image" },
-  { label: "表单", value: "form" },
+  { label: "表单 (开发中)", value: "form", disabled: true },
 ];
 
 // 内容编辑器引用 - REMOVED
@@ -764,20 +784,20 @@ const determineInitialContentType = (
 };
 
 // 辅助函数：根据 Match 数据确定初始 content
-const determineInitialContent = (ruleData: Match): string => {
+const determineInitialContent = (ruleData: Match): string | undefined => {
   const contentType = determineInitialContentType(ruleData);
   switch (contentType) {
     case "markdown":
-      return ruleData.markdown || ruleData.content || "";
+      return ruleData.markdown || ruleData.content;
     case "html":
-      return ruleData.html || ruleData.content || "";
+      return ruleData.html || ruleData.content;
     case "image":
-      return ruleData.image_path || ruleData.content || "";
+      return ruleData.image_path || ruleData.content;
     case "form":
-      return ruleData.content || ""; // Assume content holds the form definition for now
+      return ruleData.content; // Assume content holds the form definition for now
     case "plain":
     default:
-      return ruleData.content || ruleData.replace || ""; // Fallback to replace if content is missing
+      return ruleData.content || ruleData.replace; // Fallback to replace if content is missing
   }
 };
 
@@ -942,19 +962,89 @@ const handleImageUpload = (event: Event) => {
   const input = event.target as HTMLInputElement;
   if (input.files && input.files[0]) {
     const file = input.files[0];
-    const reader = new FileReader();
 
-    reader.onload = (e) => {
-      if (e.target && typeof e.target.result === "string") {
-        formState.value.content = e.target.result;
-      }
-    };
+    // 在Electron环境中，我们可以通过input元素的files属性获取完整路径
+    // 但在标准Web环境中，这是不可能的，因为安全限制
 
-    reader.readAsDataURL(file);
+    // 获取完整路径 - 尝试使用Electron特有的API
+    let filePath = "";
+
+    // 1. 尝试从input元素获取路径 (Electron特有)
+    if ((input as any).files[0].path) {
+      filePath = (input as any).files[0].path;
+    }
+    // 2. 如果无法获取完整路径，使用文件名作为备选
+    else {
+      // 在实际应用中，这里应该将文件复制到espanso的资源目录
+      // 并返回相对于espanso配置的路径
+      filePath = `/path/to/espanso/images/${file.name}`;
+
+      // 提示用户我们无法获取完整路径
+      console.warn("无法获取文件完整路径，使用模拟路径代替");
+    }
+
+    // 保存图片路径到content字段，后续会被映射到image_path
+    formState.value.content = filePath;
+
+    console.log("图片路径:", filePath);
   }
 };
 
-// 插入变量 - Updated to work with cmRef if available
+// 解析变量ID并创建变量定义
+const parseVariableAndCreateDefinition = (variableId: string) => {
+  // 如果是光标占位符，不需要添加变量定义
+  if (variableId === "$|$") return null;
+
+  // 基本变量定义
+  const varDef: { name: string; type: string; params?: Record<string, any> } = {
+    name: variableId.split(":")[0], // 默认使用冒号前的部分作为变量名
+    type: "echo", // 默认类型为echo
+  };
+
+  // 根据变量ID解析类型和参数
+  if (variableId === "date") {
+    varDef.type = "date";
+    varDef.params = { format: "%Y-%m-%d" };
+  } else if (variableId === "time") {
+    varDef.type = "date";
+    varDef.params = { format: "%H:%M" };
+  } else if (variableId.startsWith("date:")) {
+    varDef.type = "date";
+    // 解析date:format=%Y-%m-%d格式的参数
+    const formatMatch = variableId.match(/format=([^,]+)/);
+    if (formatMatch) {
+      varDef.params = { format: formatMatch[1] };
+    } else {
+      varDef.params = { format: "%Y-%m-%d %H:%M:%S" };
+    }
+  } else if (variableId === "clipboard") {
+    varDef.type = "clipboard";
+  } else if (variableId.startsWith("random")) {
+    varDef.type = "random";
+    // 解析random:min=1,max=100格式的参数
+    const minMatch = variableId.match(/min=(\d+)/);
+    const maxMatch = variableId.match(/max=(\d+)/);
+    varDef.params = {
+      min: minMatch ? parseInt(minMatch[1]) : 1,
+      max: maxMatch ? parseInt(maxMatch[1]) : 100,
+    };
+  } else if (variableId.startsWith("shell:")) {
+    varDef.type = "shell";
+    // 解析shell:cmd=echo $USER格式的参数
+    const cmdMatch = variableId.match(/cmd=(.+)/);
+    if (cmdMatch) {
+      varDef.params = { cmd: cmdMatch[1] };
+    }
+  } else if (variableId.startsWith("form:")) {
+    varDef.type = "form";
+    // 表单变量需要更复杂的解析，这里简化处理
+    varDef.params = { fields: [] };
+  }
+
+  return varDef;
+};
+
+// 插入变量 - Updated to work with cmRef if available and add variable definition
 const insertVariable = (variable: {
   id: string;
   name: string;
@@ -979,6 +1069,27 @@ const insertVariable = (variable: {
     doc.replaceRange(textToInsert, cursor);
     // Move cursor to the end of the inserted text
     doc.setCursor({ line: cursor.line, ch: cursor.ch + textToInsert.length });
+
+    // 添加变量定义到vars数组
+    const varDef = parseVariableAndCreateDefinition(variable.id);
+    if (varDef) {
+      // 确保vars数组存在
+      if (!formState.value.vars) {
+        formState.value.vars = [];
+      }
+
+      // 检查是否已存在相同名称的变量
+      const existingVarIndex = formState.value.vars.findIndex(
+        (v) => v.name === varDef.name
+      );
+      if (existingVarIndex >= 0) {
+        // 更新现有变量
+        formState.value.vars[existingVarIndex] = varDef;
+      } else {
+        // 添加新变量
+        formState.value.vars.push(varDef);
+      }
+    }
   }
 
   // Always focus the editor after insertion, ensuring it happens after DOM updates
@@ -989,7 +1100,17 @@ const insertVariable = (variable: {
 
 // 插入常用变量
 const insertCommonVariable = (variableId: string) => {
-  insertVariable({ id: variableId, name: variableId, description: "" });
+  // 为常用变量提供更友好的描述
+  let description = "";
+  if (variableId === "date") {
+    description = "插入当前日期";
+  } else if (variableId === "clipboard") {
+    description = "插入剪贴板内容";
+  } else if (variableId === "time") {
+    description = "插入当前时间";
+  }
+
+  insertVariable({ id: variableId, name: variableId, description });
 };
 
 // 显示预览
@@ -1092,35 +1213,79 @@ const onSubmit = () => {
         ? formState.value.vars
         : undefined,
 
-    // Reset content-specific fields first
+    // 移除所有内容相关字段和UI专用字段
     content: undefined,
-    replace: undefined,
-    markdown: undefined,
-    html: undefined,
-    image_path: undefined,
-    contentType: undefined, // Remove UI-only field
+    contentType: undefined,
   };
 
-  // Add content based on currentContentType
+  // 根据当前内容类型，只添加对应的字段
   switch (currentContentType.value) {
     case "plain":
+      // 纯文本只使用 replace 字段
       dataToSave.replace = formState.value.content;
+      // 确保删除其他字段
+      delete dataToSave.markdown;
+      delete dataToSave.html;
+      delete dataToSave.image_path;
+      console.log("保存纯文本内容到 replace 字段");
       break;
+
     case "markdown":
+      // Markdown 只使用 markdown 字段
       dataToSave.markdown = formState.value.content;
+      // 确保删除其他字段
+      delete dataToSave.replace;
+      delete dataToSave.html;
+      delete dataToSave.image_path;
+      console.log("保存Markdown内容到 markdown 字段");
       break;
+
     case "html":
+      // HTML 只使用 html 字段
       dataToSave.html = formState.value.content;
+      // 确保删除其他字段
+      delete dataToSave.replace;
+      delete dataToSave.markdown;
+      delete dataToSave.image_path;
+      console.log("保存HTML内容到 html 字段");
       break;
+
     case "image":
+      // 图片只使用 image_path 字段
       dataToSave.image_path = formState.value.content;
+      // 确保删除其他字段
+      delete dataToSave.replace;
+      delete dataToSave.markdown;
+      delete dataToSave.html;
+      console.log("保存图片路径到 image_path 字段");
       break;
+
     case "form":
-      // Store form definition in content, mark contentType
+      // 表单功能暂未实现
+      console.warn("表单功能暂未实现");
+      // 表单使用 content 字段，并标记 contentType
       dataToSave.content = formState.value.content;
-      dataToSave.contentType = "form"; // Explicitly set contentType for forms
+      dataToSave.contentType = "form"; // 显式设置 contentType
+      // 确保删除其他字段
+      delete dataToSave.replace;
+      delete dataToSave.markdown;
+      delete dataToSave.html;
+      delete dataToSave.image_path;
+      console.log("保存表单内容到 content 字段");
       break;
+
+    default:
+      console.error("未知的内容类型:", currentContentType.value);
+      // 默认使用 replace 字段
+      dataToSave.replace = formState.value.content;
+      // 确保删除其他字段
+      delete dataToSave.markdown;
+      delete dataToSave.html;
+      delete dataToSave.image_path;
   }
+
+  // 记录最终保存的数据结构
+  console.log("最终保存的数据:", JSON.stringify(dataToSave, null, 2));
 
   // 保存后更新原始表单数据
   originalFormData.value = JSON.parse(JSON.stringify(formState.value));
@@ -1150,13 +1315,37 @@ onBeforeUnmount(() => {
   store.state.hasUnsavedChanges = false;
 });
 
-// Helper functions to fix type errors
+// 设置内容类型，并确保在切换类型时清除其他类型的字段
 const setContentType = (value: string) => {
   const validTypes = ["plain", "markdown", "html", "image", "form"];
   if (validTypes.includes(value)) {
+    // 如果是表单类型且被禁用，则不允许切换
+    if (
+      value === "form" &&
+      contentTypeOptions.find((opt) => opt.value === "form")?.disabled
+    ) {
+      console.warn("表单功能暂未实现，无法切换到此类型");
+      return;
+    }
+
+    // 保存当前内容，以便在切换类型时保留
+    const currentContent = formState.value.content;
+
+    // 记录类型切换
+    console.log(`内容类型从 ${currentContentType.value} 切换到 ${value}`);
+
+    // 更新当前内容类型
     currentContentType.value = value as ContentType;
+
+    // 我们不需要在这里清除字段，因为formState.value只有content字段
+    // 实际的字段清除会在保存时进行
+
+    // 保留内容到当前类型对应的字段
+    formState.value.content = currentContent;
+
+    // 刷新编辑器
+    cmRef.value?.refresh();
   }
-  cmRef.value?.refresh();
 };
 
 const setForceMode = (value: string) => {
@@ -1166,6 +1355,29 @@ const setForceMode = (value: string) => {
   } else if (value === "default") {
     formState.value.forceMode = "";
   }
+};
+
+// 检查字符串是否是图片URL或Base64
+const isImageUrl = (str: string): boolean => {
+  // 检查是否是URL
+  if (
+    str.startsWith("http://") ||
+    str.startsWith("https://") ||
+    str.startsWith("data:image/")
+  ) {
+    return true;
+  }
+  // 检查是否是相对路径的图片文件
+  const imageExtensions = [
+    ".jpg",
+    ".jpeg",
+    ".png",
+    ".gif",
+    ".bmp",
+    ".webp",
+    ".svg",
+  ];
+  return imageExtensions.some((ext) => str.toLowerCase().endsWith(ext));
 };
 
 // Map rule to formData - Use RuleFormState here
@@ -1197,26 +1409,46 @@ const mapRuleToFormData = (rule: Match | null): RuleFormState => {
 
   // Determine initial contentType and content
   let contentType: ContentType = "plain";
-  let content = rule.replace || "";
+  let content = "";
 
-  if (rule.markdown !== undefined && rule.markdown !== null) {
-    contentType = "markdown";
-    content = rule.markdown;
-  } else if (rule.html !== undefined && rule.html !== null) {
-    contentType = "html";
-    content = rule.html;
-  } else if (rule.image_path !== undefined && rule.image_path !== null) {
+  // 根据存在的字段确定内容类型和内容
+  // 优先级: image_path > markdown > html > replace
+  if (rule.image_path !== undefined && rule.image_path !== null) {
+    // 图片类型
     contentType = "image";
     content = rule.image_path;
-  } else if (isLikelyForm(rule.replace)) {
-    // Check if replace looks like a form
-    contentType = "form";
-    content = rule.replace;
-  } // Add check for script if needed
-  // else if (isLikelyScript(rule.replace)) {
-  //   contentType = 'script';
-  //   content = rule.replace;
-  // }
+    console.log("检测到图片类型，路径:", rule.image_path);
+  } else if (rule.markdown !== undefined && rule.markdown !== null) {
+    // Markdown类型
+    contentType = "markdown";
+    content = rule.markdown;
+    console.log("检测到Markdown类型");
+  } else if (rule.html !== undefined && rule.html !== null) {
+    // HTML类型
+    contentType = "html";
+    content = rule.html;
+    console.log("检测到HTML类型");
+  } else if (rule.replace !== undefined && rule.replace !== null) {
+    // 检查是否可能是表单
+    if (isLikelyForm(rule.replace)) {
+      contentType = "form";
+      content = rule.replace;
+      console.log("检测到表单类型");
+    } else {
+      // 默认为纯文本
+      contentType = "plain";
+      content = rule.replace;
+      console.log("检测到纯文本类型");
+    }
+  } else {
+    // 如果没有内容，默认为纯文本
+    contentType = "plain";
+    content = "";
+    console.log("未检测到内容，默认为纯文本");
+  }
+
+  // 记录检测到的内容类型
+  console.log("最终确定的内容类型:", contentType);
 
   // Combine trigger and triggers
   const triggers = rule.triggers || [];

@@ -27,8 +27,6 @@ export interface Match {
   filePath?: string; // Added path tracking
   updatedAt?: string; // Added timestamp
   guiOrder?: number; // Added for UI display sorting only
-  // Allow other Espanso-specific fields
-  [key: string]: any;
 }
 
 export interface Group {

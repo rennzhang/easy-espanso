@@ -11,6 +11,15 @@
         </div>
 
         <div class="p-4 overflow-auto max-h-[calc(80vh-120px)]">
+          <!-- 开发中提示 -->
+          <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div class="flex items-center">
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-500 mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              <div class="text-sm font-medium text-yellow-700">变量选择器功能正在开发中</div>
+            </div>
+            <p class="text-xs text-yellow-600 mt-1 ml-6">更多变量类型和配置选项将在后续版本中提供</p>
+          </div>
+
           <div class="space-y-2 mb-4">
             <input
               type="text"

@@ -608,10 +608,14 @@ input[type="checkbox"], input[type="radio"] {
 ::-webkit-scrollbar {
   width: 8px;
   height: 8px;
+
 }
 
 ::-webkit-scrollbar-track {
   background: transparent;
+  position: absolute;
+  right: 0;
+  top: 0;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -629,17 +633,4 @@ input[type="checkbox"], input[type="radio"] {
   scrollbar-color: var(--border-hover) transparent;
 }
 
-/* 针对规则列表的滚动条样式 */
-.config-tree::-webkit-scrollbar {
-  width: 6px;
-}
-
-.config-tree::-webkit-scrollbar-thumb {
-  background: var(--border-hover);
-  border-radius: 3px;
-}
-
-.config-tree::-webkit-scrollbar-thumb:hover {
-  background: var(--primary-color);
-}
 

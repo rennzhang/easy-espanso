@@ -1,30 +1,40 @@
 <template>
   <form @submit.prevent="onSubmit" class="space-y-6">
-    <FormSection
-      label="分组名称"
-      description="输入分组名称，用于标识和组织规则"
-      inputId="name"
-    >
-      <Input
-        id="name"
-        v-model="formState.name"
-        placeholder="例如: 常用短语"
-        required
-      />
-    </FormSection>
+    <!-- 分组名称和名称一行 -->
+    <div class="flex flex-col md:flex-row gap-4 mb-4">
+      <!-- 分组名称 -->
+      <div class="w-full md:w-1/2 space-y-1.5">
+        <div class="flex items-center">
+          <label for="name" class="text-sm font-medium text-foreground mr-2">分组名称</label>
+          <HelpTip content="输入分组名称，用于标识和组织规则" />
+        </div>
+        <Textarea
+          id="name"
+          v-model="formState.name"
+          placeholder="例如: 常用短语"
+          required
+          rows="2"
+          spellcheck="false"
+        />
+      </div>
 
-    <FormSection
-      label="描述"
-      description="为分组添加简短描述，方便识别和管理"
-      inputId="label"
-    >
-      <Input
-        id="label"
-        v-model="formState.label"
-        placeholder="可选的分组描述"
-      />
-    </FormSection>
+      <!-- 名称 (描述) -->
+      <div class="w-full md:w-1/2 space-y-1.5">
+        <div class="flex items-center">
+          <label for="label" class="text-sm font-medium text-foreground mr-2">名称</label>
+          <HelpTip content="为分组添加简短描述，方便识别和管理" />
+        </div>
+        <Textarea
+          id="label"
+          v-model="formState.label"
+          placeholder="输入分组名称..."
+          rows="2"
+          spellcheck="false"
+        />
+      </div>
+    </div>
 
+    <!-- 公共前缀 -->
     <FormSection
       label="公共前缀"
       description="可选，将作为该分组内所有规则的前缀"
@@ -36,19 +46,17 @@
         placeholder="例如: :common"
       />
     </FormSection>
-
-    <!-- 不再需要底部保存按钮 -->
   </form>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
-import { Button } from '../ui/button';
 import { Input } from '../ui/input';
+import Textarea from '../ui/textarea.vue';
 import FormSection from '../common/FormSection.vue';
+import HelpTip from '../common/HelpTip.vue';
 import type { Group } from '../../types/espanso';
-import { Transition } from 'vue';
 
 // 获取 store
 const store = useEspansoStore();
@@ -68,7 +76,7 @@ const emit = defineEmits<{
 // 表单状态类型，使其与Group兼容
 interface GroupFormState {
   name: string;
-  label?: string;
+  label: string;
   prefix?: string;
 }
 
