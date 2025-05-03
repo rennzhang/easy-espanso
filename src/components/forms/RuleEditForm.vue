@@ -133,10 +133,9 @@
           <!-- Bottom Toolbar -->
           <TooltipProvider :delay-duration="200">
             <div
-              class="flex items-center gap-1 p-1.5 border-t bg-muted/50"
+              class="flex items-center justify-between gap-1 p-1.5 border-t bg-muted/50"
               v-if="currentContentType !== 'image'"
             >
-              <!-- 替换模式和插入按钮 - 仅在非图片类型下显示 -->
               <div class="flex items-center gap-1">
                 <div class="flex-grow"></div>
                 <!-- Spacer -->
@@ -191,28 +190,69 @@
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
+              <!-- 替换模式和插入按钮 - 仅在非图片类型下显示 -->
+              <div class="flex items-center justify-between">
+                <!-- Replacement Mode Label and HelpTip (Moved Left & Renamed) -->
+                <div class="flex items-center mr-2">
+                  <Label class="text-xs font-medium mr-1">替换模式</Label>
+                  <HelpTip
+                    content="控制内容如何替换触发词，通过剪贴板或模拟按键"
+                  />
+                </div>
 
-              <!-- 图片类型下只显示预览按钮 -->
-              <div class="flex-grow"></div>
-              <!-- 竖分割线 -->
-              <div class="hidden md:block border-r h-[16px]"></div>
-              <!-- Preview Button - 所有类型都显示 -->
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    @click="showPreview"
-                    class="h-7 w-7"
+                <!-- Insertion Mode Menubar (Moved Left) -->
+                <Menubar
+                  class="border rounded-none overflow-hidden p-0 shadow-none mr-2"
+                >
+                  <template
+                    v-for="(option, index) in insertionModeOptions"
+                    :key="option.value"
                   >
-                    <EyeIcon class="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>预览内容</p>
-                </TooltipContent>
-              </Tooltip>
+                    <MenubarMenu>
+                      <TooltipProvider
+                        v-if="option.value === 'default'"
+                        :delay-duration="100"
+                      >
+                        <Tooltip>
+                          <TooltipTrigger as-child>
+                            <MenubarTrigger
+                              @click="setForceMode('')"
+                              class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
+                              :class="[
+                                { 'border-l': index > 0 },
+                                formState.forceMode === ''
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'hover:bg-muted',
+                              ]"
+                            >
+                              {{ option.label }}
+                            </MenubarTrigger>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>
+                              自动模式: Espanso 会根据内容长度 (阈值默认100字符)
+                              自动选择插入方式 (按键或剪贴板)。
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <MenubarTrigger
+                        v-else
+                        @click="setForceMode(option.value)"
+                        class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
+                        :class="[
+                          { 'border-l': index > 0 },
+                          formState.forceMode === option.value
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted',
+                        ]"
+                      >
+                        {{ option.label }}
+                      </MenubarTrigger>
+                    </MenubarMenu>
+                  </template>
+                </Menubar>
+              </div>
             </div>
             <!-- VariableSelector Component moved inside TooltipProvider -->
             <VariableSelector
@@ -229,79 +269,7 @@
       class="absolute bottom-0 right-0 w-full bg-card border-t shadow-lg z-20 py-2 mt-0"
     >
       <div class="flex items-center justify-between px-4 space-x-3">
-        <div class="flex items-center justify-between">
-          <!-- Replacement Mode Label and HelpTip (Moved Left & Renamed) -->
-          <div class="flex items-center mr-2">
-            <Label class="text-xs font-medium mr-1">替换模式</Label>
-            <HelpTip content="控制内容如何替换触发词，通过剪贴板或模拟按键" />
-          </div>
-
-          <!-- Insertion Mode Menubar (Moved Left) -->
-          <Menubar
-            class="border rounded-none overflow-hidden p-0 shadow-none mr-2"
-          >
-            <template
-              v-for="(option, index) in insertionModeOptions"
-              :key="option.value"
-            >
-              <MenubarMenu>
-                <TooltipProvider
-                  v-if="option.value === 'default'"
-                  :delay-duration="100"
-                >
-                  <Tooltip>
-                    <TooltipTrigger as-child>
-                      <MenubarTrigger
-                        @click="setForceMode('')"
-                        class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
-                        :class="[
-                          { 'border-l': index > 0 },
-                          formState.forceMode === ''
-                            ? 'bg-primary text-primary-foreground'
-                            : 'hover:bg-muted',
-                        ]"
-                      >
-                        {{ option.label }}
-                      </MenubarTrigger>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>
-                        自动模式: Espanso 会根据内容长度 (阈值默认100字符)
-                        自动选择插入方式 (按键或剪贴板)。
-                      </p>
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <MenubarTrigger
-                  v-else
-                  @click="setForceMode(option.value)"
-                  class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
-                  :class="[
-                    { 'border-l': index > 0 },
-                    formState.forceMode === option.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'hover:bg-muted',
-                  ]"
-                >
-                  {{ option.label }}
-                </MenubarTrigger>
-              </MenubarMenu>
-            </template>
-          </Menubar>
-        </div>
         <div class="flex items-center justify-end">
-
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            @click="showPreview"
-            class="h-9 px-3 focus:outline-none"
-          >
-            <EyeIcon class="h-4 w-4 mr-2" />
-            <span>预览</span>
-          </Button>
-  
           <Button
             type="button"
             variant="outline"
@@ -310,7 +278,7 @@
             class="h-9 px-3 focus:outline-none"
           >
             <SettingsIcon class="h-4 w-4 mr-2" />
-            <span>高级设置</span>
+            <span>更多设置</span>
           </Button>
         </div>
       </div>
@@ -755,18 +723,20 @@ const cmOptions = computed(() => {
   }
   return {
     mode: mode,
-    lineNumbers:
-      currentContentType.value === "html" ||
-      currentContentType.value === "markdown"
-        ? true
-        : false,
+    lineNumbers: false,
+    // lineNumbers:
+    //   currentContentType.value === "html" ||
+    //   currentContentType.value === "markdown"
+    //     ? true
+    //     : false,
     lineWrapping: true,
     tabSize: 2,
-    styleActiveLine:
-      currentContentType.value === "html" ||
-      currentContentType.value === "markdown"
-        ? true
-        : false,
+    styleActiveLine: false,
+    // styleActiveLine:
+    //   currentContentType.value === "html" ||
+    //   currentContentType.value === "markdown"
+    //     ? true
+    //     : false,
     // theme: 'material-darker' // Optional theme
   };
 });
@@ -790,9 +760,41 @@ const originalFormData = ref<RuleFormState | null>(null);
 const variableSelectorRef = ref<InstanceType<typeof VariableSelector> | null>(
   null
 );
+const showPreview = () => {
+  if (!formState.value.content) return;
 
-// Expose the method to get the current form data
+  // 处理变量
+  let content = formState.value.content;
+  const variableRegex = /\{\{([^}]+)\}\}/g; // Corrected Regex
+
+  content = content.replace(variableRegex, (_match, variableName) => {
+    // 根据变量类型生成预览
+    if (variableName === "date") {
+      return new Date().toLocaleDateString();
+    } else if (variableName === "time") {
+      return new Date().toLocaleTimeString();
+    } else if (variableName.startsWith("date:")) {
+      return new Date().toLocaleString();
+    } else if (variableName === "clipboard") {
+      return "[剪贴板内容]";
+    } else if (variableName.startsWith("random")) {
+      return Math.floor(Math.random() * 100).toString();
+    } else if (variableName.startsWith("shell:")) {
+      return "[Shell 命令结果]";
+    } else if (variableName.startsWith("form:")) {
+      return "[表单输入]";
+    } else {
+      // 对于未知变量，保持原样
+      return `{{${variableName}}}`;
+    }
+  });
+
+  previewContent.value = content;
+  showPreviewModal.value = true;
+};
+// Expose the methods to get the current form data and show preview
 defineExpose({
+  showPreview,
   getFormData: (): Partial<Match> & {
     content?: string;
     contentType?: RuleFormState["contentType"];
@@ -1204,38 +1206,6 @@ const insertCommonVariable = (variableId: string) => {
 };
 
 // 显示预览
-const showPreview = () => {
-  if (!formState.value.content) return;
-
-  // 处理变量
-  let content = formState.value.content;
-  const variableRegex = /\{\{([^}]+)\}\}/g; // Corrected Regex
-
-  content = content.replace(variableRegex, (_match, variableName) => {
-    // 根据变量类型生成预览
-    if (variableName === "date") {
-      return new Date().toLocaleDateString();
-    } else if (variableName === "time") {
-      return new Date().toLocaleTimeString();
-    } else if (variableName.startsWith("date:")) {
-      return new Date().toLocaleString();
-    } else if (variableName === "clipboard") {
-      return "[剪贴板内容]";
-    } else if (variableName.startsWith("random")) {
-      return Math.floor(Math.random() * 100).toString();
-    } else if (variableName.startsWith("shell:")) {
-      return "[Shell 命令结果]";
-    } else if (variableName.startsWith("form:")) {
-      return "[表单输入]";
-    } else {
-      // 对于未知变量，保持原样
-      return `{{${variableName}}}`;
-    }
-  });
-
-  previewContent.value = content;
-  showPreviewModal.value = true;
-};
 
 // 提交表单
 const onSubmit = () => {
@@ -1623,7 +1593,10 @@ const addTag = (tag: string) => {
 };
 </script>
 <style>
-.codemirror-container.hidden-line-numbers .CodeMirror-gutters {
+/* .codemirror-container.hidden-line-numbers .CodeMirror-gutters {
+  display: none !important;
+} */
+.codemirror-container .CodeMirror-gutters {
   display: none !important;
 }
 /* .codemirror-container.hidden-line-numbers .CodeMirror-sizer {

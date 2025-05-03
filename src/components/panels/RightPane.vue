@@ -4,6 +4,21 @@
       <div class="flex justify-between items-center">
         <h3 class="text-lg font-semibold text-foreground m-0" v-html="headerTitle"></h3>
         <div class="flex gap-2" v-if="selectedItem">
+          <!-- 预览按钮 -->
+          <Button
+            v-if="selectedItem.type === 'match'"
+            size="sm"
+            variant="outline"
+            class="h-8 px-2 py-0 justify-center"
+            @click="previewRule"
+          >
+            <div class="flex items-center justify-center w-full">
+              <EyeIcon class="h-4 w-4 mr-1" />
+              <span>预览</span>
+            </div>
+          </Button>
+
+          <!-- 保存按钮 -->
           <Button
             size="sm"
             variant="outline"
@@ -67,7 +82,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
-import { SaveIcon, Loader2Icon, CheckIcon, XIcon } from 'lucide-vue-next';
+import { SaveIcon, Loader2Icon, CheckIcon, XIcon, EyeIcon } from 'lucide-vue-next';
 import { Button } from '../ui/button';
 import RuleEditForm from '../forms/RuleEditForm.vue';
 import GroupEditForm from '../forms/GroupEditForm.vue';
@@ -165,7 +180,7 @@ const saveItem = async () => {
   // Get current data from the active form using refs
   if (selectedItem.value.type === 'match' && ruleFormRef.value) {
     currentFormData = ruleFormRef.value.getFormData();
-    
+
     formType = 'match';
   } else if (selectedItem.value.type === 'group' && groupFormRef.value) {
     currentFormData = groupFormRef.value.getFormData();
@@ -305,6 +320,13 @@ const deleteGroup = (id: string) => {
     store.deleteItem(id, 'group');
     // TODO: Trigger save after deletion?
     store.state.selectedItemId = null; // Clear selection after delete
+  }
+};
+
+// 预览规则
+const previewRule = () => {
+  if (selectedItem.value?.type === 'match' && ruleFormRef.value) {
+    ruleFormRef.value.showPreview();
   }
 };
 </script>
