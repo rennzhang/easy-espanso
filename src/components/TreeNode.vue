@@ -86,7 +86,7 @@
             </span>
             <span
               v-if="visibleChildCount > 0 && shouldShowCount"
-              class="ml-2 text-xs px-1.5 py-0.5 rounded-full"
+              class="mx-2 text-xs px-1.5 py-0.5 rounded-full"
               :class="isSelected ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'"
             >
               {{ visibleChildCount }}
