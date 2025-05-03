@@ -81,10 +81,11 @@
 
         <!-- Editor Container -->
         <div
+          v-if="currentContentType !== 'image'"
           class="shadow-xs border-1 border rounded-md overflow-hidden min-h-[300px] focus-within:border-gray-600 focus-within:shadow-xl focus:border-gray-600 focus:shadow-xl duration-150 border-gray-300 flex-1 flex flex-col"
         >
           <!-- CodeMirror Editor (Replaces all previous textareas) -->
-          <div v-if="currentContentType !== 'image'" class="h-full">
+          <div class="h-full">
             <Codemirror
               :class="{
                 'hidden-line-numbers':
@@ -103,38 +104,10 @@
             />
           </div>
 
-          <!-- Image Upload/Preview -->
-          <div
-            v-else-if="currentContentType === 'image'"
-            class="p-3 min-h-[300px]"
-          >
-            <Input
-              type="file"
-              accept="image/*"
-              @change="handleImageUpload"
-              class="w-full h-auto px-2 py-1 mb-2"
-            />
-            <div v-if="isImageUrl(formState.content || '')" class="mt-2">
-              <!-- 显示图片路径 -->
-              <div class="p-2 bg-gray-100 rounded mb-2 text-sm">
-                <p class="font-medium">图片路径:</p>
-                <p class="text-gray-600 break-all">{{ formState.content }}</p>
-              </div>
-
-              <!-- 如果是URL或Base64，尝试显示预览 -->
-              <img
-                :src="formState.content"
-                alt="预览"
-                class="max-w-full max-h-[200px] rounded-md"
-              />
-            </div>
-          </div>
-
           <!-- Bottom Toolbar -->
           <TooltipProvider :delay-duration="200">
             <div
               class="flex items-center justify-between gap-1 p-1.5 border-t bg-muted/50"
-              v-if="currentContentType !== 'image'"
             >
               <div class="flex items-center gap-1">
                 <div class="flex-grow"></div>
@@ -254,12 +227,76 @@
                 </Menubar>
               </div>
             </div>
-            <!-- VariableSelector Component moved inside TooltipProvider -->
-            <VariableSelector
-              ref="variableSelectorRef"
-              @select="insertVariable"
-            />
           </TooltipProvider>
+        </div>
+
+        <!-- Image Upload/Preview - REVISED -->
+        <div
+          v-else-if="currentContentType === 'image'"
+          class="p-4 flex flex-col items-center justify-center border border-dashed rounded-md min-h-[300px] text-muted-foreground hover:border-primary/50 transition-colors duration-150"
+          @dragover.prevent="handleDragOver"
+          @dragleave.prevent="handleDragLeave"
+          @drop.prevent="handleDrop"
+          :class="{ 'border-primary bg-primary/5': isDragging }"
+          @click="triggerFileInput"
+        >
+          <!-- Hidden File Input -->
+          <Input
+            ref="imageInputRef"
+            type="file"
+            accept="image/*"
+            @change="handleImageUpload"
+            class="hidden"
+          />
+
+          <!-- State: Image Selected -->
+          <div
+            v-if="formState.content && isImageUrl(formState.content)"
+            class="text-center w-full"
+          >
+            <p class="text-sm font-medium mb-2 text-foreground">当前图片:</p>
+            <img
+              :src="formState.content"
+              alt="预览"
+              class="max-w-full max-h-[200px] rounded-md mb-3 mx-auto border"
+            />
+            <div class="p-2 bg-muted/50 rounded mb-3 text-sm text-left">
+              <p class="font-medium text-foreground text-xs">路径:</p>
+              <p class="text-muted-foreground break-all text-xs">
+                {{ formState.content }}
+              </p>
+            </div>
+            <Button
+              type="button"
+              variant="destructive"
+              size="sm"
+              @click.stop="removeImage"
+              class="h-8 px-3 text-xs"
+            >
+              <XIcon class="h-3 w-3 mr-1" />
+              移除图片
+            </Button>
+          </div>
+
+          <!-- State: No Image Selected -->
+          <div v-else class="text-center cursor-pointer">
+            <UploadCloudIcon class="h-12 w-12 mx-auto mb-3 text-gray-400" />
+            <p class="text-sm font-medium mb-1 text-foreground">
+              拖拽图片到此处
+            </p>
+            <p class="text-xs mb-2">或</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              class="h-8 px-3 text-xs pointer-events-none"
+            >
+              点击选择文件
+            </Button>
+            <p class="text-xs mt-2 text-gray-500">
+              (支持 JPG, PNG, GIF, WEBP 等)
+            </p>
+          </div>
         </div>
       </div>
     </div>
@@ -546,6 +583,8 @@
       </div>
     </div>
   </form>
+  <!-- VariableSelector Component moved inside TooltipProvider -->
+  <VariableSelector ref="variableSelectorRef" @select="insertVariable" />
 </template>
 
 <script setup lang="ts">
@@ -581,6 +620,7 @@ import {
   MousePointerClickIcon,
   MoreHorizontalIcon,
   SettingsIcon,
+  UploadCloudIcon,
 } from "lucide-vue-next";
 import type { Match } from "../../types/espanso";
 import { Transition } from "vue";
@@ -623,6 +663,11 @@ const emit = defineEmits<{ (e: "delete", id: string): void }>();
 
 // 获取 store
 const store = useEspansoStore();
+
+// Ref for the hidden file input
+const imageInputRef = ref<HTMLInputElement | null>(null);
+// State for drag-over effect
+const isDragging = ref(false);
 
 // 定义内容类型 (Added ContentType definition)
 type ContentType =
@@ -1024,8 +1069,8 @@ watch(
   () => {
     // 延迟检查，确保 originalFormData 已经更新完毕 (如果是由 props 变化引起的)
     nextTick(() => {
-       console.log("FormState 变化，nextTick 中调用 checkFormModified");
-       checkFormModified();
+      console.log("FormState 变化，nextTick 中调用 checkFormModified");
+      checkFormModified();
     });
   },
   { deep: true }
@@ -1061,36 +1106,102 @@ const checkFormModified = () => {
   console.log("表单修改状态:", hasChanged);
 };
 
-// 处理图片上传
-const handleImageUpload = (event: Event) => {
-  const input = event.target as HTMLInputElement;
-  if (input.files && input.files[0]) {
-    const file = input.files[0];
+// Trigger the hidden file input click
+const triggerFileInput = () => {
+  // Only trigger if no image is currently selected to avoid conflict with remove button
+  if (!formState.value.content || !isImageUrl(formState.value.content)) {
+    imageInputRef.value?.click();
+  }
+};
 
+// Handle drag over event
+const handleDragOver = (event: DragEvent) => {
+  isDragging.value = true;
+};
+
+// Handle drag leave event
+const handleDragLeave = (event: DragEvent) => {
+  isDragging.value = false;
+};
+
+// Handle drop event
+const handleDrop = (event: DragEvent) => {
+  isDragging.value = false;
+  if (event.dataTransfer && event.dataTransfer.files.length > 0) {
+    const file = event.dataTransfer.files[0];
+    // Basic type check
+    if (file.type.startsWith("image/")) {
+      // Pass the file object to handleImageUpload
+      handleImageUpload(event, file);
+    } else {
+      alert("请拖拽有效的图片文件!");
+    }
+  }
+};
+
+// Method to remove the selected image
+const removeImage = () => {
+  formState.value.content = "";
+  // Reset the hidden input value if necessary
+  if (imageInputRef.value) {
+    imageInputRef.value.value = "";
+  }
+  checkFormModified(); // Check if removing the image is a modification
+};
+
+// 处理图片上传 (现在接受可选的文件参数用于拖拽)
+const handleImageUpload = (
+  event: Event | DragEvent,
+  droppedFile: File | null = null
+) => {
+  let file: File | null = null;
+
+  if (droppedFile) {
+    // Case 1: File from drag-and-drop
+    file = droppedFile;
+  } else {
+    // Case 2: File from input change event
+    const target = event.target as HTMLInputElement;
+    if (target.files && target.files[0]) {
+      file = target.files[0];
+    }
+  }
+
+  if (file) {
+    console.log("Selected/Dropped image file:", file);
     // 在Electron环境中，我们可以通过input元素的files属性获取完整路径
     // 但在标准Web环境中，这是不可能的，因为安全限制
 
     // 获取完整路径 - 尝试使用Electron特有的API
     let filePath = "";
 
-    // 1. 尝试从input元素获取路径 (Electron特有)
-    if ((input as any).files[0].path) {
-      filePath = (input as any).files[0].path;
+    // 1. 尝试从 File 对象获取路径 (Electron特有)
+    // 注意: file.path 在标准浏览器中不存在
+    if ((file as any).path) {
+      filePath = (file as any).path;
     }
     // 2. 如果无法获取完整路径，使用文件名作为备选
     else {
       // 在实际应用中，这里应该将文件复制到espanso的资源目录
       // 并返回相对于espanso配置的路径
-      filePath = `/path/to/espanso/images/${file.name}`;
+      // **重要提示:** 这里的逻辑需要根据你的 Electron 主进程或 preload 脚本来完善，
+      // 以便真正地复制文件并获取正确的相对路径。
+      // 目前仅作为 UI 演示。
+      filePath = `/path/to/espanso/assets/${file.name}`; // Placeholder
 
-      // 提示用户我们无法获取完整路径
-      console.warn("无法获取文件完整路径，使用模拟路径代替");
+      // 提示用户我们无法获取完整路径，并且需要实际的文件管理逻辑
+      console.warn(
+        "无法获取文件完整路径，使用模拟路径代替。需要实现文件复制和路径管理逻辑!"
+      );
+      // 你可能想在这里用 toast 或其他方式提示用户
+      // toast.info("图片路径为模拟路径，需要配置实际存储位置");
     }
 
     // 保存图片路径到content字段，后续会被映射到image_path
     formState.value.content = filePath;
+    console.log("图片路径设置为:", filePath);
 
-    console.log("图片路径:", filePath);
+    checkFormModified(); // Check if adding/changing image modifies the form
   }
 };
 
