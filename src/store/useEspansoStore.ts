@@ -2,39 +2,34 @@ import { defineStore } from 'pinia';
 import { ref, computed, toRaw } from 'vue';
 import { Match, Group, EspansoConfig } from '../types/espanso';
 import { PreloadApi, FileInfo, YamlData } from '../types/preload';
-import { cloneDeep } from 'lodash-es';
 import {
   readFile, parseYaml, writeFile, serializeYaml,
-  listFiles, scanDirectory, fileExists
-} from '../services/fileService';
+  scanDirectory, fileExists
+  } from '../services/fileService';
+import {
+  generateId,
+  resetGuiOrderCounter,
+  processMatch,
+  processGroup,
+  findItemInEspansoConfig,
+  findItemByIdRecursive,
+  findAndUpdateInGroup
+} from '@/utils/espansoDataUtils';
+import {
+  createFileNode, createFolderNode, addToTree, findFileNode,
+  findNodeById,
+  getFilePathForNodeId,
+  getDescendantNodeIds,
+  findAndUpdateInTree,
+  updateDescendantPathsAndFilePaths
+} from '@/utils/configTreeUtils';
+import type { ConfigTreeNode, ConfigFileNode, ConfigFolderNode } from '@/utils/configTreeUtils';
 
 declare global {
   interface Window {
     preloadApi?: PreloadApi;
   }
 }
-
-// Configuration tree structure
-export interface ConfigFileNode {
-  type: 'file';
-  name: string;
-  path: string;
-  fileType: 'match' | 'config' | 'package';
-  content?: YamlData;
-  matches?: Match[];
-  groups?: Group[];
-  id?: string;
-}
-
-export interface ConfigFolderNode {
-  type: 'folder';
-  name: string;
-  path: string;
-  children: (ConfigFileNode | ConfigFolderNode)[];
-  id?: string;
-}
-
-export type ConfigTreeNode = ConfigFileNode | ConfigFolderNode;
 
 // Global configuration interface
 export interface GlobalConfig {
@@ -56,7 +51,8 @@ export interface GlobalConfig {
   [key: string]: any;
 }
 
-interface State {
+// Export the State interface
+export interface State {
   config: EspansoConfig | null;
   configPath: string | null;
   configRootDir: string | null;
@@ -97,17 +93,13 @@ export const useEspansoStore = defineStore('espanso', () => {
     hasUnsavedFileSystemChanges: false,
   });
 
-  let globalGuiOrderCounter = 0; // Define counter outside
-
   // --- Define helper functions outside computed/actions if possible, or ensure they are in scope ---
   const getAllMatchesFromTree = (): Match[] => {
     const matches: Match[] = [];
     const traverseTree = (nodes: ConfigTreeNode[]) => {
       for (const node of nodes) {
         if (node.type === 'file') {
-          if (node.matches) {
-            matches.push(...node.matches);
-          }
+          node.matches?.forEach((m: Match) => matches.push(m));
         } else if (node.type === 'folder' && node.children) {
           traverseTree(node.children);
         }
@@ -122,9 +114,7 @@ export const useEspansoStore = defineStore('espanso', () => {
     const traverseTree = (nodes: ConfigTreeNode[]) => {
       for (const node of nodes) {
         if (node.type === 'file') {
-          if (node.groups) {
-            groups.push(...node.groups);
-          }
+          node.groups?.forEach((g: Group) => groups.push(g));
         } else if (node.type === 'folder' && node.children) {
           traverseTree(node.children);
         }
@@ -136,230 +126,17 @@ export const useEspansoStore = defineStore('espanso', () => {
 
   // --- Helpers ---
 
-  const generateId = (prefix: string): string => {
-    return `${prefix}-${Math.random().toString(36).substring(2, 11)}`;
-  };
-
   const isConfigFile = (fileName: string): boolean => {
     return (fileName.endsWith('.yml') || fileName.endsWith('.yaml')) && !fileName.startsWith('_');
   };
 
-  const processMatch = (match: any, filePath?: string): Match => {
-    globalGuiOrderCounter++; // Increment counter
-    console.log('[processMatch] 处理触发词:', match.trigger, match.triggers, `guiOrder: ${globalGuiOrderCounter}`);
-    const baseMatch: Match = {
-      id: match.id || generateId('match'),
-      type: 'match',
-      filePath: filePath || match.filePath || '',
-      guiOrder: globalGuiOrderCounter, // Assign current order
-      // Initialize trigger/triggers as undefined
-      trigger: undefined,
-      triggers: undefined,
-      // Copy other known properties explicitly or use spread cautiously
-      replace: match.replace || '',
-      label: match.label,
-      description: match.description,
-      word: match.word,
-      left_word: match.left_word,
-      right_word: match.right_word,
-      propagate_case: match.propagate_case,
-      uppercase_style: match.uppercase_style,
-      force_mode: match.force_mode,
-      apps: match.apps,
-      exclude_apps: match.exclude_apps,
-      vars: match.vars,
-      search_terms: match.search_terms,
-      priority: match.priority,
-      hotkey: match.hotkey,
-      image_path: match.image_path,
-      markdown: match.markdown,
-      html: match.html,
-      content: match.content,
-    };
-
-    // 处理多行触发词字符串 (YAML字符块，比如 trigger: |- )
-    if (match.trigger && typeof match.trigger === 'string' &&
-       (match.trigger.includes('\n') || match.trigger.includes(','))) {
-      console.log('[processMatch] 检测到多行触发词:', match.trigger);
-      // 使用触发词分割逻辑，统一处理
-      const triggerItems = match.trigger
-        .split(/[\n,]/) // Use regex for newline or comma
-        .map((t: string) => t.trim())
-        .filter((t: string) => t !== '');
-
-      if (triggerItems.length > 1) {
-        console.log('[processMatch] 将多行触发词转换为数组:', triggerItems);
-        baseMatch.triggers = triggerItems;
-        // Ensure single trigger is removed if triggers array is used
-        delete baseMatch.trigger;
-        return baseMatch;
-      }
-      // If only one item after split, treat as single trigger
-      baseMatch.trigger = triggerItems[0] || match.trigger; // Fallback to original if split resulted in empty
-      delete baseMatch.triggers; // Ensure triggers is removed
-      return baseMatch;
-
-    }
-
-    // 标准处理逻辑 for existing trigger/triggers fields
-    if (Array.isArray(match.triggers) && match.triggers.length > 0) {
-      // 如果有triggers数组，优先使用
-      baseMatch.triggers = match.triggers;
-      delete baseMatch.trigger; // Ensure single trigger is removed if array exists
-    } else if (match.trigger) {
-      // 如果只有单个trigger，使用它
-      baseMatch.trigger = match.trigger;
-      delete baseMatch.triggers; // Ensure triggers array is removed
-    } else {
-      // If neither, maybe default to empty trigger?
-      // baseMatch.trigger = '';
-      // delete baseMatch.triggers;
-    }
-
-
-    return baseMatch;
+  const getFilePathForMatchOrGroup = (itemId: string): string | null => {
+    return getFilePathForNodeId(state.value.configTree, itemId);
   };
 
-  const processGroup = (group: any, filePath?: string): Group => {
-    globalGuiOrderCounter++; // Increment counter for group itself
-    const processedGroup: Group = {
-      id: group.id || generateId('group'),
-      type: 'group',
-      name: group.name || '未命名分组',
-      matches: [],
-      groups: [],
-      filePath: filePath || group.filePath || '',
-      guiOrder: globalGuiOrderCounter, // Assign current order
-      ...(group as Omit<Group, 'id' | 'type' | 'name' | 'matches' | 'groups' | 'filePath' | 'guiOrder'>)
-    };
-    processedGroup.matches = Array.isArray(group.matches) ? group.matches.map((match: any) => processMatch(match, filePath)) : [];
-    processedGroup.groups = Array.isArray(group.groups) ? group.groups.map((nestedGroup: any) => processGroup(nestedGroup, filePath)) : [];
-    return processedGroup;
-  };
-
-  const createFileNode = (file: FileInfo, content: YamlData, fileType: 'match' | 'config' | 'package', processedMatches: Match[], processedGroups: Group[]): ConfigFileNode => {
-    return {
-      type: 'file',
-      name: file.name,
-      path: file.path,
-      id: `file-${file.path}`, // Add an ID for files
-      fileType,
-      content, // Store original parsed content
-      matches: processedMatches, // Use pre-processed matches
-      groups: processedGroups   // Use pre-processed groups
-    };
-  };
-
-  const createFolderNode = (name: string, path: string): ConfigFolderNode => {
-    return {
-      type: 'folder',
-      name,
-      path,
-      id: `folder-${path}`, // Add an ID for folders
-      children: []
-    };
-  };
-
-  const addToTree = (tree: ConfigTreeNode[], fileNodeToAdd: ConfigFileNode, relativePath: string): void => {
-    // Use preloadApi for path joining if available, cast to any
-    const safeJoinPath = (...args: string[]) => {
-      const api = window.preloadApi as any;
-      if (api?.joinPath) {
-        // console.log('[safeJoinPath in addToTree] Using preloadApi.joinPath');
-        return api.joinPath(...args);
-      } else {
-        // console.log('[safeJoinPath in addToTree] Falling back to args.join("/")');
-        return args.join('/');
-      }
-    };
-
-    if (!relativePath || relativePath === '') {
-      tree.push(fileNodeToAdd);
-      return;
-    }
-    const parts = relativePath.split('/');
-    const folderName = parts[0];
-    let folderNode = tree.find(node => node.type === 'folder' && node.name === folderName) as ConfigFolderNode | undefined;
-    if (!folderNode) {
-      const parentPath = fileNodeToAdd.path.substring(0, fileNodeToAdd.path.lastIndexOf('/'));
-      const folderPath = parentPath ? safeJoinPath(parentPath.substring(0, parentPath.lastIndexOf('/') + 1), folderName) : folderName;
-      folderNode = createFolderNode(folderName, folderPath);
-      tree.push(folderNode);
-    }
-    if (parts.length > 1) {
-      addToTree(folderNode.children, fileNodeToAdd, parts.slice(1).join('/'));
-    } else {
-      folderNode.children.push(fileNodeToAdd);
-    }
-  };
-
-  const findFileNode = (nodes: ConfigTreeNode[], path: string): ConfigFileNode | null => {
-    for (const node of nodes) {
-      if (node.type === 'file' && node.path === path) {
-        return node;
-      } else if (node.type === 'folder') {
-        const found = findFileNode(node.children, path);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-
-  // --- NEW HELPER FUNCTION ---
-  const getFilePathForNode = (nodes: ConfigTreeNode[], targetNodeId: string): string | null => {
-    for (const node of nodes) {
-      if (node.type === 'file' && node.id === targetNodeId) {
-        return node.path;
-      }
-      if (node.type === 'file') {
-         if (node.matches?.some(m => m.id === targetNodeId)) return node.path;
-         if (node.groups?.some(g => g.id === targetNodeId)) return node.path;
-         if (node.groups) {
-            for (const group of node.groups) {
-               const itemInGroup = findItemByIdRecursive(group, targetNodeId);
-               if (itemInGroup) return node.path;
-            }
-         }
-      }
-      else if (node.type === 'folder' && node.children) {
-        const path = getFilePathForNode(node.children, targetNodeId);
-        if (path) return path;
-      }
-    }
-    return null;
-  };
-
-  // Helper for recursive search within Group objects
-  const findItemByIdRecursive = (item: Match | Group, targetId: string): Match | Group | null => {
-    if (item.id === targetId) return item;
-    if (item.type === 'group') {
-       if (item.matches) {
-          const foundMatch = item.matches.find(m => m.id === targetId);
-          if (foundMatch) return foundMatch;
-       }
-       if (item.groups) {
-          for (const subGroup of item.groups) {
-             const found = findItemByIdRecursive(subGroup, targetId);
-             if (found) return found;
-          }
-       }
-    }
-    return null;
-  };
-
-  const findItemInGroup = (group: Group, id: string): Match | Group | null => {
-    return findItemByIdRecursive(group, id);
-  };
-
+  // Ensure findItemById definition exists and uses the util
   const findItemById = (id: string): Match | Group | null => {
-    if (!state.value.config) return null;
-     const directMatch = state.value.config.matches.find(m => m.id === id);
-     if (directMatch) return directMatch;
-     for (const group of state.value.config.groups) {
-        const found = findItemByIdRecursive(group, id);
-        if (found) return found;
-     }
-     return null;
+    return findItemInEspansoConfig(state.value.config, id);
   };
 
   // --- Computed Properties ---
@@ -372,9 +149,12 @@ export const useEspansoStore = defineStore('espanso', () => {
     return state.value.selectedItemId ? findItemById(state.value.selectedItemId) : null;
   });
 
+  const internalClipboardContent = computed(() => { /* ... */ });
+
   // --- Core Actions ---
 
   const loadConfig = async (configDirOrPath: string): Promise<void> => {
+    resetGuiOrderCounter();
     // Ensure createFileNode and createFolderNode assign IDs
      // Use preloadApi for path joining if available, cast to any
     const safeJoinPath = (...args: string[]) => {
@@ -387,7 +167,6 @@ export const useEspansoStore = defineStore('espanso', () => {
         return args.join('/');
       }
     };
-    globalGuiOrderCounter = 0; // Reset counter before loading
     console.log('开始加载配置，路径:', configDirOrPath);
     state.value.loading = true;
     state.value.error = null;
@@ -582,28 +361,6 @@ export const useEspansoStore = defineStore('espanso', () => {
   };
 
   // --- Helpers for updating state ---
-
-  const findAndUpdateInGroup = (group: Group, updatedItem: Match | Group): boolean => {
-    if (updatedItem.type === 'match' && group.matches) {
-        const index = group.matches.findIndex(m => m.id === updatedItem.id);
-        if (index !== -1) {
-            group.matches[index] = updatedItem as Match;
-            return true;
-        }
-    }
-    if (group.groups) {
-        for (let i = 0; i < group.groups.length; i++) {
-             if (updatedItem.type === 'group' && group.groups[i].id === updatedItem.id) {
-                 group.groups[i] = updatedItem as Group;
-                 return true;
-             }
-             if (findAndUpdateInGroup(group.groups[i], updatedItem)) {
-                 return true;
-             }
-        }
-    }
-    return false; // Explicit return
-  };
 
   const findAndUpdateInTree = (nodes: ConfigTreeNode[], updatedItem: Match | Group): boolean => {
     for (const node of nodes) {
@@ -864,8 +621,8 @@ export const useEspansoStore = defineStore('espanso', () => {
       }
 
       // --- Add to tree structure ---
-      // Find the target file node in the tree
-      const targetFileNode = findFileNode(state.value.configTree, item.filePath);
+      // Use imported findFileNode
+      const targetFileNode = findFileNode(state.value.configTree, item.filePath!);
       if (targetFileNode) {
           if (item.type === 'match') {
               if (!targetFileNode.matches) targetFileNode.matches = [];
@@ -1243,8 +1000,7 @@ export const useEspansoStore = defineStore('espanso', () => {
     allMatches,
     allGroups,
     selectedItem,
-    findItemById,
-    findItemInGroup,
+    findItemById: findItemById,
     loadConfig,
     autoSaveConfig,
     updateConfigState,
@@ -1255,7 +1011,7 @@ export const useEspansoStore = defineStore('espanso', () => {
     getAllGroupsFromTree,
     getConfigFileByPath: (path: string) => findFileNode(state.value.configTree, path),
     saveItemToFile,
-    moveTreeItem, // For Match/Group items (in-memory/file content update)
-    moveTreeNode, // For File/Folder items (physical file system move)
+    moveTreeItem,
+    moveTreeNode,
   };
 });

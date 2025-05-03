@@ -38,7 +38,7 @@
 <script setup lang="ts">
 import {
   PlusIcon, Trash2Icon, ClipboardCopyIcon, ScissorsIcon, ClipboardPasteIcon,
-  MinimizeIcon, MaximizeIcon, FolderIcon, FolderOpenIcon, PencilIcon, ChevronsUpDownIcon
+  MinimizeIcon, MaximizeIcon, PencilIcon, ChevronsUpDownIcon
 } from "lucide-vue-next";
 import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator
@@ -50,6 +50,7 @@ import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
 import type { TreeNodeItem } from "./ConfigTree.vue";
 import type { Match, Group } from "@/types/espanso";
 import { ref, defineProps, defineEmits, computed, Component } from "vue";
+import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 
 // --- MenuItem Interface --- 
 interface MenuItem {
@@ -65,6 +66,7 @@ interface MenuItem {
 // --- Props and Emits --- 
 const props = defineProps<{
   node: TreeNodeItem;
+  isSelected: boolean;
 }>();
 
 const emit = defineEmits<{
@@ -76,6 +78,12 @@ const store = useEspansoStore();
 
 // --- State --- 
 const isContextMenuOpen = ref(false);
+const confirmDialogVisible = ref(false);
+const confirmDialogTitle = ref('');
+const confirmDialogMessage = ref('');
+const pendingDeleteId = ref<string | null>(null);
+const pendingDeleteType = ref<'match' | 'group' | 'file' | 'folder' | null>(null);
+
 const handleContextMenuUpdate = (open: boolean) => {
   isContextMenuOpen.value = open;
 };
@@ -116,12 +124,6 @@ const computedMenuItems = computed((): MenuItem[] => {
       { label: '复制分组', icon: ClipboardCopyIcon, action: handleCopyItem },
       { label: '剪切分组', icon: ScissorsIcon, action: handleCutItem, separator: true },
       { label: '粘贴', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, separator: true },
-      // Keep Expand/Collapse for Espanso groups if they should control the containing file/folder state? 
-      // Or remove them if only File/Folder nodes should have this? Assuming remove for now.
-      // { label: '展开当前', icon: MaximizeIcon, action: handleExpandCurrentNode, disabled: !nodeHasChildren.value },
-      // { label: '收起当前', icon: MinimizeIcon, action: handleCollapseCurrentNode, disabled: !nodeHasChildren.value },
-      // { label: '展开全部', icon: ChevronsUpDownIcon, action: handleExpandAll },
-      // { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll, separator: true }, 
       { label: '删除分组', icon: Trash2Icon, action: handleDeleteGroup, variant: 'destructive' }
     );
   } else if (type === 'file') {
@@ -131,8 +133,8 @@ const computedMenuItems = computed((): MenuItem[] => {
        { label: '粘贴', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, separator: true },
        { label: '展开当前', icon: MaximizeIcon, action: handleExpandCurrentNode, disabled: !nodeHasChildren.value },
        { label: '收起当前', icon: MinimizeIcon, action: handleCollapseCurrentNode, disabled: !nodeHasChildren.value },
-       { label: '展开全部', icon: ChevronsUpDownIcon, action: handleExpandAll }, // Icon needs adjustment
-       { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll }  // Icon needs adjustment
+       { label: '展开全部', icon: ChevronsUpDownIcon, action: handleExpandAll },
+       { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll }
      );
   } else if (type === 'folder') {
      items.push(
@@ -141,12 +143,11 @@ const computedMenuItems = computed((): MenuItem[] => {
        { label: '粘贴', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, separator: true },
        { label: '展开当前', icon: MaximizeIcon, action: handleExpandCurrentNode, disabled: !nodeHasChildren.value },
        { label: '收起当前', icon: MinimizeIcon, action: handleCollapseCurrentNode, disabled: !nodeHasChildren.value },
-       { label: '展开全部', icon: ChevronsUpDownIcon, action: handleExpandAll }, // Icon needs adjustment
-       { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll } // Icon needs adjustment
+       { label: '展开全部', icon: ChevronsUpDownIcon, action: handleExpandAll },
+       { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll }
      );
   } else if (type === 'match') {
      items.push(
-       // No rename for matches
        { label: '复制片段', icon: ClipboardCopyIcon, action: handleCopyItem },
        { label: '剪切片段', icon: ScissorsIcon, action: handleCutItem, separator: true },
        { label: '粘贴 (同级)', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, separator: true },
@@ -299,19 +300,21 @@ const handleCreateGroup = () => {
 
 const handleDeleteMatch = () => {
   if (props.node.type === 'match' && props.node.match?.id) {
-    if (confirm(`确定要删除片段 \"${props.node.name}\" 吗？`)) {
-      store.deleteItem(props.node.match.id, 'match');
-      toast.success('片段已删除');
-    }
+    pendingDeleteId.value = props.node.match.id;
+    pendingDeleteType.value = 'match';
+    confirmDialogTitle.value = '确认删除片段';
+    confirmDialogMessage.value = `确定要删除片段 "${props.node.name}" 吗？`;
+    confirmDialogVisible.value = true;
   }
 };
 
 const handleDeleteGroup = () => {
   if (props.node.type === 'group' && props.node.group?.id) {
-     if (confirm(`确定要删除分组 \"${props.node.name}\" 及其所有内容吗？`)) {
-       store.deleteItem(props.node.group.id, 'group');
-       toast.success('分组已删除');
-     }
+    pendingDeleteId.value = props.node.group.id;
+    pendingDeleteType.value = 'group';
+    confirmDialogTitle.value = '确认删除分组';
+    confirmDialogMessage.value = `确定要删除分组 "${props.node.name}" 及其所有内容吗？此操作不可撤销。`;
+    confirmDialogVisible.value = true;
   }
 };
 
@@ -345,12 +348,13 @@ const handleConfirmDelete = async () => {
 
   const type = pendingDeleteType.value;
   const id = pendingDeleteId.value;
+  const nodeName = props.node.name;
   
   try {
     if (type === 'match' || type === 'group') {
       // 删除匹配项或分组 - 这部分保持不变
-      store.deleteItem(id, type);
-      toast.success(`${type === 'match' ? '片段' : '分组'}已删除`);
+      await store.deleteItem(id, type);
+      toast.success(`${type === 'match' ? '片段' : '分组'} "${nodeName}" 已删除`);
     } else if (type === 'file' || type === 'folder') {
       // 获取文件或文件夹的路径
       const node = props.node.type === type ? props.node : null;
@@ -364,7 +368,7 @@ const handleConfirmDelete = async () => {
 
       // 先从树结构中移除节点
       if (store.moveTreeNode) {
-        store.moveTreeNode(id, null, -1);
+        await store.moveTreeNode(id, null, -1);
       }
       
       // 然后通过preloadApi删除实际文件
