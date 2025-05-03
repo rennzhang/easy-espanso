@@ -53,7 +53,7 @@
 import { ref, watch, onMounted, onBeforeUnmount } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
 import { Input } from '../ui/input';
-import Textarea from '../ui/textarea.vue';
+import { Textarea } from '../ui/textarea';
 import FormSection from '../common/FormSection.vue';
 import HelpTip from '../common/HelpTip.vue';
 import type { Group } from '../../types/espanso';

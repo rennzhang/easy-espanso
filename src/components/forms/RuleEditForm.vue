@@ -1,11 +1,11 @@
 <template>
-  <form @submit.prevent="onSubmit" class="space-y-6">
+  <form @submit.prevent="onSubmit" class="space-y-1 h-full flex flex-col">
     <!-- ========================= -->
     <!-- 1. 基本信息区 (始终可见) -->
     <!-- ========================= -->
-    <div class="space-y-4">
+    <div class="space-y-4 flex-1 flex flex-col h-full">
       <!-- 触发词和名称一行 -->
-      <div class="flex flex-col md:flex-row gap-4 mb-4  pb-4 border-b">
+      <div class="flex flex-col md:flex-row gap-4 mb-4 pb-4 border-b">
         <!-- 触发词 -->
         <div class="w-full md:w-1/2 space-y-1.5">
           <div class="flex items-center">
@@ -45,7 +45,7 @@
       </div>
 
       <!-- 内容类型选择器 & 替换内容 -->
-      <div class="space-y-2">
+      <div class="space-y-2 flex-1 flex flex-col">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
             <label class="text-sm font-medium leading-none mr-2"
@@ -54,13 +54,15 @@
             <HelpTip content="触发词最终替换的内容" />
           </div>
 
-          <Menubar class="flex py-2 cursor-pointer">
+          <Menubar
+            class="flex py-1 cursor-pointer px-1 border-1 border border-gray-300 rounded-md"
+          >
             <MenubarMenu
               v-for="option in contentTypeOptions"
               :key="option.value"
             >
               <MenubarTrigger
-                class="h-10 px-4 py-2 text-sm transition-colors duration-150 focus:outline-none"
+                class="rounded-md h-8 px-3 py-1 text-sm transition-colors duration-150 focus:outline-none"
                 :class="{
                   'bg-primary text-primary-foreground hover:bg-primary/90':
                     currentContentType === option.value,
@@ -79,10 +81,10 @@
 
         <!-- Editor Container -->
         <div
-          class="border rounded-none overflow-hidden min-h-[250px] focus-within:border-gray-500 focus-within:shadow-lg transition-colors duration-150 border-input"
+          class="shadow-xs border-1 border rounded-md overflow-hidden min-h-[300px] focus-within:border-gray-600 focus-within:shadow-xl focus:border-gray-600 focus:shadow-xl duration-150 border-gray-300 flex-1 flex flex-col"
         >
           <!-- CodeMirror Editor (Replaces all previous textareas) -->
-          <div v-if="currentContentType !== 'image'" class="h-[250px]">
+          <div v-if="currentContentType !== 'image'" class="h-full">
             <Codemirror
               :class="{
                 'hidden-line-numbers':
@@ -97,13 +99,14 @@
                   ? '输入表单定义 (YAML 格式)...'
                   : '输入替换内容...'
               "
+              class="h-full"
             />
           </div>
 
           <!-- Image Upload/Preview -->
           <div
             v-else-if="currentContentType === 'image'"
-            class="p-3 min-h-[250px]"
+            class="p-3 min-h-[300px]"
           >
             <Input
               type="file"
@@ -129,70 +132,12 @@
 
           <!-- Bottom Toolbar -->
           <TooltipProvider :delay-duration="200">
-            <div class="flex items-center gap-1 p-1.5 border-t bg-muted/50">
+            <div
+              class="flex items-center gap-1 p-1.5 border-t bg-muted/50"
+              v-if="currentContentType !== 'image'"
+            >
               <!-- 替换模式和插入按钮 - 仅在非图片类型下显示 -->
-              <template v-if="currentContentType !== 'image'">
-                <!-- Replacement Mode Label and HelpTip (Moved Left & Renamed) -->
-                <div class="flex items-center mr-2">
-                  <Label class="text-xs font-medium mr-1">替换模式</Label>
-                  <HelpTip
-                    content="控制内容如何替换触发词，通过剪贴板或模拟按键"
-                  />
-                </div>
-
-                <!-- Insertion Mode Menubar (Moved Left) -->
-                <Menubar
-                  class="border rounded-none overflow-hidden p-0 shadow-none mr-2"
-                >
-                  <template
-                    v-for="(option, index) in insertionModeOptions"
-                    :key="option.value"
-                  >
-                    <MenubarMenu>
-                      <TooltipProvider
-                        v-if="option.value === 'default'"
-                        :delay-duration="100"
-                      >
-                        <Tooltip>
-                          <TooltipTrigger as-child>
-                            <MenubarTrigger
-                              @click="setForceMode('')"
-                              class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
-                              :class="[
-                                { 'border-l': index > 0 },
-                                formState.forceMode === ''
-                                  ? 'bg-primary text-primary-foreground'
-                                  : 'hover:bg-muted',
-                              ]"
-                            >
-                              {{ option.label }}
-                            </MenubarTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent>
-                            <p>
-                              自动模式: Espanso 会根据内容长度 (阈值默认100字符)
-                              自动选择插入方式 (按键或剪贴板)。
-                            </p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <MenubarTrigger
-                        v-else
-                        @click="setForceMode(option.value)"
-                        class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
-                        :class="[
-                          { 'border-l': index > 0 },
-                          formState.forceMode === option.value
-                            ? 'bg-primary text-primary-foreground'
-                            : 'hover:bg-muted',
-                        ]"
-                      >
-                        {{ option.label }}
-                      </MenubarTrigger>
-                    </MenubarMenu>
-                  </template>
-                </Menubar>
-
+              <div class="flex items-center gap-1">
                 <div class="flex-grow"></div>
                 <!-- Spacer -->
 
@@ -245,13 +190,10 @@
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
-              </template>
+              </div>
 
               <!-- 图片类型下只显示预览按钮 -->
-              <div
-                v-if="currentContentType === 'image'"
-                class="flex-grow"
-              ></div>
+              <div class="flex-grow"></div>
               <!-- 竖分割线 -->
               <div class="hidden md:block border-r h-[16px]"></div>
               <!-- Preview Button - 所有类型都显示 -->
@@ -282,177 +224,100 @@
       </div>
     </div>
 
-    <!-- ========================= -->
-    <!-- 2. 常用选项区 (默认展开)  -->
-    <!-- ========================= -->
-    <div class="space-y-4 border-t pt-4">
-      <!-- 词边界设置 -->
-      <div class="space-y-2">
-        <div class="flex items-center">
-          <h4 class="text-sm font-medium mr-2">词边界设置</h4>
-          <HelpTip
-            content="控制触发词在什么情况下被识别，例如是否需要在单词边界处"
-          />
+    <!-- 底部工具栏 (仅在右侧面板) -->
+    <div
+      class="absolute bottom-0 right-0 w-full bg-card border-t shadow-lg z-20 py-2 mt-0"
+    >
+      <div class="flex items-center justify-between px-4 space-x-3">
+        <div class="flex items-center justify-between">
+          <!-- Replacement Mode Label and HelpTip (Moved Left & Renamed) -->
+          <div class="flex items-center mr-2">
+            <Label class="text-xs font-medium mr-1">替换模式</Label>
+            <HelpTip content="控制内容如何替换触发词，通过剪贴板或模拟按键" />
+          </div>
+
+          <!-- Insertion Mode Menubar (Moved Left) -->
+          <Menubar
+            class="border rounded-none overflow-hidden p-0 shadow-none mr-2"
+          >
+            <template
+              v-for="(option, index) in insertionModeOptions"
+              :key="option.value"
+            >
+              <MenubarMenu>
+                <TooltipProvider
+                  v-if="option.value === 'default'"
+                  :delay-duration="100"
+                >
+                  <Tooltip>
+                    <TooltipTrigger as-child>
+                      <MenubarTrigger
+                        @click="setForceMode('')"
+                        class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
+                        :class="[
+                          { 'border-l': index > 0 },
+                          formState.forceMode === ''
+                            ? 'bg-primary text-primary-foreground'
+                            : 'hover:bg-muted',
+                        ]"
+                      >
+                        {{ option.label }}
+                      </MenubarTrigger>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>
+                        自动模式: Espanso 会根据内容长度 (阈值默认100字符)
+                        自动选择插入方式 (按键或剪贴板)。
+                      </p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <MenubarTrigger
+                  v-else
+                  @click="setForceMode(option.value)"
+                  class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
+                  :class="[
+                    { 'border-l': index > 0 },
+                    formState.forceMode === option.value
+                      ? 'bg-primary text-primary-foreground'
+                      : 'hover:bg-muted',
+                  ]"
+                >
+                  {{ option.label }}
+                </MenubarTrigger>
+              </MenubarMenu>
+            </template>
+          </Menubar>
         </div>
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
-          <div class="flex items-center space-x-1.5">
-            <Checkbox id="word" v-model="formState.word" />
-            <label for="word" class="text-sm font-medium leading-none">
-              仅在词边界触发 (word)
-            </label>
-          </div>
-          <div class="flex items-center space-x-1.5">
-            <Checkbox id="leftWord" v-model="formState.leftWord" />
-            <label for="leftWord" class="text-sm font-medium leading-none">
-              左侧词边界 (left_word)
-            </label>
-          </div>
-          <div class="flex items-center space-x-1.5">
-            <Checkbox id="rightWord" v-model="formState.rightWord" />
-            <label for="rightWord" class="text-sm font-medium leading-none">
-              右侧词边界 (right_word)
-            </label>
-          </div>
+        <div class="flex items-center justify-end">
+
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            @click="showPreview"
+            class="h-9 px-3 focus:outline-none"
+          >
+            <EyeIcon class="h-4 w-4 mr-2" />
+            <span>预览</span>
+          </Button>
+  
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            @click="showAdvancedModal = true"
+            class="h-9 px-3 focus:outline-none"
+          >
+            <SettingsIcon class="h-4 w-4 mr-2" />
+            <span>高级设置</span>
+          </Button>
         </div>
       </div>
     </div>
 
-    <!-- ========================= -->
-    <!-- 3. 高级选项区 (默认折叠)  -->
-    <!-- ========================= -->
-    <div class="mt-4 border-t pt-4">
-      <button
-        type="button"
-        class="flex items-center text-sm text-muted-foreground hover:text-foreground transition-colors font-medium mb-3"
-        @click="showAdvancedOptions = !showAdvancedOptions"
-      >
-        <ChevronRightIcon v-if="!showAdvancedOptions" class="h-4 w-4 mr-1" />
-        <ChevronDownIcon v-else class="h-4 w-4 mr-1" />
-        高级选项
-      </button>
-
-      <div v-if="showAdvancedOptions" class="space-y-4 pl-2">
-        <!-- 大小写处理 -->
-        <div class="space-y-2">
-          <div class="flex items-center">
-            <h4 class="text-sm font-medium mr-2">大小写处理</h4>
-            <HelpTip content="控制替换内容的大小写处理方式" />
-          </div>
-          <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-            <div class="flex items-center space-x-1.5">
-              <Checkbox id="propagateCase" v-model="formState.propagateCase" />
-              <label
-                for="propagateCase"
-                class="text-sm font-medium leading-none"
-              >
-                传播大小写 (propagate_case)
-              </label>
-            </div>
-            <div class="space-y-1">
-              <label
-                for="uppercaseStyle"
-                class="text-sm font-medium leading-none"
-              >
-                大写样式 (uppercase_style)
-              </label>
-              <select
-                id="uppercaseStyle"
-                v-model="formState.uppercaseStyle"
-                class="flex h-8 w-full rounded-md border border-input bg-background px-2 py-1 ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <option value="">无</option>
-                <option value="capitalize_words">首字母大写</option>
-                <option value="uppercase_first">第一个字母大写</option>
-              </select>
-            </div>
-          </div>
-        </div>
-
-        <!-- 应用限制 -->
-        <div class="space-y-2">
-          <div class="flex items-center">
-            <h4 class="text-sm font-medium mr-2">应用限制</h4>
-            <HelpTip content="限制片段在哪些应用中生效或不生效" />
-          </div>
-          <div class="grid grid-cols-1 gap-3">
-            <div class="space-y-1">
-              <label class="text-sm font-medium leading-none">
-                生效的应用 (apps)
-              </label>
-              <TagInput
-                :modelValue="formState.apps || []"
-                @update:modelValue="(val: string[]) => formState.apps = val"
-                placeholder="添加应用名称，回车确认"
-                class="py-1"
-              />
-            </div>
-
-            <div class="space-y-1">
-              <label class="text-sm font-medium leading-none">
-                排除的应用 (exclude_apps)
-              </label>
-              <TagInput
-                :modelValue="formState.exclude_apps || []"
-                @update:modelValue="(val: string[]) => formState.exclude_apps = val"
-                placeholder="添加应用名称，回车确认"
-                class="py-1"
-              />
-            </div>
-          </div>
-        </div>
-
-        <!-- 搜索设置 -->
-        <div class="space-y-2">
-          <div class="flex items-center">
-            <h4 class="text-sm font-medium mr-2">搜索设置</h4>
-            <HelpTip content="添加额外的关键词，用于在搜索时匹配此片段" />
-          </div>
-          <div class="space-y-1 pt-1">
-            <label class="text-sm font-medium leading-none">
-              额外搜索词 (search_terms)
-            </label>
-            <TagInput
-              :modelValue="formState.search_terms || []"
-              @update:modelValue="(val: string[]) => formState.search_terms = val"
-              placeholder="添加搜索词，回车确认"
-              class="py-1"
-            />
-          </div>
-        </div>
-
-        <!-- 其他设置 -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-          <!-- 优先级 -->
-          <FormSection
-            label="优先级 (priority)"
-            helpContent="当多个片段可能匹配时，优先级高的会被优先使用"
-            inputId="priority"
-          >
-            <Input
-              id="priority"
-              v-model.number="formState.priority"
-              type="number"
-              placeholder="0"
-              class="h-8 px-2 py-1"
-            />
-          </FormSection>
-
-          <!-- 快捷键 -->
-          <FormSection
-            label="快捷键 (hotkey)"
-            helpContent="设置快捷键来触发此片段，例如 alt+h"
-            inputId="hotkey"
-          >
-            <Input
-              id="hotkey"
-              v-model="formState.hotkey"
-              placeholder="例如: alt+h"
-              class="h-8 px-2 py-1"
-            />
-          </FormSection>
-        </div>
-      </div>
-    </div>
+    <!-- 底部空白区域，防止内容被固定底栏遮挡 -->
+    <div class="h-14"></div>
 
     <!-- 预览模态框 -->
     <div
@@ -483,6 +348,235 @@
         </div>
       </div>
     </div>
+
+    <!-- 高级设置模态框 -->
+    <div
+      v-if="showAdvancedModal"
+      class="fixed inset-0 z-50 flex items-center justify-center"
+    >
+      <div
+        class="absolute inset-0 bg-black/70"
+        @click="showAdvancedModal = false"
+      ></div>
+      <div
+        class="relative bg-background rounded-none shadow-lg w-full max-w-4xl max-h-[90vh] overflow-hidden"
+      >
+        <div class="flex items-center justify-between p-4 border-b">
+          <h2 class="text-lg font-semibold">高级设置</h2>
+          <button
+            @click="showAdvancedModal = false"
+            class="text-gray-500 hover:text-gray-700"
+          >
+            <XIcon class="h-5 w-5" />
+          </button>
+        </div>
+
+        <div class="p-6 overflow-auto max-h-[calc(90vh-120px)]">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <!-- 左侧列 -->
+            <div class="space-y-6">
+              <!-- 词边界设置 -->
+              <div class="space-y-3">
+                <div class="flex items-center">
+                  <h3 class="text-base font-medium mr-2">词边界设置</h3>
+                  <HelpTip
+                    content="控制触发词在什么情况下被识别，例如是否需要在单词边界处"
+                  />
+                </div>
+                <div class="space-y-3 pl-1">
+                  <div class="flex items-center space-x-2">
+                    <Checkbox id="word" v-model="formState.word" />
+                    <label for="word" class="text-sm font-medium leading-none">
+                      仅在词边界触发 (word)
+                    </label>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <Checkbox id="leftWord" v-model="formState.leftWord" />
+                    <label
+                      for="leftWord"
+                      class="text-sm font-medium leading-none"
+                    >
+                      左侧词边界 (left_word)
+                    </label>
+                  </div>
+                  <div class="flex items-center space-x-2">
+                    <Checkbox id="rightWord" v-model="formState.rightWord" />
+                    <label
+                      for="rightWord"
+                      class="text-sm font-medium leading-none"
+                    >
+                      右侧词边界 (right_word)
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 大小写处理 -->
+              <div class="space-y-3">
+                <div class="flex items-center">
+                  <h3 class="text-base font-medium mr-2">大小写处理</h3>
+                  <HelpTip content="控制替换内容的大小写处理方式" />
+                </div>
+                <div class="space-y-3 pl-1">
+                  <div class="flex items-center space-x-2">
+                    <Checkbox
+                      id="propagateCase"
+                      v-model="formState.propagateCase"
+                    />
+                    <label
+                      for="propagateCase"
+                      class="text-sm font-medium leading-none"
+                    >
+                      传播大小写 (propagate_case)
+                    </label>
+                  </div>
+                  <div class="space-y-1.5">
+                    <label
+                      for="uppercaseStyle"
+                      class="text-sm font-medium leading-none"
+                    >
+                      大写样式 (uppercase_style)
+                    </label>
+                    <select
+                      id="uppercaseStyle"
+                      v-model="formState.uppercaseStyle"
+                      class="flex h-9 w-full rounded-none border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="">无</option>
+                      <option value="capitalize_words">首字母大写</option>
+                      <option value="uppercase_first">第一个字母大写</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <!-- 其他设置 -->
+              <div class="space-y-3">
+                <div class="flex items-center">
+                  <h3 class="text-base font-medium mr-2">其他设置</h3>
+                </div>
+                <div class="grid grid-cols-1 gap-4 pl-1">
+                  <!-- 优先级 -->
+                  <div class="space-y-1.5">
+                    <div class="flex items-center">
+                      <label
+                        for="priority"
+                        class="text-sm font-medium leading-none mr-2"
+                      >
+                        优先级 (priority)
+                      </label>
+                      <HelpTip
+                        content="当多个片段可能匹配时，优先级高的会被优先使用"
+                      />
+                    </div>
+                    <Input
+                      id="priority"
+                      v-model.number="formState.priority"
+                      type="number"
+                      placeholder="0"
+                      class="h-9 px-3 py-2"
+                    />
+                  </div>
+
+                  <!-- 快捷键 -->
+                  <div class="space-y-1.5">
+                    <div class="flex items-center">
+                      <label
+                        for="hotkey"
+                        class="text-sm font-medium leading-none mr-2"
+                      >
+                        快捷键 (hotkey)
+                      </label>
+                      <HelpTip content="设置快捷键来触发此片段，例如 alt+h" />
+                    </div>
+                    <Input
+                      id="hotkey"
+                      v-model="formState.hotkey"
+                      placeholder="例如: alt+h"
+                      class="h-9 px-3 py-2"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 右侧列 -->
+            <div class="space-y-6">
+              <!-- 应用限制 -->
+              <div class="space-y-3">
+                <div class="flex items-center">
+                  <h3 class="text-base font-medium mr-2">应用限制</h3>
+                  <HelpTip content="限制片段在哪些应用中生效或不生效" />
+                </div>
+                <div class="space-y-4 pl-1">
+                  <div class="space-y-1.5">
+                    <label class="text-sm font-medium leading-none">
+                      生效的应用 (apps)
+                    </label>
+                    <TagInput
+                      :modelValue="formState.apps || []"
+                      @update:modelValue="(val: string[]) => formState.apps = val"
+                      placeholder="添加应用名称，回车确认"
+                      class="py-1"
+                    />
+                  </div>
+
+                  <div class="space-y-1.5">
+                    <label class="text-sm font-medium leading-none">
+                      排除的应用 (exclude_apps)
+                    </label>
+                    <TagInput
+                      :modelValue="formState.exclude_apps || []"
+                      @update:modelValue="(val: string[]) => formState.exclude_apps = val"
+                      placeholder="添加应用名称，回车确认"
+                      class="py-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <!-- 搜索设置 -->
+              <div class="space-y-3">
+                <div class="flex items-center">
+                  <h3 class="text-base font-medium mr-2">搜索设置</h3>
+                  <HelpTip content="添加额外的关键词，用于在搜索时匹配此片段" />
+                </div>
+                <div class="space-y-1.5 pl-1">
+                  <label class="text-sm font-medium leading-none">
+                    额外搜索词 (search_terms)
+                  </label>
+                  <TagInput
+                    :modelValue="formState.search_terms || []"
+                    @update:modelValue="(val: string[]) => formState.search_terms = val"
+                    placeholder="添加搜索词，回车确认"
+                    class="py-1"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 底部按钮 -->
+          <div class="flex justify-end mt-8 pt-4 border-t">
+            <Button
+              type="button"
+              variant="outline"
+              @click="showAdvancedModal = false"
+              class="mr-2"
+            >
+              关闭
+            </Button>
+            <Button
+              type="button"
+              variant="default"
+              @click="showAdvancedModal = false"
+            >
+              应用
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
   </form>
 </template>
 
@@ -499,7 +593,7 @@ import { EspansoRule } from "../../types/espanso-config";
 import { useEspansoStore } from "../../store/useEspansoStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
-import Textarea from "../ui/textarea.vue";
+import { Textarea } from "../ui/textarea";
 import { Checkbox } from "../ui/checkbox";
 import TagInput from "../common/TagInput.vue";
 import VariableSelector from "./VariableSelector.vue";
@@ -512,17 +606,13 @@ import {
 import HelpTip from "../common/HelpTip.vue";
 import FormSection from "../common/FormSection.vue";
 import {
-  PlusIcon,
   CalendarIcon,
   ClipboardIcon,
   EyeIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
   XIcon,
-  HelpCircleIcon,
   MousePointerClickIcon,
   MoreHorizontalIcon,
-  TextCursorInputIcon,
+  SettingsIcon,
 } from "lucide-vue-next";
 import type { Match } from "../../types/espanso";
 import { Transition } from "vue";
@@ -685,7 +775,7 @@ const cmOptions = computed(() => {
 const currentContentType = ref<ContentType>("plain"); // Use defined ContentType
 
 // 高级选项显示状态
-const showAdvancedOptions = ref(false);
+const showAdvancedModal = ref(false);
 
 // 预览模态框状态
 const showPreviewModal = ref(false);
@@ -866,7 +956,7 @@ onMounted(() => {
     (formState.value.exclude_apps && formState.value.exclude_apps.length > 0) ||
     (formState.value.search_terms && formState.value.search_terms.length > 0)
   ) {
-    showAdvancedOptions.value = true;
+    showAdvancedModal.value = true;
   }
 });
 
@@ -1542,7 +1632,8 @@ const addTag = (tag: string) => {
 
 /* 使光标在失焦状态下也可见并闪烁 */
 .CodeMirror {
-  /* Ensure wrapper allows cursor visibility even when not focused if needed */
+  /* 设置字体大小为14px */
+  font-size: 14px !important;
 }
 .CodeMirror-cursors {
   visibility: visible !important;
@@ -1565,5 +1656,8 @@ const addTag = (tag: string) => {
   100% {
     opacity: 1;
   }
+}
+.CodeMirror-scroll {
+  padding: 4px;
 }
 </style>

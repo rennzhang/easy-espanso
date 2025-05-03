@@ -34,7 +34,7 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto p-4">
+    <div class="flex-1 overflow-y-auto p-4 h-full">
       <div v-if="loading" class="flex flex-col justify-center items-center h-full gap-4">
         <div class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
         <div class="text-primary font-medium">加载中...</div>
@@ -44,7 +44,7 @@
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未选择项目</h4>
         <p class="m-0 max-w-md">请从左侧列表选择一个规则或分组进行编辑</p>
       </div>
-      <div v-else-if="selectedItem.type === 'match'" >
+      <div v-else-if="selectedItem.type === 'match'" class="flex flex-col gap-4 h-full" >
         <RuleEditForm
           ref="ruleFormRef"
           :rule="selectedItem"
