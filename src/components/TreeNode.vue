@@ -17,9 +17,6 @@
             node.name === 'Packages'
               ? 'package-node'
               : node.type + '-node',
-            node.type === 'file' || node.type === 'folder'
-              ? 'bg-gray-200'
-              : '',
           ]"
           @click="handleClick"
           class="cursor-pointer w-full"
@@ -28,16 +25,27 @@
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
               'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
-                isSelected,
+                node.type === 'group' && isSelected,
+              'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-primary-foreground':
+                (node.type === 'file' || node.type === 'folder') && isSelected,
               'hover:text-accent-foreground': !isSelected,
+              'bg-gray-200': (node.type === 'file' || node.type === 'folder') && !isSelected,
             }"
             :style="{
               paddingLeft: nodeLevel * 20 + 'px',
               '--node-level': nodeLevel,
             }"
           >
+            <!-- 添加左侧空白区域点击处理 -->
+            <div
+              class="absolute left-0 h-full"
+              :style="{width: nodeLevel * 20 + 'px'}"
+              @click.stop="toggleFolder"
+            ></div>
+
             <span
               class="mr-1 ml-4 text-muted-foreground cursor-pointer"
+              :class="{ 'text-white': isSelected }"
               @click.stop="toggleFolder"
             >
               <ChevronRightIcon v-if="hasChildren && !isOpen" class="h-4 w-4" />
@@ -46,6 +54,24 @@
                 class="h-4 w-4"
               />
               <span v-else class="w-4 inline-block"></span>
+            </span>
+            <!-- 文件夹图标放在名称前面 -->
+            <span v-if="node.type === 'folder'" class="mr-1.5">
+              <FolderIcon
+                :class="[
+                  'h-5 w-5', // 增大图标尺寸
+                  isSelected ? 'text-white' : 'text-blue-500' // 使用更显眼的蓝色
+                ]"
+              />
+            </span>
+            <!-- 分组图标放在名称前面 -->
+            <span v-if="node.type === 'group'" class="mr-1.5">
+              <GitBranchIcon
+                :class="[
+                  'h-4 w-4',
+                  isSelected ? 'text-white' : 'text-muted-foreground'
+                ]"
+              />
             </span>
             <span
               class="text-sm font-medium flex-grow cursor-pointer"
@@ -60,22 +86,10 @@
             </span>
             <span
               v-if="visibleChildCount > 0 && shouldShowCount"
-              class="ml-2 text-xs bg-muted text-muted-foreground px-1.5 py-0.5 rounded-full"
+              class="ml-2 text-xs px-1.5 py-0.5 rounded-full"
+              :class="isSelected ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'"
             >
               {{ visibleChildCount }}
-            </span>
-            <span class="ml-auto pl-2 mr-4">
-              <!-- Icon based on type -->
-              <component
-                :is="
-                  node.type === 'group'
-                    ? GitBranchIcon
-                    : node.type === 'folder'
-                    ? FolderIcon
-                    : FileIcon
-                "
-                class="h-4 w-4 text-muted-foreground"
-              />
             </span>
           </div>
         </div>
@@ -96,9 +110,21 @@
               '--node-level': nodeLevel,
             }"
           >
+            <!-- 添加左侧空白区域点击处理 -->
+            <div
+              class="absolute left-0 h-full"
+              :style="{width: nodeLevel * 20 + 'px'}"
+              @click.stop="toggleParentFolder"
+            ></div>
+
             <span class="w-4 inline-block"></span>
             <!-- Indent space -->
-            <ZapIcon class="h-4 w-4 mr-1 text-blue-500" />
+            <ZapIcon
+              :class="[
+                'h-4 w-4 mr-1',
+                isSelected ? 'text-white' : 'text-blue-500'
+              ]"
+            />
             <span class="text-sm cursor-grab flex-grow">
               <HighlightText
                 v-if="searchQuery"
@@ -188,27 +214,15 @@ import {
   watch,
   onMounted,
   onUnmounted,
-  inject,
 } from "vue";
 import {
   ChevronRightIcon,
   ChevronDownIcon,
   ZapIcon,
   FolderIcon,
-  FileIcon,
   GitBranchIcon,
-  PlusIcon,
-  ClipboardCopyIcon,
-  ClipboardPasteIcon,
-  ScissorsIcon,
-  Trash2Icon,
-  PencilIcon,
-  ChevronsUpDownIcon,
-  MaximizeIcon,
-  MinimizeIcon,
 } from "lucide-vue-next";
 import type { TreeNodeItem } from "@/components/ConfigTree.vue";
-import type { Match, Group } from "@/types/espanso";
 import HighlightText from "@/components/common/HighlightText.vue";
 import { VueDraggable } from "vue-draggable-plus";
 import NodeContextMenu from "@/components/NodeContextMenu.vue";
@@ -247,7 +261,8 @@ const emit = defineEmits<{
 
 const store = useEspansoStore();
 
-const isOpen = ref(true);
+// 默认展开状态：Packages 文件夹默认收起，其他节点默认展开
+const isOpen = ref(props.node.name === 'Packages' ? false : true);
 
 watch(
   () => props.searchQuery,
@@ -263,7 +278,7 @@ const toggleFolder = (event?: MouseEvent) => {
   if (props.node.type !== "match" && hasChildren.value) {
     emit("toggle-node", props.node.id);
     isOpen.value = !isOpen.value;
-    
+
     // 同步更新 TreeNodeRegistry 中的状态
     if (isOpen.value) {
       // 如果展开，则展开当前节点及子节点
@@ -276,6 +291,10 @@ const toggleFolder = (event?: MouseEvent) => {
 };
 
 const selectNode = () => {
+  // 如果是文件夹类型节点，则不执行选择操作
+  if (props.node.type === 'folder') {
+    return;
+  }
   emit("select", props.node);
 };
 
@@ -648,8 +667,8 @@ onMounted(() => {
   if (props.node.id) {
     // 注册节点到 TreeNodeRegistry
     TreeNodeRegistry.register(
-      props.node.id, 
-      { isOpen }, 
+      props.node.id,
+      { isOpen },
       {
         id: props.node.id,
         parentId: props.parentId,
@@ -674,6 +693,18 @@ onUnmounted(() => {
 const collapseNode = () => {
   if (hasChildren.value) {
     isOpen.value = false;
+  }
+};
+
+// 当点击匹配项左侧空白区域时，触发父节点的折叠/展开
+const toggleParentFolder = () => {
+  if (props.parentId) {
+    // 通过TreeNodeRegistry查找父节点
+    const parentNodeMetadata = TreeNodeRegistry.getMetadata(props.parentId);
+    if (parentNodeMetadata) {
+      // 触发父节点的折叠/展开事件
+      emit("toggle-node", props.parentId);
+    }
   }
 };
 
@@ -741,6 +772,13 @@ const shouldShowCount = computed(() => {
   overflow: visible;
   box-sizing: border-box;
   width: 100%;
+  position: relative; /* 确保绝对定位的子元素相对于此元素定位 */
+}
+
+/* 新增样式：确保左侧点击区域在最上层 */
+.node-row .absolute {
+  z-index: 2;
+  cursor: pointer;
 }
 
 .truncate {
