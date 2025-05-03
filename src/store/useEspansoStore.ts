@@ -629,8 +629,6 @@ export const useEspansoStore = defineStore('espanso', () => {
             if (findAndUpdateInTree(node.children, updatedItem)) {
                 return true;
             }
-        } else if (node.type === 'group') { // Should be handled within file/folder
-             if (findAndUpdateInGroup(node as Group, updatedItem)) return true;
         }
     }
     return false;

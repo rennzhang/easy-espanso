@@ -72,6 +72,7 @@ import { Button } from '../ui/button';
 import RuleEditForm from '../forms/RuleEditForm.vue';
 import GroupEditForm from '../forms/GroupEditForm.vue';
 import type { Match, Group } from '../../types/espanso';
+import { toast } from 'vue-sonner';
 
 // Define refs for the form components
 const ruleFormRef = ref<InstanceType<typeof RuleEditForm> | null>(null);
@@ -175,7 +176,7 @@ const saveItem = async () => {
     isSaving.value = false;
     saveState.value = 'error';
     saveStateTimeout = setTimeout(() => { saveState.value = 'idle'; }, 2000);
-    store.showToast('保存失败: 无法获取表单数据', 'error', 0, true);
+    toast.error('保存失败: 无法获取表单数据');
     return;
   }
 
@@ -194,7 +195,7 @@ const saveItem = async () => {
     isSaving.value = false;
     saveState.value = 'error';
     saveStateTimeout = setTimeout(() => { saveState.value = 'idle'; }, 2000);
-    store.showToast(`保存失败: ${error.message || '未知错误'}`, 'error', 0, true);
+    toast.error(`保存失败: ${error.message || '未知错误'}`);
   }
 };
 
