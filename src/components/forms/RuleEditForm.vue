@@ -653,7 +653,6 @@ interface RuleFormState {
   apps?: string[];
   exclude_apps?: string[];
   search_terms?: string[];
-  tags?: string[];
   priority?: number;
   hotkey?: string;
   vars?: { name: string; params?: Record<string, any> }[];
@@ -675,7 +674,6 @@ const formState = ref<RuleFormState>({
   apps: [],
   exclude_apps: [],
   search_terms: [],
-  tags: [],
   priority: 0,
   hotkey: "",
 });
@@ -815,10 +813,6 @@ defineExpose({
         formState.value.forceMode === "default"
           ? undefined
           : formState.value.forceMode,
-      tags:
-        formState.value.tags && formState.value.tags.length > 0
-          ? formState.value.tags
-          : undefined,
       search_terms:
         formState.value.search_terms && formState.value.search_terms.length > 0
           ? formState.value.search_terms
@@ -896,13 +890,13 @@ const determineInitialContent = (ruleData: Match): string | undefined => {
 // 初始化表单
 onMounted(() => {
   // 深拷贝props.rule到formState
-  const ruleData = JSON.parse(JSON.stringify(props.rule));
+  const ruleData = JSON.parse(JSON.stringify(props.rule || {})); // Handle potential null rule
   console.log("初始化表单数据:", ruleData);
 
   // --- 处理触发词: trigger or triggers --- START
   let triggerInput = "";
   if (Array.isArray(ruleData.triggers) && ruleData.triggers.length > 0) {
-    triggerInput = ruleData.triggers.join("\n");
+    triggerInput = ruleData.triggers.join("\\n");
   } else if (ruleData.trigger) {
     triggerInput = ruleData.trigger;
   }
@@ -929,21 +923,11 @@ onMounted(() => {
     search_terms: Array.isArray(ruleData.search_terms)
       ? [...ruleData.search_terms]
       : [],
-    tags: Array.isArray(ruleData.tags) ? [...ruleData.tags] : [],
     priority: ruleData.priority || 0,
     hotkey: ruleData.hotkey || "",
     vars: Array.isArray(ruleData.vars) ? [...ruleData.vars] : [],
     contentType: determineInitialContentType(ruleData),
   };
-
-  // 保存原始表单数据
-  originalFormData.value = JSON.parse(JSON.stringify(formState.value));
-
-  // 重置表单修改状态
-  isFormModified.value = false;
-
-  // 更新 store 中的表单修改状态
-  store.state.hasUnsavedChanges = false;
 
   currentContentType.value = formState.value.contentType as ContentType;
 
@@ -960,24 +944,33 @@ onMounted(() => {
   ) {
     showAdvancedModal.value = true;
   }
+
+  // 使用 nextTick 确保初始化完成后再保存原始数据和重置状态
+  nextTick(() => {
+    console.log("onMounted 后，nextTick中重置状态和保存原始数据");
+    originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+    isFormModified.value = false;
+    store.state.hasUnsavedChanges = false;
+  });
 });
 
 // 监听props变化
 watch(
   () => props.rule,
   (newRule) => {
-    const ruleData = JSON.parse(JSON.stringify(newRule));
+    const ruleData = JSON.parse(JSON.stringify(newRule || {})); // Handle potential null newRule
     console.log("监听到props变化:", ruleData);
 
     // --- 处理触发词: trigger or triggers --- START
     let triggerInput = "";
     if (Array.isArray(ruleData.triggers) && ruleData.triggers.length > 0) {
-      triggerInput = ruleData.triggers.join("\n");
+      triggerInput = ruleData.triggers.join("\\n");
     } else if (ruleData.trigger) {
       triggerInput = ruleData.trigger;
     }
     // --- 处理触发词: trigger or triggers --- END
 
+    // 1. 更新 formState
     formState.value = {
       trigger: triggerInput,
       label: ruleData.label || "",
@@ -999,7 +992,6 @@ watch(
       search_terms: Array.isArray(ruleData.search_terms)
         ? [...ruleData.search_terms]
         : [],
-      tags: Array.isArray(ruleData.tags) ? [...ruleData.tags] : [],
       priority: ruleData.priority || 0,
       hotkey: ruleData.hotkey || "",
       vars: Array.isArray(ruleData.vars) ? [...ruleData.vars] : [],
@@ -1008,45 +1000,65 @@ watch(
 
     currentContentType.value = formState.value.contentType as ContentType;
 
-    // 保存原始表单数据
-    originalFormData.value = JSON.parse(JSON.stringify(formState.value));
-
-    // 重置表单修改状态
-    isFormModified.value = false;
-    store.state.hasUnsavedChanges = false;
+    // 2. 使用 nextTick 确保 DOM 和响应式系统更新完毕
+    nextTick(() => {
+      // 3. 在 nextTick 回调中保存原始数据和重置状态
+      console.log("Props变化后，nextTick中重置状态和保存原始数据");
+      originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+      isFormModified.value = false;
+      store.state.hasUnsavedChanges = false;
+    });
   },
-  { deep: true }
+  { deep: true, immediate: true } // 使用 immediate 确保初始加载也执行
 );
 
-// 监听内容类型变化
+// 监听内容类型变化 - 不再直接调用 checkFormModified
 watch(currentContentType, (newType) => {
   formState.value.contentType = newType;
-  checkFormModified();
+  // 让 watch(formState) 去处理变化检查
 });
 
 // 监听表单变化
 watch(
   formState,
   () => {
-    checkFormModified();
+    // 延迟检查，确保 originalFormData 已经更新完毕 (如果是由 props 变化引起的)
+    nextTick(() => {
+       console.log("FormState 变化，nextTick 中调用 checkFormModified");
+       checkFormModified();
+    });
   },
   { deep: true }
 );
 
 // 检查表单是否被修改
 const checkFormModified = () => {
+  // 如果原始表单数据为空，则不认为表单被修改
+  if (!originalFormData.value) {
+    isFormModified.value = false;
+    store.state.hasUnsavedChanges = false;
+    return;
+  }
+
+  // 深度比较当前表单数据和原始表单数据
   const currentFormData = JSON.stringify({
     ...formState.value,
     contentType: undefined,
   });
-  // Ensure originalFormData is an object before spreading
+
   const originalDataForComparison = JSON.stringify({
-    ...(originalFormData.value || {}), // Safely spread originalFormData
+    ...originalFormData.value,
     contentType: undefined,
   });
 
-  isFormModified.value = currentFormData !== originalDataForComparison;
-  store.state.hasUnsavedChanges = isFormModified.value;
+  // 只有当数据实际发生变化时，才标记为已修改
+  const hasChanged = currentFormData !== originalDataForComparison;
+
+  // 更新状态
+  isFormModified.value = hasChanged;
+  store.state.hasUnsavedChanges = hasChanged;
+
+  console.log("表单修改状态:", hasChanged);
 };
 
 // 处理图片上传
@@ -1204,8 +1216,6 @@ const insertCommonVariable = (variableId: string) => {
 
   insertVariable({ id: variableId, name: variableId, description });
 };
-
-// 显示预览
 
 // 提交表单
 const onSubmit = () => {
@@ -1460,7 +1470,6 @@ const mapRuleToFormData = (rule: Match | null): RuleFormState => {
       apps: [],
       exclude_apps: [],
       search_terms: [],
-      tags: [],
       priority: 0,
       hotkey: "",
       image_path: "",
@@ -1530,7 +1539,6 @@ const mapRuleToFormData = (rule: Match | null): RuleFormState => {
     propagateCase: rule.propagate_case || false,
     uppercaseStyle: rule.uppercase_style || "",
     forceMode: rule.force_mode === "default" ? "" : rule.force_mode || "",
-    tags: rule.tags || [],
     search_terms: rule.search_terms || [],
     priority: rule.priority || 0,
     hotkey: rule.hotkey || "",
@@ -1576,21 +1584,22 @@ const isTextBasedContent = computed(() => {
 });
 
 // --- Methods ---
-const addTag = (tag: string) => {
-  // Ensure tags array exists before pushing
-  if (!formData.value.tags) {
-    formData.value.tags = [];
-  }
-  // Additional check before includes
-  if (
-    tag &&
-    Array.isArray(formData.value.tags) &&
-    !formData.value.tags.includes(tag)
-  ) {
-    formData.value.tags.push(tag);
-    checkFormModified(); // Check if adding a tag modifies the form
-  }
-};
+// REMOVED: addTag method and related logic
+// const addTag = (tag: string) => {
+//   // Ensure tags array exists before pushing
+//   if (!formData.value.tags) {
+//     formData.value.tags = [];
+//   }
+//   // Additional check before includes
+//   if (
+//     tag &&
+//     Array.isArray(formData.value.tags) &&
+//     !formData.value.tags.includes(tag)
+//   ) {
+//     formData.value.tags.push(tag);
+//     checkFormModified(); // Check if adding a tag modifies the form
+//   }
+// };
 </script>
 <style>
 /* .codemirror-container.hidden-line-numbers .CodeMirror-gutters {

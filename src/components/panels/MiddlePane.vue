@@ -618,6 +618,11 @@ const formatDate = (dateString: string) => {
 
 // 选择项目
 const selectItem = (id: string) => {
+  // 如果选择的是当前已选中的项目，不需要任何操作
+  if (store.state.selectedItemId === id) {
+    return;
+  }
+
   // 检查是否有未保存的修改
   if (store.state.hasUnsavedChanges) {
     if (confirm('您有未保存的修改，确定要切换到其他项目吗？这将丢失当前的修改。')) {
@@ -626,6 +631,7 @@ const selectItem = (id: string) => {
       store.state.selectedItemId = id;
     }
   } else {
+    // 没有修改过，直接切换
     store.state.selectedItemId = id;
   }
 };
@@ -695,7 +701,7 @@ const totalItemCount = computed(() => {
 });
 
 // --- Input Dialog Logic (Adjusted for rename request) ---
-const openRenameDialog = (item: TreeNodeItem) => { 
+const openRenameDialog = (item: TreeNodeItem) => {
   // Expecting item to be the TreeNodeItem for a group from ConfigTree
   if (item.type === 'group' && item.group) { // Check if it's a group and has the original group data
     renameTargetItem = item.group; // Store the actual Group object

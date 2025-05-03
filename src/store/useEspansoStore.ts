@@ -1007,7 +1007,7 @@ export const useEspansoStore = defineStore('espanso', () => {
       };
 
       const cleanMatchForSaving = (match: Match): any => {
-         const { id, type, filePath, updatedAt, content, contentType, guiOrder, _guiMeta, ...rest } = match;
+         const { id, type, filePath, updatedAt, content, contentType, guiOrder, ...rest } = match;
          const cleanedMatch: any = { ...rest };
 
          // Handle trigger vs triggers logic

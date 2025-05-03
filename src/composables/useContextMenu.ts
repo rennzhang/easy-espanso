@@ -87,7 +87,12 @@ export function useContextMenu(props: { node: TreeNodeItem }) {
 
     store.moveTreeItem(clipboardItem.id, operation === 'cut' ? 'clipboard' : null, targetParentId, -1, 0);
 
-    toast.success(`粘贴成功: ${clipboardItem.name}`);
+    // Use appropriate display name based on type
+    const displayName = clipboardItem.type === 'group' 
+      ? clipboardItem.name 
+      : (clipboardItem.label || clipboardItem.trigger || '未命名片段');
+
+    toast.success(`粘贴成功: ${displayName}`);
     if (operation === 'cut') { 
       ClipboardManager.clear();
     } 
