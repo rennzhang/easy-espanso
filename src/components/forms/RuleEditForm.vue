@@ -54,7 +54,7 @@
 
         <!-- Editor Container -->
         <div
-          class="border rounded-none overflow-hidden min-h-[250px] focus-within:border-gray-500 focus-within:shadow-lg transition-colors duration-150"
+          class="border rounded-none overflow-hidden min-h-[250px] focus-within:border-gray-500 focus-within:shadow-lg transition-colors duration-150 border-input"
         >
           <!-- CodeMirror Editor (Replaces all previous textareas) -->
           <div v-if="currentContentType !== 'image'" class="h-[250px]">
