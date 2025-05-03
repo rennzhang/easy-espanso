@@ -11,14 +11,15 @@
     <ContextMenuContent class="w-48 !rounded-none">
       <!-- Dynamically render menu items -->
       <template v-for="(item, index) in computedMenuItems" :key="index">
-        <ContextMenuItem 
-          v-if="item.show !== false" 
-          @select="item.action" 
+        <ContextMenuItem
+          v-if="item.show !== false"
+          @select="item.action"
           :disabled="item.disabled"
           :variant="item.variant"
         >
           <component v-if="item.icon" :is="item.icon" class="mr-2 h-4 w-4" />
-          {{ item.label }}
+          <span>{{ item.label }}</span>
+          <ContextMenuShortcut v-if="item.shortcut">{{ item.shortcut }}</ContextMenuShortcut>
         </ContextMenuItem>
         <ContextMenuSeparator v-if="item.separator && item.show !== false && computedMenuItems[index+1]?.show !== false" />
       </template>
@@ -26,7 +27,7 @@
   </ContextMenu>
 
   <!-- 确认对话框 -->
-  <ConfirmDialog 
+  <ConfirmDialog
     v-model:visible="confirmDialogVisible"
     :title="confirmDialogTitle"
     :message="confirmDialogMessage"
@@ -38,10 +39,11 @@
 <script setup lang="ts">
 import {
   PlusIcon, Trash2Icon, ClipboardCopyIcon, ScissorsIcon, ClipboardPasteIcon,
-  MinimizeIcon, MaximizeIcon, PencilIcon, ChevronsUpDownIcon
+  PencilIcon, ChevronsUpDownIcon, ExternalLinkIcon, FileIcon
 } from "lucide-vue-next";
 import {
-  ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator
+  ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
+  ContextMenuShortcut
 } from '@/components/ui/context-menu';
 import { useContextMenu } from '@/composables/useContextMenu';
 import { ref, defineProps, defineEmits, computed } from "vue";
@@ -49,7 +51,7 @@ import ClipboardManager from '@/utils/ClipboardManager';
 import type { TreeNodeItem } from "./ConfigTree.vue";
 import ConfirmDialog from '@/components/common/ConfirmDialog.vue';
 
-// --- MenuItem Interface --- 
+// --- MenuItem Interface ---
 interface MenuItem {
   label: string;
   icon?: any;
@@ -58,9 +60,10 @@ interface MenuItem {
   disabled?: boolean;
   variant?: 'destructive';
   show?: boolean; // Controls visibility, defaults to true
+  shortcut?: string; // <-- Add shortcut property
 }
 
-// --- Props and Emits --- 
+// --- Props and Emits ---
 const props = defineProps<{
   node: TreeNodeItem;
   isSelected: boolean;
@@ -78,21 +81,21 @@ const {
   confirmDialogVisible,
   confirmDialogTitle,
   confirmDialogMessage,
-  nodeHasChildren,
   handleCopyNodeName,
+  handleCopyNodePath,
   handleCopyItem,
   handleCutItem,
   handlePasteItem,
   handleCreateMatch,
-  handleCreateGroup,
+  handleCreateConfigFile,
   handleExpandAll,
   handleCollapseAll,
-  handleExpandCurrentNode,
-  handleCollapseCurrentNode,
   prepareDeleteMatch,
   prepareDeleteGroup,
   handleConfirmDelete
-} = useContextMenu(props);
+} = useContextMenu({
+  getNode: () => props.node
+});
 
 const handleContextMenuUpdate = (open: boolean) => {
   isContextMenuOpen.value = open;
@@ -102,19 +105,59 @@ const handleRequestRename = () => {
   emit('request-rename', props.node);
 };
 
-// --- Computed Properties --- 
+// 打开 Espanso 官方包网站
+const handleOpenPackageHub = async () => {
+  window.open('https://hub.espanso.org/', '_blank');
+};
+
+// --- Computed Properties ---
 // 判断剪贴板是否有内容
 const canPaste = computed(() => ClipboardManager.hasItem());
 
-// --- Computed Menu Items --- 
+// Helper to get Cmd or Ctrl symbol based on platform
+const getPlatformKey = (): string => {
+  if (typeof navigator !== 'undefined') {
+    if (/Mac|iPod|iPhone|iPad/.test(navigator.userAgent)) {
+      return '⌘'; // Command symbol for macOS
+    }
+  }
+  return 'Ctrl'; // Control symbol for Windows/Linux etc.
+};
+const platformKey = getPlatformKey(); // Get the key once
+
+// 获取删除快捷键提示
+const getDeleteShortcut = (): string => {
+  if (typeof navigator !== 'undefined') {
+    if (/Mac|iPod|iPhone|iPad/.test(navigator.userAgent)) {
+      return '⌘+Del'; // macOS 删除快捷键
+    } else {
+      return 'Del/Bksp'; // Windows/Linux 删除快捷键
+    }
+  }
+  return 'Delete'; // Windows/Linux 删除快捷键
+};
+const deleteShortcut = getDeleteShortcut(); // Get the key once
+
+// --- Computed Menu Items ---
 const computedMenuItems = computed((): MenuItem[] => {
   const type = props.node.type;
   let items: MenuItem[] = [];
 
   // --- Common Items (Top) ---
   items.push(
-    { label: '新建片段', icon: PlusIcon, action: handleCreateMatch },
-    { label: '新建分组', icon: PlusIcon, action: handleCreateGroup, separator: true }
+    { label: '新建片段', icon: PlusIcon, action: handleCreateMatch, separator: true }
+  );
+
+  // 只在文件夹类型下添加"新建配置文件"菜单项
+  if (type === 'folder') {
+    items.push(
+      { label: '新建配置文件', icon: FileIcon, action: handleCreateConfigFile, separator: true }
+    );
+  }
+
+  // --- Paste (Always available if clipboard has content) ---
+  items.push(
+    { label: '粘贴', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, shortcut: `${platformKey}+V`, separator: true } // Updated shortcut format
   );
 
   // --- Type-Specific Items ---
@@ -122,37 +165,38 @@ const computedMenuItems = computed((): MenuItem[] => {
     items.push(
       { label: '重命名分组', icon: PencilIcon, action: handleRequestRename },
       { label: '复制名称', icon: ClipboardCopyIcon, action: handleCopyNodeName },
-      { label: '复制分组', icon: ClipboardCopyIcon, action: handleCopyItem },
-      { label: '剪切分组', icon: ScissorsIcon, action: handleCutItem, separator: true },
-      { label: '粘贴', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, separator: true },
-      { label: '删除分组', icon: Trash2Icon, action: prepareDeleteGroup, variant: 'destructive' }
+      { label: '复制路径', icon: ClipboardCopyIcon, action: handleCopyNodePath },
+      { label: '复制分组', icon: ClipboardCopyIcon, action: handleCopyItem, shortcut: `${platformKey}+C` }, // Updated shortcut format
+      { label: '剪切分组', icon: ScissorsIcon, action: handleCutItem, shortcut: `${platformKey}+X`, separator: true }, // Updated shortcut format
+      { label: '删除分组', icon: Trash2Icon, action: prepareDeleteGroup, variant: 'destructive', shortcut: deleteShortcut } // 使用平台特定的删除快捷键
     );
-  } else if (type === 'file') {
-     items.push(
-       { label: '重命名文件', icon: PencilIcon, action: handleRequestRename },
-       { label: '复制名称', icon: ClipboardCopyIcon, action: handleCopyNodeName, separator: true },
-       { label: '粘贴', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, separator: true },
-       { label: '展开当前', icon: MaximizeIcon, action: handleExpandCurrentNode, disabled: !nodeHasChildren() },
-       { label: '收起当前', icon: MinimizeIcon, action: handleCollapseCurrentNode, disabled: !nodeHasChildren() },
+  } else if (type === 'file' || type === 'folder') { // Combine File/Folder items where possible
+     const nodeTypeName = type === 'file' ? '文件' : '文件夹';
+
+     // 基本菜单项
+     const baseItems = [
+       { label: `重命名${nodeTypeName}`, icon: PencilIcon, action: handleRequestRename },
+       { label: '复制名称', icon: ClipboardCopyIcon, action: handleCopyNodeName },
+       { label: '复制路径', icon: ClipboardCopyIcon, action: handleCopyNodePath, separator: true },
        { label: '展开全部', icon: ChevronsUpDownIcon, action: handleExpandAll },
        { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll }
-     );
-  } else if (type === 'folder') {
-     items.push(
-       { label: '重命名文件夹', icon: PencilIcon, action: handleRequestRename },
-       { label: '复制名称', icon: ClipboardCopyIcon, action: handleCopyNodeName, separator: true },
-       { label: '粘贴', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, separator: true },
-       { label: '展开当前', icon: MaximizeIcon, action: handleExpandCurrentNode, disabled: !nodeHasChildren() },
-       { label: '收起当前', icon: MinimizeIcon, action: handleCollapseCurrentNode, disabled: !nodeHasChildren() },
-       { label: '展开全部', icon: ChevronsUpDownIcon, action: handleExpandAll },
-       { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll }
-     );
+     ];
+
+     // 如果是 Packages 相关节点，添加打开官方包网站的选项
+     if (props.node.name === 'Packages' || (props.node.path && props.node.path.includes('/packages/'))) {
+       baseItems.push(
+         { label: '浏览官方包库', icon: ExternalLinkIcon, action: handleOpenPackageHub, separator: true }
+       );
+     }
+
+     items.push(...baseItems);
   } else if (type === 'match') {
      items.push(
-       { label: '复制片段', icon: ClipboardCopyIcon, action: handleCopyItem },
-       { label: '剪切片段', icon: ScissorsIcon, action: handleCutItem, separator: true },
-       { label: '粘贴 (同级)', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, separator: true },
-       { label: '删除片段', icon: Trash2Icon, action: prepareDeleteMatch, variant: 'destructive' }
+       { label: '复制名称', icon: ClipboardCopyIcon, action: handleCopyNodeName },
+       { label: '复制路径', icon: ClipboardCopyIcon, action: handleCopyNodePath },
+       { label: '复制片段', icon: ClipboardCopyIcon, action: handleCopyItem, shortcut: `${platformKey}+C` }, // Updated shortcut format
+       { label: '剪切片段', icon: ScissorsIcon, action: handleCutItem, shortcut: `${platformKey}+X`, separator: true }, // Updated shortcut format
+       { label: '删除片段', icon: Trash2Icon, action: prepareDeleteMatch, variant: 'destructive', shortcut: deleteShortcut } // 使用平台特定的删除快捷键
      );
   }
 

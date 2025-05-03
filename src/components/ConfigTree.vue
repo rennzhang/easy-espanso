@@ -228,12 +228,20 @@ const treeData = computed(() => {
 });
 
 const handleSelect = (item: TreeNodeItem) => {
-  // Emit the original Match or Group object if available
+  // 处理所有类型的节点选择
   if (item.type === 'match' && item.match) {
+    // 发出匹配项的原始对象
     emit('select', item.match);
   } else if (item.type === 'group' && item.group) {
+    // 发出分组的原始对象
     emit('select', item.group);
+  } else if (item.type === 'file') {
+    // 对于文件，我们设置selectedItemId
+    store.state.selectedItemId = item.id;
+    store.state.selectedItemType = null; // 不是match或group
+    // 注意：这里不需要emit select事件，因为对文件我们只更新视觉效果
   }
+  // 对于文件夹类型，不做任何处理
 };
 
 // --- NEW: Handler for file/folder node move event from TreeNode ---
