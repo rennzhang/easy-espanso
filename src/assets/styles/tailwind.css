@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 @layer base {
   :root {
     --color-primary: 61 78 118;
@@ -25,7 +26,7 @@
   }
 
   a {
-    @apply text-primary-600 hover:text-primary-700;
+    @apply text-primary hover:text-primary-hover;
   }
 }
 
@@ -94,11 +95,11 @@
   }
 
   .checkbox {
-    @apply h-4 w-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500 focus:ring-offset-0;
+    @apply h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary-500 focus:ring-offset-0;
   }
 
   .radio {
-    @apply h-4 w-4 text-primary-600 border-gray-300 rounded-full focus:ring-primary-500 focus:ring-offset-0;
+    @apply h-4 w-4 text-primary border-gray-300 rounded-full focus:ring-primary-500 focus:ring-offset-0;
   }
 
   .form-label {

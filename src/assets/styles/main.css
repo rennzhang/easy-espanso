@@ -642,3 +642,4 @@ input[type="checkbox"], input[type="radio"] {
 .config-tree::-webkit-scrollbar-thumb:hover {
   background: var(--primary-color);
 }
+

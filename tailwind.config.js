@@ -1,5 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 const { fontFamily } = require("tailwindcss/defaultTheme")
+// Import Tailwind colors
+const colors = require('tailwindcss/colors') 
 
 module.exports = {
   darkMode: ["class"],
@@ -24,9 +26,10 @@ module.exports = {
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         primary: {
-          DEFAULT: "#3d4e76",
+          ...colors.indigo,
+          DEFAULT: colors.indigo[600],
           foreground: "#FFFFFF",
-          hover: "#2980B9",
+          hover: colors.indigo[700],
         },
         secondary: {
           DEFAULT: "hsl(var(--secondary))",
