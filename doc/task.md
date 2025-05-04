@@ -316,6 +316,83 @@
     * **目标:** 全面测试所有功能，特别关注边界情况和 YAML 转换的准确性。进行最后的代码审查，确保代码风格统一、逻辑清晰、符合架构设计。
     * **验收标准:** 应用稳定可靠，功能符合预期。
 
+**全局设置页面实现阶段 (Phase 7: Global Settings Implementation)**
+
+* **任务 7.1: 路由设置与基础集成**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `package.json`, `src/router/index.ts`, `src/main.ts`, `src/App.vue`
+    * **目标:**
+        * 安装并配置 `vue-router`。
+        * 定义路由规则，包含片段视图 (`/`) 和设置视图 (`/settings`)。
+        * 将路由集成到 Vue 应用入口。
+        * 修改 `App.vue` 使用 `<router-view>` 渲染视图。
+    * **验收标准:** 应用能通过路由在不同（空）视图间切换。
+
+* **任务 7.2: 片段/分组视图迁移**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/views/MatchesView.vue`, `src/components/layout/MainLayout.vue` (或类似布局组件)
+    * **目标:**
+        * 创建 `MatchesView.vue`。
+        * 将原有的三栏布局（`LeftPane`, `MiddlePane`, `RightPane`）逻辑迁移到 `MatchesView.vue`。
+        * 在根布局组件 (`MainLayout.vue` 或类似) 中添加导航元素，用于切换到 `/settings` 路由。
+    * **验收标准:** 片段/分组视图能在 `/` 路径下正确渲染，并能通过导航跳转到设置页面。
+
+* **任务 7.3: 设置页面视图与布局创建**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/views/SettingsView.vue`, `src/components/settings/SettingsSidebar.vue` (可选), `src/components/settings/SettingsForm.vue` (可选)
+    * **目标:**
+        * 创建 `SettingsView.vue`。
+        * 在 `SettingsView.vue` 中实现三栏式布局（左侧导航，中/右侧内容）。
+        * 创建左侧导航组件 (`SettingsSidebar.vue`)，包含设置项分类（常规、匹配文件等）。
+        * 创建右侧表单容器组件 (`SettingsForm.vue`)，用于承载设置表单。
+    * **验收标准:** 设置页面显示三栏布局骨架，左侧有导航分类。
+
+* **任务 7.4: 设置表单 UI 实现**
+    * **负责人:** 实习生
+    * **涉及文件:** `src/views/SettingsView.vue` (或 `SettingsForm.vue`)
+    * **目标:**
+        * 根据设计方案，使用 `shadcn/vue` 组件 (Input, Select, Checkbox, Textarea 等) 构建全局设置表单的 UI。
+        * 将表单按类别划分到不同的 `div` 或区域中。
+        * 为每个设置项添加对应的 `Label` 和 `HelpTip`。
+    * **验收标准:** 设置页面显示完整的表单 UI 元素，布局清晰。
+
+* **任务 7.5: Store 状态读取与表单绑定**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/views/SettingsView.vue`, `src/store/useEspansoStore.ts`
+    * **目标:**
+        * 在 `SettingsView.vue` 中，从 `useEspansoStore` 获取 `globalConfig` 状态。
+        * 将 `globalConfig` 的值深度拷贝到本地 `ref` (`localSettings`)。
+        * 将表单控件的值通过 `v-model` 绑定到 `localSettings`。
+        * 实现平台检测逻辑，并根据结果使用 `v-if` 控制平台特定设置部分的显示。
+    * **指导重点:** 深拷贝的重要性，`v-model` 的使用，平台特定部分的条件渲染。
+    * **验收标准:** 表单能正确显示从 Store 加载的全局配置，编辑表单时本地状态更新。
+
+* **任务 7.6: Store 更新与保存 Actions 实现**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/store/useEspansoStore.ts`
+    * **目标:**
+        * 在 `useEspansoStore` 中添加 `updateGlobalConfig(newConfig: GlobalConfig)` Action，用于更新 store 中的 `globalConfig` 状态（使用深拷贝）。
+        * 添加 `saveGlobalConfig()` Action，用于读取 `state.globalConfig`，清理无效值，序列化为 YAML，并调用 `writeFile` 保存到 `state.globalConfigPath`。
+        * 确保这两个 Action 被正确导出。
+    * **验收标准:** Store 中存在可用的 `updateGlobalConfig` 和 `saveGlobalConfig` Actions。
+
+* **任务 7.7: 设置页面表单逻辑连接**
+    * **负责人:** 实习生 (指导: 你)
+    * **涉及文件:** `src/views/SettingsView.vue`
+    * **目标:**
+        * 实现"保存设置"按钮的逻辑：
+            1.  检查本地设置 (`localSettings`) 是否与原始加载的设置 (`originalSettings`) 有差异。
+            2.  如有差异，调用 `store.updateGlobalConfig(localSettings.value)` 更新 Store 状态。
+            3.  调用 `store.saveGlobalConfig()` 将配置写入文件。
+            4.  更新 `originalSettings`，重置 `hasUnsaved` 状态。
+            5.  显示成功/失败提示。
+        * 实现"恢复默认"按钮的逻辑：
+            1.  提示用户确认。
+            2.  从 Store 重新加载 `globalConfig` 到 `localSettings`（或使用预定义的默认对象）。
+            3.  重置 `hasUnsaved` 状态。
+    * **指导重点:** 状态比较逻辑，异步操作处理 (`async/await`)，用户反馈。
+    * **验收标准:** 保存按钮能将修改后的设置更新到 Store 并保存到文件，恢复默认按钮能重置表单。
+
 **紧急优化与问题解决阶段 (Phase 8: Urgent Improvement)**
 
 * **任务 8.1: 平台逻辑分离与重构**

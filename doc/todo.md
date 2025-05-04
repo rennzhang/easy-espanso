@@ -287,3 +287,42 @@
   - 需要配置electron-builder以创建安装包
   - 需要为各平台（Windows/macOS/Linux）优化打包设置
   - 需要创建自动发布流程
+
+### Phase 7: 全局设置页面实现
+
+- [ ] **任务 7.1: 路由设置与基础集成**
+  - 安装 vue-router
+  - 创建 `src/router/index.ts` 并定义路由 (`/`, `/settings`)
+  - 在 `src/main.ts` 中集成路由
+  - 修改 `src/App.vue` 使用 `<router-view>`
+
+- [ ] **任务 7.2: 片段/分组视图迁移**
+  - 创建 `src/views/MatchesView.vue`
+  - 将三栏布局逻辑迁移到 `MatchesView.vue`
+  - 在 `src/components/layout/MainLayout.vue` (或类似组件) 添加导航链接到 `/settings`
+
+- [ ] **任务 7.3: 设置页面视图与布局创建**
+  - 创建 `src/views/SettingsView.vue`
+  - 在 `SettingsView.vue` 中实现三栏布局 (左侧导航, 右侧内容)
+  - (可选) 创建 `src/components/settings/SettingsSidebar.vue`
+  - (可选) 创建 `src/components/settings/SettingsForm.vue`
+
+- [ ] **任务 7.4: 设置表单 UI 实现**
+  - 在设置页面使用 `shadcn/vue` 组件构建全局设置表单 UI
+  - 根据分类组织表单区域
+  - 添加 Label 和 HelpTip
+
+- [ ] **任务 7.5: Store 状态读取与表单绑定**
+  - 在 `SettingsView.vue` 中获取 `store.state.globalConfig`
+  - 将全局配置深拷贝到本地 `ref`
+  - 使用 `v-model` 将表单控件绑定到本地 `ref`
+  - 实现平台检测和平台特定设置的条件渲染
+
+- [ ] **任务 7.6: Store 更新与保存 Actions 实现**
+  - 在 `useEspansoStore` 添加 `updateGlobalConfig` Action
+  - 在 `useEspansoStore` 添加 `saveGlobalConfig` Action
+  - 导出 Actions
+
+- [ ] **任务 7.7: 设置页面表单逻辑连接**
+  - 实现"保存设置"按钮逻辑 (比较状态、调用 action、处理反馈)
+  - 实现"恢复默认"按钮逻辑 (确认、重新加载状态)
