@@ -106,7 +106,7 @@
 import { computed, ref, onMounted, onUnmounted, watch } from 'vue';
 import { useEspansoStore } from '../../store/useEspansoStore';
 import { useUserPreferences } from '../../store/useUserPreferences';
-import { useContextMenu } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 import ClipboardManager from '@/utils/ClipboardManager';
 import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
 import type { TreeNodeItem } from "@/components/ConfigTree.vue";

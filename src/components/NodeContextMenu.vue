@@ -45,7 +45,7 @@ import {
   ContextMenu, ContextMenuTrigger, ContextMenuContent, ContextMenuItem, ContextMenuSeparator,
   ContextMenuShortcut
 } from '@/components/ui/context-menu';
-import { useContextMenu } from '@/composables/useContextMenu';
+import { useContextMenu } from '@/hooks/useContextMenu';
 import { ref, defineProps, defineEmits, computed } from "vue";
 import ClipboardManager from '@/utils/ClipboardManager';
 import type { TreeNodeItem } from "./ConfigTree.vue";
