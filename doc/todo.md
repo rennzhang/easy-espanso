@@ -323,3 +323,71 @@
 - [ ] **任务 7.7: 设置页面表单逻辑连接**
   - 实现"保存设置"按钮逻辑 (比较状态、调用 action、处理反馈)
   - 实现"恢复默认"按钮逻辑 (确认、重新加载状态)
+
+### Phase 9: 核心架构重构
+
+**任务 9.1: 建立统一的平台服务层**
+
+-   [ ] 创建 `src/services/platformService.ts` 文件及基础代码框架。
+-   [ ] 确保 `src/services/platform/IPlatformAdapter.ts` 包含所有必需的方法签名（包括补充方法）。
+-   [ ] 更新 `ElectronAdapter.ts` 实现 `IPlatformAdapter` 所有方法，调用 `preloadApi`。
+-   [ ] 更新 `WebAdapter.ts` 实现 `IPlatformAdapter` 所有方法，提供模拟或拒绝实现。
+-   [ ] 全局搜索并替换 `window.preloadApi` 调用为 `platformService` 调用（保留 Adapter 内部）。
+-   [ ] 全局搜索并替换 `fileService` 和 `dialogService` 调用为 `platformService` 调用。
+-   [ ] 删除 `src/services/fileService.ts` 和 `src/services/dialogService.ts`。
+-   [ ] 测试：运行应用，验证文件加载、目录选择等基础功能。
+
+**任务 9.2: 整合数据转换工具**
+
+-   [ ] 确定 `src/utils/espanso-converter.ts` 为整合目标。
+-   [ ] 检查 `src/utils/espanzo-utils.ts`，识别需保留的函数（如 `getAvailableVariables`）。
+-   [ ] (如果需要) 将需保留的函数从 `espanzo-utils.ts` 复制到 `espanso-converter.ts`。
+-   [ ] 确保 `espanso-converter.ts` 使用 `platformService` 处理 YAML，并统一 ID 生成方式。
+-   [ ] 删除 `src/utils/espanzo-utils.ts`。
+-   [ ] (谨慎确认后) 删除 `src/types/espanso-config.ts`。
+-   [ ] 更新项目中所有对已删除文件或函数的导入引用。
+-   [ ] 测试：确保项目编译通过，依赖转换工具的功能（如变量列表）正常。
+
+**任务 9.3: 重构 `useContextMenu` Hook**
+
+-   [ ] 在 `useEspansoStore` 中添加 `createConfigFile` Action，包含文件创建和重载逻辑。
+-   [ ] 修改 `useContextMenu` 的 `handleCreateConfigFile`，改为调用 `store.createConfigFile`。
+-   [ ] 在 `useEspansoStore` 中添加 `deleteFileSystemNode` Action，包含文件/目录删除和重载逻辑。
+-   [ ] 修改 `useContextMenu` 的 `handleConfirmDelete`，对于文件/文件夹类型，调用 `store.deleteFileSystemNode`；对于匹配项/分组，继续调用 `store.deleteItem`。
+-   [ ] 清理 `useContextMenu.ts`，移除不再需要的导入和直接平台调用。
+-   [ ] 测试：右键菜单创建配置文件、删除文件/文件夹功能正常。
+
+**任务 9.4: 核心 Store 逻辑拆分 (Load & Save)**
+
+-   [ ] 创建 `src/services/EspansoLoadService.ts`。
+-   [ ] 将 `useEspansoStore.loadConfig` 的核心逻辑移到 `EspansoLoadService.load` 方法。
+-   [ ] 确保 `EspansoLoadService.load` 使用 `platformService`，并返回 `Partial<State>` 结构。
+-   [ ] 修改 `useEspansoStore.loadConfig` Action，使其调用 `EspansoLoadService.load` 并更新状态。
+-   [ ] 创建 `src/services/EspansoSaveService.ts`。
+-   [ ] 将 `useEspansoStore.saveItemToFile` 的核心逻辑移到 `EspansoSaveService.saveFile` 方法。
+-   [ ] 确保 `EspansoSaveService.saveFile` 使用 `platformService`。
+-   [ ] 修改 `useEspansoStore.saveItemToFile` Action，使其调用 `EspansoSaveService.saveFile` 并更新状态（如 autosave 状态）。
+-   [ ] 测试：应用加载配置、自动/手动保存文件功能正常。
+
+**任务 9.5: 核心 Store 逻辑拆分 (Manipulation & CRUD)**
+
+-   [ ] 创建 `src/services/EspansoManipulationService.ts`。
+-   [ ] 将 `useEspansoStore.pasteItemCopy` 逻辑移到 `EspansoManipulationService.pasteItemCopy`。
+-   [ ] 将 `useEspansoStore.pasteItemCut` 逻辑移到 `EspansoManipulationService.pasteItemCut`。
+-   [ ] 将 `useEspansoStore.moveTreeItem` 的非剪贴板逻辑移到 `EspansoManipulationService.moveTreeItemInternal`。
+-   [ ] 修改 Store Actions (`pasteItemCopy`, `pasteItemCut`, `moveTreeItem`) 调用相应的 Service 方法。
+-   [ ] 重构 `useEspansoStore.updateItem`/`updateConfigState`，确保依赖来自正确的 Utils 或 Manager。
+-   [ ] 重构 `useEspansoStore.deleteItem`，移除文件保存逻辑，改为调用 `EspansoSaveService`。
+-   [ ] 重构 `useEspansoStore.addItem`，移除文件保存逻辑，改为调用 `EspansoSaveService`。
+-   [ ] (可选) 创建 `src/services/EspansoDataProcessor.ts` 并迁移 `espansoDataUtils.ts` 逻辑。
+-   [ ] (可选) 创建 `src/services/ConfigTreeManager.ts` 并迁移 `configTreeUtils.ts` 逻辑。
+-   [ ] (可选) 更新 Service 和 Store 使用新的 Manager/Processor。
+-   [ ] 测试：复制、剪切、粘贴、移动、添加、删除、更新功能完全正常。
+
+**任务 9.6: 最终审视与清理**
+
+-   [ ] 检查 `TreeNodeRegistry` 和 `ClipboardManager` 职责是否清晰单一。
+-   [ ] 检查 `src/types/` 目录，确保类型定义清晰、无冗余、一致使用。
+-   [ ] 通读所有修改过的文件，检查代码风格、命名、注释。
+-   [ ] 删除所有未使用的代码、注释掉的旧代码、冗余导入、变量或函数。
+-   [ ] 最终完整功能回归测试。
