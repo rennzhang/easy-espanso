@@ -40,7 +40,7 @@
             <!-- 添加左侧空白区域点击处理 -->
             <div
               class="absolute left-0 h-full"
-              :style="{width: nodeLevel * 20 + 'px'}"
+              :style="{width: nodeLevel * 12 + 'px'}"
               @click.stop="toggleFolder"
             ></div>
 
@@ -58,11 +58,19 @@
             </span>
             <!-- 文件夹图标放在名称前面 -->
             <span v-if="node.type === 'folder'" class="mr-1.5">
-              <FolderIcon
-                :class="[
-                  'h-5 w-5', // 增大图标尺寸
-                  isSelected ? 'text-white' : 'text-blue-500' // 使用更显眼的蓝色
-                ]"
+              <VSCodeFolderIcon
+                v-if="!isOpen"
+                class="h-5 w-5"
+              />
+              <VSCodeFolderOpenIcon
+                v-else
+                class="h-5 w-5"
+              />
+            </span>
+            <!-- 文件图标放在名称前面 -->
+            <span v-if="node.type === 'file'" class="mr-1.5">
+              <VSCodeYmlIcon
+                class="h-5 w-5"
               />
             </span>
             <!-- 分组图标放在名称前面 -->
@@ -123,14 +131,14 @@
                 'hover:text-accent-foreground bg-gray-50': !isSelected,
             }"
             :style="{
-              paddingLeft: nodeLevel * 20 + 8 + 'px',
+              paddingLeft: nodeLevel * 12 + 8 + 'px',
               '--node-level': nodeLevel,
             }"
           >
             <!-- 添加左侧空白区域点击处理 -->
             <div
               class="absolute left-0 h-full"
-              :style="{width: nodeLevel * 20 + 'px'}"
+              :style="{width: nodeLevel * 12 + 'px'}"
               @click.stop="toggleParentFolder"
             ></div>
 
@@ -237,9 +245,11 @@ import {
   ChevronRightIcon,
   ChevronDownIcon,
   ZapIcon,
-  FolderIcon,
   GitBranchIcon,
 } from "lucide-vue-next";
+import VSCodeFolderIcon from "@/components/icons/VSCodeFolderIcon.vue";
+import VSCodeFolderOpenIcon from "@/components/icons/VSCodeFolderOpenIcon.vue";
+import VSCodeYmlIcon from "@/components/icons/VSCodeYmlIcon.vue";
 import type { TreeNodeItem } from "@/components/ConfigTree.vue";
 import HighlightText from "@/components/common/HighlightText.vue";
 import { VueDraggable } from "vue-draggable-plus";
@@ -819,14 +829,14 @@ const toggleParentFolder = () => {
 const handleClick = (event: MouseEvent) => {
   const target = event.target as HTMLElement;
   const iconSpan = target.closest('span[class*="mr-1"]');
-  
+
   // 确保树组件获得焦点
   const treeElement = document.querySelector('.config-tree');
   if (treeElement && treeElement instanceof HTMLElement) {
     treeElement.focus();
     console.log('TreeNode点击: 树组件获得焦点');
   }
-  
+
   if (!iconSpan) {
     // Click was not on the chevron, select the node
     selectNode();
