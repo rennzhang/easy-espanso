@@ -324,70 +324,75 @@
   - 实现"保存设置"按钮逻辑 (比较状态、调用 action、处理反馈)
   - 实现"恢复默认"按钮逻辑 (确认、重新加载状态)
 
-### Phase 9: 核心架构重构
+### Phase 9: 业务层与服务层重构
 
-**任务 9.1: 建立统一的平台服务层**
+#### 9.1: 基础清理 - 类型与平台抽象 (Refactoring Phase 1)
+- [ ] **9.1.1: 整合核心类型:** 在 `src/types/core/` 下创建并整合 `espanso.types.ts`, `espanso-format.types.ts`, `preload.types.ts`, `ui.types.ts`, `common.types.ts`。
+- [ ] 删除旧的/冗余的类型文件 (`src/types/preload.ts`, `src/types/preload.d.ts`, `src/types/espanso-config.ts`, `src/types/espanso.ts`, `src/types/global.d.ts`)。
+- [ ] 更新全局导入语句以指向 `src/types/core/`。
+- [ ] **9.1.2: 完善 `PreloadApi`:** 在 `src/types/core/preload.types.ts` 中定义最终的 `PreloadApi` 接口，确保与 preload 实现一致。
+- [ ] **9.1.3: 加强 `IPlatformAdapter`:** 确保 `src/services/platform/IPlatformAdapter.ts` 接口包含所有需从渲染进程访问的 `PreloadApi` 方法。
+- [ ] **9.1.4: 更新适配器实现 (`ElectronAdapter`, `WebAdapter`):** 完全实现 `IPlatformAdapter`，通过 `window.preloadApi` 或 Web 回退。
+- [ ] **9.1.5: 更新适配器工厂 (`PlatformAdapterFactory`):** 确保基于 `window.preloadApi` 正确实例化适配器。
+- [ ] **9.1.6: 消除直接 `preloadApi` 调用:** 在 `ElectronAdapter` 之外，搜索并替换所有 `window.preloadApi` 调用为 `PlatformAdapterFactory.getInstance()`。
 
--   [ ] 创建 `src/services/platformService.ts` 文件及基础代码框架。
--   [ ] 确保 `src/services/platform/IPlatformAdapter.ts` 包含所有必需的方法签名（包括补充方法）。
--   [ ] 更新 `ElectronAdapter.ts` 实现 `IPlatformAdapter` 所有方法，调用 `preloadApi`。
--   [ ] 更新 `WebAdapter.ts` 实现 `IPlatformAdapter` 所有方法，提供模拟或拒绝实现。
--   [ ] 全局搜索并替换 `window.preloadApi` 调用为 `platformService` 调用（保留 Adapter 内部）。
--   [ ] 全局搜索并替换 `fileService` 和 `dialogService` 调用为 `platformService` 调用。
--   [ ] 删除 `src/services/fileService.ts` 和 `src/services/dialogService.ts`。
--   [ ] 测试：运行应用，验证文件加载、目录选择等基础功能。
+#### 9.2: 服务层优化 (Refactoring Phase 2)
+- [ ] **9.2.1: 重构 `fileService.ts` -> `platformService.ts`:**
+  - 移除环境检测 (`detectEnvironment`) 和路径逻辑 (`getEspansoConfigDir`)。
+  - 移除 `FileService` 类，直接导出函数。
+  - 所有函数直接委托给 `PlatformAdapterFactory.getInstance()`。
+- [ ] **9.2.2: 创建 `YamlService` (`src/services/yamlService.ts`):**
+  - 移动 `parseYaml`, `serializeYaml` 函数到此服务。
+  - 函数通过 `PlatformAdapterFactory.getInstance()` 调用 preload 实现。
+- [ ] **9.2.3: 创建 `ConfigService` (`src/services/configService.ts`):**
+  - 实现 `getDefaultConfigPath(): Promise<string | null>` (使用适配器)。
+  - 实现 `saveSelectedConfigPath(path: string)` 和 `getSelectedConfigPath(): string | null` (使用 `localStorage` 或适配器)。
+- [ ] **9.2.4: 创建 `EspansoService` (`src/services/espansoService.ts` - 核心业务逻辑):**
+  - 实现 `loadConfiguration(configDir)`: 调用 `platformService`, `yamlService`, `espansoDataUtils` (P4)，扫描、读取、解析，*返回* `ConfigTreeNode[]` 和 `GlobalConfig`。
+  - 实现 `saveConfigurationFile(filePath, items, existingYamlData?)`: 调用 `espansoDataUtils` (P4) 清理数据，合并，调用 `yamlService` 和 `platformService` 写入。
+  - 实现 `saveGlobalConfig(filePath, configData)`: 调用 `yamlService` 和 `platformService` 保存。
 
-**任务 9.2: 整合数据转换工具**
+#### 9.3: Store 简化 (Refactoring Phase 3)
+- [ ] **9.3.1: 重新聚焦 State (`useEspansoStore.ts`):**
+  - 移除 `state.config` 属性。
+  - `configTree: ConfigTreeNode[]` 成为配置的单一来源。
+  - 保留 `configRootDir`, `globalConfig`, `globalConfigPath`, `configTree`, UI 相关状态等。
+  - 考虑移除 `hasUnsavedChanges` 和 `lastSavedState`。
+- [ ] **9.3.2: 更新计算属性:** 修改 `allMatches`, `allGroups`, `allItems`, `selectedItem`，使其从 `state.value.configTree` 遍历和派生。
+- [ ] **9.3.3: 重构 Actions:**
+  - `loadConfig`: 调用 `ConfigService.getDefaultConfigPath`, `EspansoService.loadConfiguration`，更新 `state.configTree`, `state.globalConfig` 等。
+  - `autoSaveConfig`: (如果保留) 仅调用 `EspansoService.saveGlobalConfig`。
+  - `updateItem`: 在 `state.configTree` 中找到引用并更新 (`Object.assign`)，然后调用 `EspansoService.saveConfigurationFile`。
+  - `addItem`: 在 `state.configTree` 中添加引用，然后调用 `EspansoService.saveConfigurationFile`。
+  - `deleteItem`: 从 `state.configTree` 移除引用，然后调用 `EspansoService.saveConfigurationFile`。
+  - `moveTreeItem`: 在 `state.configTree` 中移动引用 (更新 `filePath`)，然后为旧文件和新文件调用 `EspansoService.saveConfigurationFile`。
+  - `pasteItemCopy`/`pasteItemCut`: 使用重构后的 `addItem`/`moveTreeItem`。
+  - **确保**: 所有修改配置的 Actions 在更新 `state.configTree` 后 *立即* 调用 `EspansoService` 保存函数。
 
--   [ ] 确定 `src/utils/espanso-converter.ts` 为整合目标。
--   [ ] 检查 `src/utils/espanzo-utils.ts`，识别需保留的函数（如 `getAvailableVariables`）。
--   [ ] (如果需要) 将需保留的函数从 `espanzo-utils.ts` 复制到 `espanso-converter.ts`。
--   [ ] 确保 `espanso-converter.ts` 使用 `platformService` 处理 YAML，并统一 ID 生成方式。
--   [ ] 删除 `src/utils/espanzo-utils.ts`。
--   [ ] (谨慎确认后) 删除 `src/types/espanso-config.ts`。
--   [ ] 更新项目中所有对已删除文件或函数的导入引用。
--   [ ] 测试：确保项目编译通过，依赖转换工具的功能（如变量列表）正常。
+#### 9.4: 工具类与逻辑整合 (Refactoring Phase 4)
+- [ ] **9.4.1: 整合 Espanso Utils (`espansoDataUtils.ts`):**
+  - 合并 `espansoDataUtils`, `espanso-converter`, `espanso-utils` 中的函数 (ID生成, 处理原始数据加内部字段, 清理数据移除内部字段, 在处理后数据中查找)。
+  - 移除 `guiOrderCounter` 全局副作用。
+  - 删除 `espanso-converter.ts`, `espanso-utils.ts`。
+- [ ] **9.4.2: 优化 Tree Utils (`configTreeUtils.ts`):**
+  - 确保函数使用 `src/types/core/` 中的规范类型。
+  - 重新评估 `findAndUpdateInTree` 的必要性。
+  - 确保 `updateDescendantPathsAndFilePaths` 仅在重命名/移动文件/文件夹时使用。
+- [ ] **9.4.3: 重新评估单例:**
+  - `ClipboardManager`: 可能保持。
+  - `TreeNodeRegistry`: *理想:* 移除，状态移至组件或 Pinia Store (`state.expandedNodeIds`)。*备选:* 保留但仅用于 UI 状态。
+- [ ] **9.4.4: 删除 Environment Util (`src/utils/environment.ts`):** 不再需要。
 
-**任务 9.3: 重构 `useContextMenu` Hook**
+#### 9.5: UI 层优化 - Hooks 与组件 (Refactoring Phase 5)
+- [ ] **9.5.1: 重构 `useContextMenu.ts`:**
+  - 移除复杂逻辑和直接状态操作。
+  - Copy/Cut 调用 `ClipboardManager`。
+  - Paste/Create/Delete 调用 Store Actions。
+  - Expand/Collapse 调用 Store 或 `TreeNodeRegistry`。
+- [ ] **9.5.2: 更新组件:** 修改直接访问旧 Store 结构或旧工具/服务的组件。组件应从 Store 选择数据（主要通过 `configTree`），通过调用 Store Actions 触发更改。
 
--   [ ] 在 `useEspansoStore` 中添加 `createConfigFile` Action，包含文件创建和重载逻辑。
--   [ ] 修改 `useContextMenu` 的 `handleCreateConfigFile`，改为调用 `store.createConfigFile`。
--   [ ] 在 `useEspansoStore` 中添加 `deleteFileSystemNode` Action，包含文件/目录删除和重载逻辑。
--   [ ] 修改 `useContextMenu` 的 `handleConfirmDelete`，对于文件/文件夹类型，调用 `store.deleteFileSystemNode`；对于匹配项/分组，继续调用 `store.deleteItem`。
--   [ ] 清理 `useContextMenu.ts`，移除不再需要的导入和直接平台调用。
--   [ ] 测试：右键菜单创建配置文件、删除文件/文件夹功能正常。
-
-**任务 9.4: 核心 Store 逻辑拆分 (Load & Save)**
-
--   [ ] 创建 `src/services/EspansoLoadService.ts`。
--   [ ] 将 `useEspansoStore.loadConfig` 的核心逻辑移到 `EspansoLoadService.load` 方法。
--   [ ] 确保 `EspansoLoadService.load` 使用 `platformService`，并返回 `Partial<State>` 结构。
--   [ ] 修改 `useEspansoStore.loadConfig` Action，使其调用 `EspansoLoadService.load` 并更新状态。
--   [ ] 创建 `src/services/EspansoSaveService.ts`。
--   [ ] 将 `useEspansoStore.saveItemToFile` 的核心逻辑移到 `EspansoSaveService.saveFile` 方法。
--   [ ] 确保 `EspansoSaveService.saveFile` 使用 `platformService`。
--   [ ] 修改 `useEspansoStore.saveItemToFile` Action，使其调用 `EspansoSaveService.saveFile` 并更新状态（如 autosave 状态）。
--   [ ] 测试：应用加载配置、自动/手动保存文件功能正常。
-
-**任务 9.5: 核心 Store 逻辑拆分 (Manipulation & CRUD)**
-
--   [ ] 创建 `src/services/EspansoManipulationService.ts`。
--   [ ] 将 `useEspansoStore.pasteItemCopy` 逻辑移到 `EspansoManipulationService.pasteItemCopy`。
--   [ ] 将 `useEspansoStore.pasteItemCut` 逻辑移到 `EspansoManipulationService.pasteItemCut`。
--   [ ] 将 `useEspansoStore.moveTreeItem` 的非剪贴板逻辑移到 `EspansoManipulationService.moveTreeItemInternal`。
--   [ ] 修改 Store Actions (`pasteItemCopy`, `pasteItemCut`, `moveTreeItem`) 调用相应的 Service 方法。
--   [ ] 重构 `useEspansoStore.updateItem`/`updateConfigState`，确保依赖来自正确的 Utils 或 Manager。
--   [ ] 重构 `useEspansoStore.deleteItem`，移除文件保存逻辑，改为调用 `EspansoSaveService`。
--   [ ] 重构 `useEspansoStore.addItem`，移除文件保存逻辑，改为调用 `EspansoSaveService`。
--   [ ] (可选) 创建 `src/services/EspansoDataProcessor.ts` 并迁移 `espansoDataUtils.ts` 逻辑。
--   [ ] (可选) 创建 `src/services/ConfigTreeManager.ts` 并迁移 `configTreeUtils.ts` 逻辑。
--   [ ] (可选) 更新 Service 和 Store 使用新的 Manager/Processor。
--   [ ] 测试：复制、剪切、粘贴、移动、添加、删除、更新功能完全正常。
-
-**任务 9.6: 最终审视与清理**
-
--   [ ] 检查 `TreeNodeRegistry` 和 `ClipboardManager` 职责是否清晰单一。
--   [ ] 检查 `src/types/` 目录，确保类型定义清晰、无冗余、一致使用。
--   [ ] 通读所有修改过的文件，检查代码风格、命名、注释。
--   [ ] 删除所有未使用的代码、注释掉的旧代码、冗余导入、变量或函数。
--   [ ] 最终完整功能回归测试。
+#### 9.6: 测试与清理 (Refactoring Phase 6)
+- [ ] **9.6.1: 手动测试:** 全面测试所有功能。
+- [ ] **9.6.2: 单元/集成测试 (推荐):** 为新服务、Store Actions/Getters、工具函数添加测试。
+- [ ] **9.6.3: 代码清理:** 移除注释掉的代码、未使用的文件/函数，运行 Linter/Formatter。
+- [ ] **9.6.4: 文档更新:** 添加 JSDoc，更新 README 或其他文档。

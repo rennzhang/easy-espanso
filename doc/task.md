@@ -448,69 +448,79 @@
 
 ---
 
-**核心架构重构阶段 (Phase 9: Core Architecture Refactoring)**
+**业务层与服务层重构阶段 (Phase 9: Business & Service Layer Refactoring)**
 
-*   **任务 9.1: 建立统一的平台服务层**
-    *   **负责人:** 实习生 (指导: 你)
-    *   **涉及文件:** `src/services/platformService.ts`, `src/services/platform/IPlatformAdapter.ts`, `src/services/platform/ElectronAdapter.ts`, `src/services/platform/WebAdapter.ts`, 全局使用 `preloadApi` 或旧服务 (`fileService`, `dialogService`) 的地方
-    *   **目标:**
-        *   创建并实现统一的 `platformService`，作为所有平台相关操作（文件、对话框、YAML、路径、通知等）的唯一入口。
-        *   定义清晰的 `IPlatformAdapter` 接口，包含所有必需的方法。
-        *   确保 `ElectronAdapter` 和 `WebAdapter` 完整实现接口。
-        *   替换项目中所有对 `window.preloadApi`（除 Adapter 内部）、`fileService`、`dialogService` 的直接调用，改为使用 `platformService`。
-        *   删除旧的 `fileService.ts` 和 `dialogService.ts`。
-    *   **验收标准:** 平台相关操作统一通过 `platformService` 调用，旧服务文件被移除，应用基本功能（文件加载、目录选择等）正常。
+* **任务 9.1: 基础清理 - 类型与平台抽象 (Refactoring Phase 1)**
+    * **负责人:** 你 (主导) / 实习生 (在你详细指导和代码审查下)
+    * **涉及文件:** `src/types/`, `src/services/platform/`
+    * **目标:** 建立类型的单一来源，确保平台交互被正确抽象。
+        * **9.1.1: 整合核心类型:** 在 `src/types/core/` 下创建并整合 `espanso.types.ts`, `espanso-format.types.ts`, `preload.types.ts`, `ui.types.ts`, `common.types.ts`。删除旧的/冗余的类型文件。更新全局导入。
+        * **9.1.2: 完善 `PreloadApi`:** 在 `src/types/core/preload.types.ts` 中定义最终的 Preload API 接口，确保与 preload 实现一致。
+        * **9.1.3: 加强 `IPlatformAdapter`:** 确保接口包含所有需要从渲染进程访问的 `PreloadApi` 方法。
+        * **9.1.4: 更新适配器实现:** 修改 `ElectronAdapter` 和 `WebAdapter` 以完全实现 `IPlatformAdapter`，仅通过 `window.preloadApi` 调用或提供 Web 回退。
+        * **9.1.5: 更新适配器工厂:** 确保 `PlatformAdapterFactory` 正确实例化适配器。
+        * **9.1.6: 消除直接 `preloadApi` 调用:** 在 `ElectronAdapter` 之外的代码中，将所有 `window.preloadApi` 调用替换为 `PlatformAdapterFactory.getInstance()`。
+    * **验收标准:** 类型定义清晰统一，平台交互通过 `IPlatformAdapter` 进行，无直接 `preloadApi` 调用。
 
-*   **任务 9.2: 整合数据转换工具**
-    *   **负责人:** 实习生 (指导: 你)
-    *   **涉及文件:** `src/utils/espanso-converter.ts`, `src/utils/espanzo-utils.ts`, `src/types/espanso-config.ts` (可能)
-    *   **目标:**
-        *   将所有核心数据格式转换逻辑（Espanso YAML <-> 内部 Config 结构）统一到 `espanso-converter.ts`。
-        *   移除 `espanzo-utils.ts` 中的冗余或已废弃函数（特别是 YAML 操作和旧格式转换）。
-        *   如有必要，将 `espanzo-utils.ts` 中仍有用的辅助函数（如 `getAvailableVariables`, `generatePreview`）迁移到 `espanso-converter.ts` 或其他合适位置。
-        *   确保 `espanso-converter.ts` 不再直接调用 `preloadApi`，而是使用 `platformService`。
-        *   删除冗余的 `espanzo-utils.ts` 和可能废弃的类型文件 (`espanso-config.ts`)。
-    *   **验收标准:** 数据转换逻辑集中，冗余工具文件被移除，项目编译通过。
+* **任务 9.2: 服务层优化 (Refactoring Phase 2)**
+    * **负责人:** 实习生 (在你详细指导和代码审查下)
+    * **涉及文件:** `src/services/`
+    * **目标:** 创建专门的服务来处理特定任务，解耦文件操作、YAML 处理和配置逻辑。
+        * **9.2.1: 重构 `fileService.ts` -> `platformService.ts`:** 移除环境检测和路径逻辑，所有函数直接委托给 `PlatformAdapterFactory.getInstance()`。
+        * **9.2.2: 创建 `YamlService`:** 移动 `parseYaml` 和 `serializeYaml` 到此服务，通过适配器调用 preload 中的实现。
+        * **9.2.3: 创建 `ConfigService`:** 移动查找默认 Espanso 路径和管理选定配置目录路径的逻辑到此服务。
+        * **9.2.4: 创建 `EspansoService` (核心业务逻辑):**
+            * 实现 `loadConfiguration(configDir)`: 使用 `platformService`, `yamlService` 和 `espansoDataUtils` (P4) 来扫描、读取、解析并构建初始的 `ConfigTreeNode[]` 数据结构。*不直接修改 Store*。
+            * 实现 `saveConfigurationFile(filePath, items, existingYamlData?)`: 使用 `espansoDataUtils` (P4) 清理数据，合并，然后使用 `yamlService` 和 `platformService` 写入文件。
+            * 实现 `saveGlobalConfig(filePath, configData)`: 使用 `yamlService` 和 `platformService` 保存全局配置。
+    * **验收标准:** 服务职责清晰，使用适配器进行平台交互，业务逻辑从 Store 中分离。
 
-*   **任务 9.3: 重构 `useContextMenu` Hook**
-    *   **负责人:** 实习生 (指导: 你)
-    *   **涉及文件:** `src/hooks/useContextMenu.ts`, `src/store/useEspansoStore.ts`
-    *   **目标:**
-        *   将 `useContextMenu` 中涉及文件系统操作（创建配置文件、删除文件/文件夹）和复杂状态变更的逻辑移交给 `useEspansoStore` 中的新 Actions。
-        *   `useContextMenu` 只负责处理右键菜单的 UI 交互、状态管理（如确认对话框）以及调用 Store Actions。
-        *   移除 `useContextMenu` 中对 `platformService` 或底层 API 的直接调用。
-    *   **验收标准:** `useContextMenu` 代码更简洁，只处理 UI 逻辑和调用 Store，相关的文件操作（创建/删除）功能正常。
+* **任务 9.3: Store 简化 (Refactoring Phase 3)**
+    * **负责人:** 实习生 (在你详细指导和代码审查下)
+    * **涉及文件:** `src/store/useEspansoStore.ts`
+    * **目标:** 使 Store 主要负责状态管理和协调 Actions，将复杂逻辑委托给服务。使用 `configTree` 作为配置的单一来源。
+        * **9.3.1: 重新聚焦 State:** 移除 `state.config`，保留 `configTree`, `globalConfig` 等 UI 相关状态。考虑移除 `hasUnsavedChanges`。
+        * **9.3.2: 更新计算属性:** 修改 `allMatches`, `allGroups`, `allItems`, `selectedItem` 以从 `state.configTree` 派生。
+        * **9.3.3: 重构 Actions:**
+            * `loadConfig`: 调用 `ConfigService`, `EspansoService`，更新 `state.configTree`, `state.globalConfig`。
+            * `autoSaveConfig`: (如果需要) 仅调用 `EspansoService.saveGlobalConfig`。
+            * `updateItem`: 在 `state.configTree` 中找到引用并更新，然后调用 `EspansoService.saveConfigurationFile`。
+            * `addItem`: 在 `state.configTree` 中添加引用，然后调用 `EspansoService.saveConfigurationFile`。
+            * `deleteItem`: 从 `state.configTree` 移除引用，然后调用 `EspansoService.saveConfigurationFile`。
+            * `moveTreeItem`: 在 `state.configTree` 中移动引用，更新 `filePath`，然后为旧文件和新文件调用 `EspansoService.saveConfigurationFile`。
+            * `pasteItemCopy`/`pasteItemCut`: 使用重构后的 `addItem`/`moveTreeItem`。
+        * **关键:** 所有修改配置的 Actions 在更新 `state.configTree` 后 *立即* 调用相应的 `EspansoService` 保存函数。
+    * **验收标准:** Store 逻辑简化，`configTree` 成为主要数据源，Actions 委托给服务执行复杂操作和持久化。
 
-*   **任务 9.4: 核心 Store 逻辑拆分 (Load & Save)**
-    *   **负责人:** 你 (主导) 或 实习生 (在你详细指导下)
-    *   **涉及文件:** `src/store/useEspansoStore.ts`, `src/services/EspansoLoadService.ts`, `src/services/EspansoSaveService.ts`
-    *   **目标:**
-        *   将 `useEspansoStore` 中 `loadConfig` 的核心文件读取、解析、转换逻辑提取到独立的 `EspansoLoadService`。
-        *   将 `useEspansoStore` 中 `saveItemToFile` (或类似保存逻辑) 的核心文件查找、格式转换、序列化、写入逻辑提取到独立的 `EspansoSaveService`。
-        *   `useEspansoStore` 中的 `loadConfig` 和 `saveItemToFile` Actions 主要负责调用对应的 Service，并更新 Store 状态。
-    *   **指导重点:** Service 类/对象的设计，方法签名，数据传递，错误处理。
-    *   **验收标准:** 加载和保存逻辑从 Store 中分离到 Service，应用加载和（自动/手动）保存功能正常。
+* **任务 9.4: 工具类与逻辑整合 (Refactoring Phase 4)**
+    * **负责人:** 实习生 (在你详细指导和代码审查下)
+    * **涉及文件:** `src/utils/`
+    * **目标:** 组织工具函数，消除冗余，最小化副作用。
+        * **9.4.1: 整合 Espanso Utils:** 将 `espansoDataUtils`, `espanso-converter`, `espanso-utils` 中的相关函数合并到 `espansoDataUtils.ts` (ID 生成, 处理原始数据加内部字段, 清理数据移除内部字段, 在处理后数据中查找)。移除 `guiOrderCounter` 副作用。
+        * **9.4.2: 优化 Tree Utils:** 确保 `configTreeUtils.ts` 中的函数使用规范类型，重新评估 `findAndUpdateInTree` 的必要性。确保 `updateDescendantPathsAndFilePaths` 仅在重命名/移动文件/文件夹时使用。
+        * **9.4.3: 重新评估单例:**
+            * `ClipboardManager`: 可能保持不变。
+            * `TreeNodeRegistry`: *理想情况* 是移除，将展开/折叠状态移至组件本地或 Pinia Store (`state.expandedNodeIds`)。*备选方案* 是保留但仅用于 UI 状态。
+        * **9.4.4: 删除 Environment Util:** `environment.ts` 不再需要。
+    * **验收标准:** 工具函数逻辑清晰、组织合理，冗余代码和不必要的副作用被移除。
 
-*   **任务 9.5: 核心 Store 逻辑拆分 (Manipulation & CRUD)**
-    *   **负责人:** 你 (主导) 或 实习生 (在你详细指导下)
-    *   **涉及文件:** `src/store/useEspansoStore.ts`, `src/services/EspansoManipulationService.ts`, `src/services/EspansoDataProcessor.ts` (可选), `src/services/ConfigTreeManager.ts` (可选)
-    *   **目标:**
-        *   将 `useEspansoStore` 中复杂的业务操作（如 `pasteItemCopy`, `pasteItemCut`, `moveTreeItem` 的非剪贴板部分）提取到 `EspansoManipulationService`。
-        *   重构 Store 的 CRUD Actions (`addItem`, `deleteItem`, `updateItem`)，使其专注于状态更新，并将文件保存的副作用委托给 `EspansoSaveService`。
-        *   (推荐) 将数据处理逻辑 (`processMatch`, `cleanMatchForSaving` 等) 移到 `EspansoDataProcessor`。
-        *   (推荐) 将树操作逻辑 (`createFileNode`, `findNodeById` 等) 移到 `ConfigTreeManager`。
-    *   **指导重点:** 复杂操作的逻辑拆解，Service 间的协作，确保状态更新和文件保存的时序正确。
-    *   **验收标准:** 复制、剪切、粘贴、移动、增删改功能正常，Store 代码显著简化，逻辑分散到各个 Service 中。
+* **任务 9.5: UI 层优化 - Hooks 与组件 (Refactoring Phase 5)**
+    * **负责人:** 实习生 (在你详细指导和代码审查下)
+    * **涉及文件:** `src/composables/`, `src/components/`
+    * **目标:** 更新 UI 组件和 Hooks 以使用重构后的服务和简化的 Store。
+        * **9.5.1: 重构 `useContextMenu.ts`:** 移除复杂逻辑和直接状态操作。Copy/Cut 操作主要调用 `ClipboardManager`。Paste/Create/Delete 操作调用相应的 Store Actions。Expand/Collapse 操作调用 Store 或 `TreeNodeRegistry`。
+        * **9.5.2: 更新组件:** 修改直接访问旧 Store 结构或旧工具/服务的组件。组件应从 Store 选择数据（主要通过 `configTree`），并通过调用 Store Actions 来触发更改。
+    * **验收标准:** UI 层逻辑简化，与重构后的服务和 Store 正确交互。
 
-*   **任务 9.6: 最终审视与清理**
-    *   **负责人:** 你 和 实习生
-    *   **涉及文件:** 整个项目
-    *   **目标:**
-        *   检查 `TreeNodeRegistry` 和 `ClipboardManager` 的职责是否清晰。
-        *   检查类型定义是否统一、无冗余。
-        *   进行代码审查，统一风格，确保命名和注释清晰。
-        *   移除所有未使用的代码、注释掉的旧逻辑、冗余导入。
-    *   **验收标准:** 代码库整洁、一致，无明显冗余代码，易于维护。
+* **任务 9.6: 测试与清理 (Refactoring Phase 6)**
+    * **负责人:** 你 和 实习生
+    * **涉及文件:** 全局
+    * **目标:** 确保重构后的应用功能正常，移除无用代码。
+        * **9.6.1: 手动测试:** 全面测试所有功能。
+        * **9.6.2: 单元/集成测试 (推荐):** 为新的服务、Store Actions/Getters、工具函数添加测试。
+        * **9.6.3: 代码清理:** 移除注释掉的代码、未使用的文件/函数，运行 Linter/Formatter。
+        * **9.6.4: 文档更新:** 添加 JSDoc，更新 README 或其他文档。
+    * **验收标准:** 应用稳定可靠，功能符合预期，代码整洁，文档更新。
 
 ---
 
