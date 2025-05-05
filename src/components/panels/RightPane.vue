@@ -132,7 +132,11 @@ import { useUserPreferences } from '../../store/useUserPreferences'; // 用户�
 import { useContextMenu } from '@/hooks/useContextMenu'; // 上下文菜单 Hook
 import ClipboardManager from '@/utils/ClipboardManager'; // 剪贴板管理器
 import TreeNodeRegistry from '@/utils/TreeNodeRegistry'; // 树节点注册表 (可能仍用于上下文菜单)
-import type { TreeNodeItem } from "@/components/ConfigTree.vue"; // 树节点项类型
+import { findItemInTreeById } from '@/utils/configTreeUtils'; // 导入 findItemInTreeById
+import type { Match, Group } from '@/types/core/espanso.types'; // 导入类型
+import type { TreeNodeItem } from '@/components/ConfigTree.vue'; // 导入类型
+import { toast } from 'vue-sonner'; // 导入 toast
+import { isMacOS } from '@/lib/utils'; // 导入 isMacOS
 import { SaveIcon, Loader2Icon, CheckIcon, XIcon, EyeIcon } from 'lucide-vue-next'; // 图标
 import { Button } from '../ui/button'; // UI 组件
 import { Checkbox } from '../ui/checkbox';
@@ -144,9 +148,6 @@ import {
 } from "../ui/tooltip";
 import RuleEditForm from '../forms/RuleEditForm.vue';   // 规则编辑表单
 import GroupEditForm from '../forms/GroupEditForm.vue'; // 分组编辑表单
-import type { Match, Group } from '@/types/core/espanso.types'; // 核心类型
-import { toast } from 'vue-sonner'; // 提示库
-import { isMacOS } from '@/lib/utils';
 
 // --- Refs 和 Store 实例 ---
 const ruleFormRef = ref<InstanceType<typeof RuleEditForm> | null>(null);
@@ -283,21 +284,23 @@ const saveItem = async () => {
 
 
 // --- ContextMenu 和快捷键相关 (部分保留，部分需要调整) ---
-const getContextMenuNode = (): TreeNodeItem | null => {
-  const item = selectedItem.value;
-  if (!item) return null;
-
-  // 创建一个符合 TreeNodeItem 接口的对象
-  return {
-    id: item.id,
-    type: item.type,
-    name: item.name || '',
-    children: [],
-    match: item.type === 'match' ? item : undefined,
-    group: item.type === 'group' ? item : undefined
-  };
-};
-const { handleCopyItem, handleCutItem, handlePasteItem } = useContextMenu({ getNode: getContextMenuNode }); // 保留剪贴板操作
+const { handleCopyItem, handleCutItem } = useContextMenu({
+  getNode: () => {
+    const item = selectedItem.value;
+    if (!item || (item.type !== 'match' && item.type !== 'group')) return null;
+    // 创建一个临时的 TreeNodeItem 供 useContextMenu 使用
+    return {
+      id: item.id,
+      type: item.type,
+      name: item.name || '',
+      children: [],
+      match: item.type === 'match' ? item : undefined,
+      group: item.type === 'group' ? item : undefined,
+      path: item.filePath || '', // 确保传递路径信息
+      isSelected: true // 标记为选中
+    };
+  }
+});
 
 // --- 键盘快捷键处理 ---
 const handleGlobalKeyDown = (event: KeyboardEvent) => {
@@ -331,35 +334,67 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
       return;
   }
 
-  const currentItem = selectedItem.value;
-  if (!currentItem || (currentItem.type !== 'match' && currentItem.type !== 'group')) {
-      // console.log('[RightPane Shortcut] Ignored: No valid item selected for copy/cut/paste/delete.'); // 可选调试日志
-      return; // 只对 Match 和 Group 应用这些快捷键
-  }
+  // 获取当前 store 中记录的选中项 ID (可能是在树中选中的ID)
+  const selectedNodeIdInTree = store.state.selectedItemId; 
 
+  // 复制和剪切仍然依赖右侧面板选中的 Match 或 Group
+  const currentItemForCopyCut = selectedItem.value;
   if (isModKey && key.toLowerCase() === 'c') {
-    console.log('[RightPane Shortcut] Copy');
-    handleCopyItem();
+    if (currentItemForCopyCut && (currentItemForCopyCut.type === 'match' || currentItemForCopyCut.type === 'group')) {
+      console.log('[RightPane Shortcut] Copy');
+      handleCopyItem();
+    } else {
+       console.log('[RightPane Shortcut] Copy ignored: No valid item selected in right pane.');
+    }
   } else if (isModKey && key.toLowerCase() === 'x') {
-    console.log('[RightPane Shortcut] Cut');
-    handleCutItem();
+    if (currentItemForCopyCut && (currentItemForCopyCut.type === 'match' || currentItemForCopyCut.type === 'group')) {
+      console.log('[RightPane Shortcut] Cut');
+      handleCutItem();
+    } else {
+      console.log('[RightPane Shortcut] Cut ignored: No valid item selected in right pane.');
+    }
   } else if (isModKey && key.toLowerCase() === 'v') {
-    console.log('[RightPane Shortcut] Paste');
+    console.log('[RightPane Shortcut] Paste triggered');
+    if (!selectedNodeIdInTree) {
+      console.log('[RightPane Shortcut] Paste ignored: No node selected in tree.');
+      toast.error("请先在左侧树中选择粘贴位置");
+      return;
+    }
+    
+    // 直接调用 store.pasteItem，使用树中选中的节点作为目标
     if (ClipboardManager.hasItem()) {
-      handlePasteItem(); // 使用 context menu hook 的粘贴逻辑
+       const targetNode = findItemInTreeById(store.state.configTree, selectedNodeIdInTree);
+       if (targetNode && targetNode.type === 'folder') {
+           console.log('[RightPane Shortcut] Paste ignored: Cannot paste directly into a folder via shortcut.');
+           toast.error("无法直接粘贴到文件夹，请选择文件、分组或片段。");
+           return;
+       }
+      
+       console.log(`[RightPane Shortcut] Pasting to target node ID: ${selectedNodeIdInTree}`);
+       // 注意：这里的 pasteItem 调用没有提供具体的插入索引，
+       // 它将使用 store.pasteItem 内部的默认逻辑（插入到父节点的开头或末尾，取决于实现）
+       // 这与右键菜单的行为可能略有不同（右键菜单计算了插入位置）
+       store.pasteItem(selectedNodeIdInTree, 0); // 默认粘贴到目标内部的开头 (index 0)
     } else {
       console.log("[RightPane Shortcut] Paste ignored: Clipboard empty");
+      toast.error("剪贴板为空");
     }
   } else if (
+    // 删除快捷键逻辑保持不变，依赖右侧选中的项
     (isMacOS() && event.metaKey && key === 'Backspace') ||
     (!isMacOS() && key === 'Delete')
   ) {
+    const currentItemForDelete = selectedItem.value;
+    if (!currentItemForDelete || (currentItemForDelete.type !== 'match' && currentItemForDelete.type !== 'group')) {
+       console.log('[RightPane Shortcut] Delete ignored: No valid item selected in right pane.');
+       return;
+    }
     console.log('[RightPane Shortcut] Delete');
     event.preventDefault(); // 阻止默认行为 (例如浏览器后退)
-    if (currentItem.type === 'match') {
-        deleteRule(currentItem.id); // 调用删除方法
-    } else if (currentItem.type === 'group') {
-        deleteGroup(currentItem.id); // 调用删除方法
+    if (currentItemForDelete.type === 'match') {
+        deleteRule(currentItemForDelete.id); // 调用删除方法
+    } else if (currentItemForDelete.type === 'group') {
+        deleteGroup(currentItemForDelete.id); // 调用删除方法
     }
   }
 };

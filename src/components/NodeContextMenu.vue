@@ -91,7 +91,10 @@ const {
   handleCollapseAll,
   prepareDeleteMatch,
   prepareDeleteGroup,
-  handleConfirmDelete
+  prepareDeleteFile,
+  prepareDeleteFolder,
+  handleConfirmDelete,
+  canPaste
 } = useContextMenu({
   getNode: () => props.node
 });
@@ -110,9 +113,6 @@ const handleOpenPackageHub = async () => {
 };
 
 // --- Computed Properties ---
-// 判断剪贴板是否有内容
-const canPaste = computed(() => ClipboardManager.hasItem());
-
 // Helper to get Cmd or Ctrl symbol based on platform
 const getPlatformKey = (): string => {
   if (typeof navigator !== 'undefined') {
@@ -157,7 +157,7 @@ const computedMenuItems = computed((): MenuItem[] => {
   // --- Paste (仅在非文件夹类型节点可用) ---
   if (type !== 'folder') {
     items.push(
-      { label: '粘贴', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, shortcut: `${platformKey}+V`, separator: true } // Updated shortcut format
+      { label: '粘贴', icon: ClipboardPasteIcon, action: handlePasteItem, disabled: !canPaste.value, shortcut: `${platformKey}+V`, separator: true }
     );
   }
 
@@ -166,35 +166,50 @@ const computedMenuItems = computed((): MenuItem[] => {
     items.push(
       { label: '重命名分组', icon: PencilIcon, action: handleRequestRename },
       { label: '复制路径', icon: ClipboardCopyIcon, action: handleCopyNodePath },
-      { label: '复制分组', icon: ClipboardCopyIcon, action: handleCopyItem, shortcut: `${platformKey}+C` }, // Updated shortcut format
-      { label: '剪切分组', icon: ScissorsIcon, action: handleCutItem, shortcut: `${platformKey}+X`, separator: true }, // Updated shortcut format
-      { label: '删除分组', icon: Trash2Icon, action: prepareDeleteGroup, variant: 'destructive', shortcut: deleteShortcut } // 使用平台特定的删除快捷键
+      { label: '复制分组', icon: ClipboardCopyIcon, action: handleCopyItem, shortcut: `${platformKey}+C` },
+      { label: '剪切分组', icon: ScissorsIcon, action: handleCutItem, shortcut: `${platformKey}+X`, separator: true },
+      { label: '删除分组', icon: Trash2Icon, action: prepareDeleteGroup, variant: 'destructive', shortcut: deleteShortcut }
     );
-  } else if (type === 'file' || type === 'folder') { // Combine File/Folder items where possible
-     const nodeTypeName = type === 'file' ? '文件' : '文件夹';
-
-     // 基本菜单项
-     const baseItems = [
-       { label: `重命名${nodeTypeName}`, icon: PencilIcon, action: handleRequestRename },
+  } else if (type === 'file') {
+     // 文件类型的菜单项
+     items.push(
+       { label: '重命名文件', icon: PencilIcon, action: handleRequestRename },
        { label: '复制路径', icon: ClipboardCopyIcon, action: handleCopyNodePath, separator: true },
        { label: '展开全部', icon: ChevronsUpDownIcon, action: handleExpandAll },
-       { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll }
-     ];
-
+       { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll, separator: true },
+       { label: '删除文件', icon: Trash2Icon, action: prepareDeleteFile, variant: 'destructive', shortcut: deleteShortcut }
+     );
+     
      // 如果是 Packages 相关节点，添加打开官方包网站的选项
      if (props.node.name === 'Packages' || (props.node.path && props.node.path.includes('/packages/'))) {
-       baseItems.push(
+       // 插入在删除文件选项之前
+       items.splice(items.length - 1, 0, 
          { label: '浏览官方包库', icon: ExternalLinkIcon, action: handleOpenPackageHub, separator: true }
        );
      }
-
-     items.push(...baseItems);
+  } else if (type === 'folder') {
+     // 文件夹类型的菜单项
+     items.push(
+       { label: '重命名文件夹', icon: PencilIcon, action: handleRequestRename },
+       { label: '复制路径', icon: ClipboardCopyIcon, action: handleCopyNodePath, separator: true },
+       { label: '展开全部', icon: ChevronsUpDownIcon, action: handleExpandAll },
+       { label: '收起全部', icon: ChevronsUpDownIcon, action: handleCollapseAll, separator: true },
+       { label: '删除文件夹', icon: Trash2Icon, action: prepareDeleteFolder, variant: 'destructive', shortcut: deleteShortcut }
+     );
+     
+     // 如果是 Packages 相关节点，添加打开官方包网站的选项
+     if (props.node.name === 'Packages' || (props.node.path && props.node.path.includes('/packages/'))) {
+       // 插入在删除文件夹选项之前
+       items.splice(items.length - 1, 0, 
+         { label: '浏览官方包库', icon: ExternalLinkIcon, action: handleOpenPackageHub, separator: true }
+       );
+     }
   } else if (type === 'match') {
      items.push(
        { label: '复制路径', icon: ClipboardCopyIcon, action: handleCopyNodePath },
-       { label: '复制片段', icon: ClipboardCopyIcon, action: handleCopyItem, shortcut: `${platformKey}+C` }, // Updated shortcut format
-       { label: '剪切片段', icon: ScissorsIcon, action: handleCutItem, shortcut: `${platformKey}+X`, separator: true }, // Updated shortcut format
-       { label: '删除片段', icon: Trash2Icon, action: prepareDeleteMatch, variant: 'destructive', shortcut: deleteShortcut } // 使用平台特定的删除快捷键
+       { label: '复制片段', icon: ClipboardCopyIcon, action: handleCopyItem, shortcut: `${platformKey}+C` },
+       { label: '剪切片段', icon: ScissorsIcon, action: handleCutItem, shortcut: `${platformKey}+X`, separator: true },
+       { label: '删除片段', icon: Trash2Icon, action: prepareDeleteMatch, variant: 'destructive', shortcut: deleteShortcut }
      );
   }
 

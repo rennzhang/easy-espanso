@@ -356,8 +356,9 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     isMatch: computed(() => getCurrentNode()?.type === 'match'),
     canPaste: computed(() => {
       const node = getCurrentNode();
-      // 文件夹类型不支持粘贴操作
+      // 只有文件夹类型不支持粘贴操作
       if (node?.type === 'folder') return false;
+      // 文件、组和片段类型都支持粘贴
       return ClipboardManager.hasItem(); 
     }),
     currentNodeHasChildren: computed(() => nodeHasChildren(getCurrentNode())),
