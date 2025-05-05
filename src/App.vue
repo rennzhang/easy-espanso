@@ -37,7 +37,7 @@
     </template>
 
     <template v-else>
-      <MainLayout />
+      <AppLayout />
       <Toaster position="top-right" richColors :duration="2500" />
     </template>
   </div>
@@ -46,7 +46,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
 import { useEspansoStore } from './store/useEspansoStore'; // 引入重构后的 Store
-import MainLayout from './components/layout/MainLayout.vue'; // 导入主布局组件
+import AppLayout from './components/layouts/AppLayout.vue'; // 导入路由布局组件
 import { FolderIcon } from 'lucide-vue-next';
 import { Toaster, toast } from 'vue-sonner';
 import { PlatformAdapterFactory } from '@/services/platform/PlatformAdapterFactory';

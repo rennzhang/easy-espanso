@@ -1,9 +1,5 @@
 <template>
   <div :class="['main-layout', 'flex', 'h-screen', 'overflow-hidden', 'bg-main-bg']">
-    <!-- 左侧固定宽度导航栏 -->
-    <div class="w-[75px] flex-shrink-0 h-full">
-      <LeftPane />
-    </div>
 
     <!-- Main Content Area -->
     <!-- Revert to static class temporarily -->
@@ -26,7 +22,6 @@
 // Remove store import if only used for dynamic padding
 // import { useEspansoStore } from '../../store/useEspansoStore';
 import { ref, onMounted } from 'vue';
-import LeftPane from '../panels/LeftPane.vue';
 import MiddlePane from '../panels/MiddlePane.vue';
 import RightPane from '../panels/RightPane.vue';
 
