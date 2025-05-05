@@ -10,7 +10,7 @@
               <Tooltip>
                 <TooltipTrigger as-child>
                   <div class="flex items-center">
-                    <div class="w-3 h-3 rounded-full bg-blue-500" title="内容已修改"></div>
+                    <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse-slow" title="内容已修改"></div>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
@@ -36,33 +36,7 @@
             </div>
           </Button>
 
-          <Button
-            size="sm"
-            variant="outline"
-            class="h-8 px-2 py-0 w-28 justify-center"
-            @click="saveItem"
-            :disabled="isSaveButtonDisabled"
-            title="保存当前修改 (Ctrl/Cmd + S)"
-          >
-            <Transition name="fade" mode="out-in">
-              <div v-if="isSaving" key="saving" class="flex items-center justify-center w-full">
-                <Loader2Icon class="h-4 w-4 mr-1 animate-spin" />
-                <span>保存中...</span>
-              </div>
-              <div v-else-if="saveState === 'success'" key="success" class="flex items-center justify-center w-full">
-                <CheckIcon class="h-4 w-4 mr-1 text-green-500" />
-                <span>已保存</span>
-              </div>
-              <div v-else-if="saveState === 'error'" key="error" class="flex items-center justify-center w-full">
-                <XIcon class="h-4 w-4 mr-1 text-red-500" />
-                <span>保存失败</span>
-              </div>
-              <div v-else key="idle" class="flex items-center justify-center w-full">
-                <SaveIcon class="h-4 w-4 mr-1" />
-                <span>{{ isFormModified ? '保存' : '已保存' }}</span>
-              </div>
-            </Transition>
-          </Button>
+          <!-- 保存按钮已隐藏，改为自动保存 -->
         </div>
       </div>
     </div>
@@ -77,7 +51,7 @@
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未选择项目</h4>
         <p class="m-0 max-w-md">请从左侧列表选择一个规则或分组进行编辑</p>
       </div>
-      <div v-else-if="selectedItem.type === 'match'" class="flex flex-col gap-4 h-full">
+      <div v-else-if="selectedItem.type === 'match'" class="flex flex-col h-full">
         <RuleEditForm
           ref="ruleFormRef"
           :key="selectedItem.id"
@@ -144,7 +118,6 @@ import GroupEditForm from '../forms/GroupEditForm.vue'; // 分组编辑表单
 
 // --- Refs 和 Store 实例 ---
 const ruleFormRef = ref<InstanceType<typeof RuleEditForm> | null>(null);
-const groupFormRef = ref<InstanceType<typeof GroupEditForm> | null>(null);
 const store = useEspansoStore();
 const userPreferences = useUserPreferences();
 
@@ -170,16 +143,9 @@ const headerTitle = computed(() => {
   if (!item) return '详情';
   if (item.type === 'match') {
     let displayTrigger = item.trigger || (item.triggers && item.triggers.length > 0 ? `${item.triggers[0]}...` : '[无触发词]');
-    return `编辑规则 <span class="ml-2 text-sm text-muted-foreground">${displayTrigger}</span>`;
-  } else if (item.type === 'group') {
-    return `编辑分组 ${item.name}`;
+    return `编辑片段 <span class="ml-2 text-sm text-muted-foreground">${displayTrigger}</span>`;
   }
   return '详情';
-});
-
-// 保存按钮是否禁用
-const isSaveButtonDisabled = computed(() => {
-  return isSaving.value || !isFormModified.value;
 });
 
 // --- 方法 ---
@@ -195,22 +161,50 @@ watch(hideWarning, (newValue) => {
   userPreferences.updatePreference('hideUnsavedChangesWarning', newValue);
 });
 
-// 监听选中项变化，重置修改状态
-watch(()=>store.state.selectedItemId, () => {
-  // console.log('[RightPane] Selected item changed, resetting form modified state.'); // 调试日志
+// 监听选中项变化，检查是否有未保存的修改
+watch(()=>store.state.selectedItemId, async (newId, oldId) => {
+  // 如果有未保存的修改，自动保存
+  if (isFormModified.value && oldId && ruleFormRef.value) {
+    console.log('[RightPane] 检测到节点切换且有未保存修改，自动保存');
+    try {
+      // 调用表单的自动保存方法
+      await ruleFormRef.value.autoSave();
+      console.log('[RightPane] 切换节点时自动保存成功');
+    } catch (error) {
+      console.error('[RightPane] 切换节点时自动保存失败:', error);
+    }
+  }
+
+  // 重置修改状态
   isFormModified.value = false;
   // 清除可能存在的保存状态反馈
   if (saveStateTimeout) clearTimeout(saveStateTimeout);
   saveState.value = 'idle';
   isSaving.value = false;
-});
+}, { flush: 'post' });
 
 // 预览规则
 const previewRule = () => {
   if (selectedItem.value?.type === 'match' && ruleFormRef.value) {
     const formData = ruleFormRef.value.getFormData(); // 获取当前表单数据用于预览
+    console.log('[RightPane] Preview form data:', formData);
+
     previewTrigger.value = formData.trigger || (formData.triggers ? formData.triggers[0] + '...' : '');
-    previewContent.value = formData.content || '';
+
+    // 根据内容类型获取正确的内容
+    if (formData.contentType === 'plain') {
+      previewContent.value = formData.replace || '';
+    } else if (formData.contentType === 'markdown') {
+      previewContent.value = formData.markdown || '';
+    } else if (formData.contentType === 'html') {
+      previewContent.value = formData.html || '';
+    } else if (formData.contentType === 'image') {
+      previewContent.value = formData.image_path || '';
+    } else {
+      // 默认使用 replace 字段
+      previewContent.value = formData.replace || '';
+    }
+
     previewIsImage.value = formData.contentType === 'image';
     showPreviewModal.value = true;
   }
@@ -225,48 +219,57 @@ const onPreviewImageError = (e: Event) => {
 
 // 保存项目
 const saveItem = async () => {
-  const currentItem = selectedItem.value; // 获取当前选中项
-  if (!currentItem || isSaving.value || !isFormModified.value) return;
-
-  // 清除之前的状态超时
+  const currentItem = selectedItem.value;
+  if (!currentItem || isSaving.value) return;
+  // ... (clear timeout logic) ...
   if (saveStateTimeout) {
     clearTimeout(saveStateTimeout);
     saveStateTimeout = null;
   }
 
+  if (!isFormModified.value) {
+    // ... (handle already saved case) ...
+    saveState.value = 'success';
+    saveStateTimeout = setTimeout(() => {
+      saveState.value = 'idle';
+    }, 1500);
+    return;
+  }
+
   isSaving.value = true;
-  saveState.value = 'idle'; // 重置为 idle，显示加载动画
+  saveState.value = 'idle';
 
   let formData: Partial<Match> | null = null;
   let success = false;
 
   try {
-    // 1. 从对应的表单组件获取最新数据
     if (currentItem.type === 'match' && ruleFormRef.value) {
-      formData = ruleFormRef.value.getFormData();
+      formData = ruleFormRef.value.getFormData(); // Get data TO save
       if (!formData) throw new Error("无法获取规则表单数据");
+
       console.log('[RightPane] Saving Match:', currentItem.id, formData);
-      await store.updateMatch(currentItem.id, formData as Partial<Match>); // 调用 Store Action
+      await store.updateMatch(currentItem.id, formData as Partial<Match>); // Call Store Action
+
+      // ----------------------------------------------------
+
+      success = true;
+      isFormModified.value = false; // Reset parent's modified state
+      saveState.value = 'success';
+      toast.success("保存成功！");
+
     } else {
       throw new Error("没有找到对应的表单组件或选中的项目类型无效");
     }
-
-    success = true;
-    isFormModified.value = false; // 保存成功后重置修改状态
-    saveState.value = 'success';
-    toast.success("保存成功！");
 
   } catch (error: any) {
     console.error('保存项目失败 (saveItem): ', error);
     saveState.value = 'error';
     toast.error(`保存失败: ${error.message || '未知错误'}`);
-    // Store action 内部应该已经设置了 store.state.error
   } finally {
     isSaving.value = false;
-    // 设置超时自动恢复按钮状态
     saveStateTimeout = setTimeout(() => {
       saveState.value = 'idle';
-    }, success ? 1500 : 3000); // 成功显示时间短，失败显示时间长
+    }, success ? 1500 : 3000);
   }
 };
 
@@ -300,9 +303,16 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
   // 保存快捷键 (Ctrl+S / Cmd+S)
   if (isModKey && key.toLowerCase() === 's') {
     event.preventDefault();
+    console.log('[RightPane Shortcut] Save triggered.',{
+      selectedItem: selectedItem.value,
+      isFormModified: isFormModified.value,
+      isSaving: isSaving.value
+    });
     if (selectedItem.value && isFormModified.value && !isSaving.value) { // 只有在有修改且未保存时才触发
       console.log('[RightPane Shortcut] Save triggered.');
-      saveItem();
+      if (ruleFormRef.value) {
+        ruleFormRef.value.autoSave();
+      }
     } else {
       console.log('[RightPane Shortcut] Save ignored (no changes or already saving).');
     }
@@ -322,9 +332,9 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
   }
 
   // 获取当前 store 中记录的选中项 ID (可能是在树中选中的ID)
-  const selectedNodeIdInTree = store.state.selectedItemId; 
+  const selectedNodeIdInTree = store.state.selectedItemId;
 
-  // 复制和剪切仍然依赖右侧面板选中的 Match 
+  // 复制和剪切仍然依赖右侧面板选中的 Match
   const currentItemForCopyCut = selectedItem.value;
   if (isModKey && key.toLowerCase() === 'c') {
     if (currentItemForCopyCut && (currentItemForCopyCut.type === 'match')) {
@@ -422,7 +432,7 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
       // 或者统一为只删除树中选中的项？ 暂时保留两种方式
        const currentItemForDelete = selectedItem.value;
        if(currentItemForDelete && currentItemForDelete.id === nodeToDelete.id) {
-           deleteRule(nodeToDelete.id); 
+           deleteRule(nodeToDelete.id);
        } else {
            // 如果右侧编辑的不是选中的match，提示用户
            if (confirm(`是否要删除树中选中的片段: ${nodeToDelete.trigger || nodeToDelete.label}?`)) {
@@ -487,5 +497,33 @@ defineExpose({
 .fade-leave-to {
   opacity: 0;
 }
+
+/* 保存按钮状态变化样式 */
+.btn-save {
+  transition: all 0.3s ease;
+}
+.btn-save.success {
+  background-color: rgba(34, 197, 94, 0.1);
+  border-color: rgb(34, 197, 94);
+}
+.btn-save.error {
+  background-color: rgba(239, 68, 68, 0.1);
+  border-color: rgb(239, 68, 68);
+}
+
+/* 添加自定义的慢速脉冲动画 */
+@keyframes pulse-slow {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulse-slow 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* 可以在这里添加 RightPane 特有的样式 */
 </style>

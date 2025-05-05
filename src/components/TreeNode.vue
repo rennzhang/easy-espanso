@@ -51,7 +51,7 @@
                 v-else-if="hasChildren && isOpen"
                 class="h-4 w-4"
               />
-              <span v-else class="w-4 inline-block"></span>
+              <span v-else class="inline-block"></span>
             </span>
             <!-- 文件夹图标放在名称前面 -->
             <span v-if="node.type === 'folder'" class="mr-1.5">

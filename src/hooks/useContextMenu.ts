@@ -311,8 +311,23 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
   const prepareDeleteFile = () => prepareDelete('file');
   const prepareDeleteFolder = () => prepareDelete('folder');
 
-  // 确认删除 (逻辑不变)
-  const handleConfirmDelete = async () => { /* ... 代码同上 ... */ };
+  // 确认删除
+  const handleConfirmDelete = async () => {
+    if (pendingAction.value) {
+      try {
+        await pendingAction.value(); // 执行之前准备好的删除操作
+      } catch (err: any) {
+        console.error('删除操作失败:', err);
+        toast.error(`删除失败: ${err.message || '未知错误'}`);
+      } finally {
+        pendingAction.value = null; // 清除待处理操作
+        confirmDialogVisible.value = false; // 关闭对话框
+      }
+    } else {
+        console.warn('handleConfirmDelete called without a pending action.');
+        confirmDialogVisible.value = false; // 即使没有操作也要关闭对话框
+    }
+  };
 
   // --- 返回暴露给组件的接口 ---
   return {

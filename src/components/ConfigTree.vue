@@ -202,9 +202,9 @@ const treeData = computed(() => {
 const handleSelect = (item: TreeNodeItem) => {
   if (item.type === 'match' && item.match) {
     emit('select', item.match);
-  } else if (item.type === 'file') {
-    store.state.selectedItemId = item.id;
-    store.state.selectedItemType = null;
+  } else if (item.type === 'file' || item.type === 'folder') {
+    // 使用store.selectItem方法选择文件节点，而不是直接修改state
+    store.selectItem(item.id, item.type);
   }
 };
 

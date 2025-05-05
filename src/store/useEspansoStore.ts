@@ -410,17 +410,46 @@ export const useEspansoStore = defineStore('espanso', () => {
          _setStatus(`正在删除: ${itemName}...`);
 
          try {
+             let nextItemId: string | null = null;
+             let nextItemType: EspansoState["selectedItemType"] = null;
+
              // Remove item reference from the tree
+             const parentNode = findParentNodeInTree(state.value.configTree, itemId);
              const removed = removeItemFromTree(state.value.configTree, itemId);
              if (!removed) {
-                 throw new Error(`Failed to remove ${itemType} reference from the tree.`);
+                 throw new Error(
+                     `Failed to remove ${itemType} reference from the tree.`
+                 );
              }
+
+             // --- Find next item to select --- START ---
+             if (parentNode && parentNode.type === 'file') {
+                 const siblings = parentNode.matches || []; // Get remaining siblings
+                 if (siblings.length > 0) {
+                     // Try to select the next sibling (which is now at the original index if deletion happened)
+                     // Or select the last one if the deleted item was the last
+                     // We need the original index before removal for accuracy.
+                     // Let's find the item *before* the deleted one for simplicity after removal
+                     // A more robust way involves getting the index before removal.
+                     // Simplified approach: Select the first remaining match in the same file.
+                     nextItemId = siblings[0].id;
+                     nextItemType = 'match';
+                 } else {
+                     // No siblings left, select the parent file
+                     nextItemId = parentNode.id;
+                     nextItemType = 'file';
+                 }
+             }
+             // --- Find next item to select --- END ---
 
              // Save the modified file
              await _saveFileByPath(filePath);
 
-             // Clear selection if the deleted item was selected
-             if (state.value.selectedItemId === itemId) {
+             // Update selection AFTER saving
+             if (nextItemId) {
+                 selectItem(nextItemId, nextItemType);
+             } else if (state.value.selectedItemId === itemId) {
+                 // If no next item determined and the deleted item was selected, clear selection
                  selectItem(null, null);
              }
              // 统一toast提示格式
@@ -618,17 +647,56 @@ export const useEspansoStore = defineStore('espanso', () => {
          _setStatus(`正在删除: ${fileName}...`);
 
          try {
+              let nextNodeId: string | null = null;
+              let nextNodeType: EspansoState["selectedItemType"] = null;
+
+              // --- Find parent and original index BEFORE removal --- START ---
+              const parentFolder = findParentNodeInTree(state.value.configTree, fileNodeId);
+              let originalIndex = -1;
+              let siblingsRef: ConfigTreeNode[] = [];
+              if (parentFolder && parentFolder.type === 'folder') {
+                  siblingsRef = parentFolder.children || [];
+                  originalIndex = siblingsRef.findIndex(n => n.id === fileNodeId);
+              } else {
+                  // Top-level node
+                  siblingsRef = state.value.configTree;
+                  originalIndex = siblingsRef.findIndex(n => n.id === fileNodeId);
+              }
+              // --- Find parent and original index BEFORE removal --- END ---
+
               // 1. Remove from tree state FIRST
               if (!removeItemFromTree(state.value.configTree, fileNodeId)) {
-                  throw new Error('Failed to remove file node from tree state.');
+                throw new Error("Failed to remove file node from tree state.");
               }
+
+              // --- Determine next node to select --- START ---
+              if (originalIndex !== -1) {
+                  if (siblingsRef.length > 0) { // Check if siblings array still has items AFTER removal
+                      const nextIndex = Math.min(originalIndex, siblingsRef.length - 1);
+                      const nextNode = siblingsRef[nextIndex];
+                      if (nextNode) {
+                         nextNodeId = nextNode.id;
+                         nextNodeType = nextNode.type;
+                      }
+                  } else if (parentFolder) {
+                     // No siblings left, select parent folder
+                     nextNodeId = parentFolder.id;
+                     nextNodeType = 'folder';
+                  }
+              }
+              // --- Determine next node to select --- END ---
+
               // 2. Delete actual file
               await platformService.deleteFile(filePath); // Assumes this function exists
 
-              // Clear selection if needed
-              if (state.value.selectedItemId === fileNodeId) {
+              // Update selection AFTER deletion
+              if (nextNodeId) {
+                  selectItem(nextNodeId, nextNodeType);
+              } else if (state.value.selectedItemId === fileNodeId) {
+                 // If no next node and deleted node was selected, clear selection
                   selectItem(null, null);
               }
+
               // 统一toast提示格式
               _setStatus(`已删除: ${fileName}`);
               setTimeout(() => { if (state.value.statusMessage === `已删除: ${fileName}`) _setStatus(null); }, 2000);
@@ -648,19 +716,59 @@ export const useEspansoStore = defineStore('espanso', () => {
          _setStatus(`正在删除: ${folderName}...`);
 
          try {
-              // 1. Remove from tree state FIRST (including descendants)
-              if (!removeItemFromTree(state.value.configTree, folderNodeId)) { // Util needs to handle recursion
-                  throw new Error('Failed to remove folder node from tree state.');
+              let nextNodeId: string | null = null;
+              let nextNodeType: EspansoState["selectedItemType"] = null;
+
+              // --- Find parent and original index BEFORE removal --- START ---
+              const parentFolder = findParentNodeInTree(state.value.configTree, folderNodeId);
+              let originalIndex = -1;
+              let siblingsRef: ConfigTreeNode[] = [];
+              if (parentFolder && parentFolder.type === 'folder') {
+                  siblingsRef = parentFolder.children || [];
+                  originalIndex = siblingsRef.findIndex(n => n.id === folderNodeId);
+              } else {
+                  // Top-level node
+                  siblingsRef = state.value.configTree;
+                  originalIndex = siblingsRef.findIndex(n => n.id === folderNodeId);
               }
+               // --- Find parent and original index BEFORE removal --- END ---
+
+              // 1. Remove from tree state FIRST (including descendants)
+              if (!removeItemFromTree(state.value.configTree, folderNodeId)) {
+                // Util needs to handle recursion
+                throw new Error("Failed to remove folder node from tree state.");
+              }
+
+              // --- Determine next node to select --- START ---
+               if (originalIndex !== -1) {
+                  if (siblingsRef.length > 0) { // Check if siblings array still has items AFTER removal
+                      const nextIndex = Math.min(originalIndex, siblingsRef.length - 1);
+                      const nextNode = siblingsRef[nextIndex];
+                      if (nextNode) {
+                         nextNodeId = nextNode.id;
+                         nextNodeType = nextNode.type;
+                      }
+                  } else if (parentFolder) {
+                     // No siblings left, select parent folder
+                     nextNodeId = parentFolder.id;
+                     nextNodeType = 'folder';
+                  }
+              }
+              // --- Determine next node to select --- END ---
+
               // 2. Delete actual directory
               await platformService.deleteDirectory(folderPath); // Assumes this function exists
 
-              // Clear selection if needed
-              if (state.value.selectedItemId === folderNodeId) {
+              // Update selection AFTER deletion
+              if (nextNodeId) {
+                  selectItem(nextNodeId, nextNodeType);
+              } else if (state.value.selectedItemId === folderNodeId) {
+                 // If no next node and deleted node was selected, clear selection
                   selectItem(null, null);
               }
-               _setStatus(`已删除: ${folderName}`);
-               setTimeout(() => { if (state.value.statusMessage === `已删除: ${folderName}`) _setStatus(null); }, 2000);
+
+              _setStatus(`已删除: ${folderName}`);
+              setTimeout(() => { if (state.value.statusMessage === `已删除: ${folderName}`) _setStatus(null); }, 2000);
          } catch (err: any) {
               _setError(`删除文件夹失败: ${err.message}`);
          }
