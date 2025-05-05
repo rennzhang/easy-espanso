@@ -143,7 +143,7 @@ const headerTitle = computed(() => {
   if (!item) return '详情';
   if (item.type === 'match') {
     let displayTrigger = item.trigger || (item.triggers && item.triggers.length > 0 ? `${item.triggers[0]}...` : '[无触发词]');
-    return `编辑规则 <span class="ml-2 text-sm text-muted-foreground">${displayTrigger}</span>`;
+    return `编辑片段 <span class="ml-2 text-sm text-muted-foreground">${displayTrigger}</span>`;
   }
   return '详情';
 });
@@ -162,16 +162,16 @@ watch(hideWarning, (newValue) => {
 });
 
 // 监听选中项变化，检查是否有未保存的修改
-watch(()=>store.state.selectedItemId, (newId, oldId) => {
-  // 如果有未保存的修改，显示确认对话框
-  if (isFormModified.value && oldId) {
-    const confirmResult = confirm('您有未保存的修改，确定要离开吗？');
-    if (!confirmResult) {
-      // 用户取消了操作，恢复之前的选择
-      nextTick(() => {
-        store.selectItem(oldId, store.state.selectedItemType);
-      });
-      return;
+watch(()=>store.state.selectedItemId, async (newId, oldId) => {
+  // 如果有未保存的修改，自动保存
+  if (isFormModified.value && oldId && ruleFormRef.value) {
+    console.log('[RightPane] 检测到节点切换且有未保存修改，自动保存');
+    try {
+      // 调用表单的自动保存方法
+      await ruleFormRef.value.autoSave();
+      console.log('[RightPane] 切换节点时自动保存成功');
+    } catch (error) {
+      console.error('[RightPane] 切换节点时自动保存失败:', error);
     }
   }
 

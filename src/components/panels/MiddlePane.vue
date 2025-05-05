@@ -3,7 +3,7 @@
     <div class="flex flex-col py-2 px-4 border-b">
       <div class="flex items-center justify-between">
         <div class="flex items-center">
-          <h3 class="text-lg font-semibold text-foreground m-0">规则列表</h3>
+          <h3 class="text-lg font-semibold text-foreground m-0">片段列表</h3>
           <Badge variant="outline" class="ml-2">
             {{ totalItemCount }} 项
           </Badge>
@@ -574,7 +574,6 @@ const hideSearchBar = () => {
 
 // 处理树节点选择
 const handleTreeItemSelect = (item: Match) => {
-  // console.log("选择树节点:", item); // Removed log
   // 直接调用 store action，传递 ID 和类型
   store.selectItem(item.id, item.type);
 };
