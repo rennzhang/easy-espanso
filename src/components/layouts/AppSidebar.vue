@@ -12,8 +12,9 @@
           :to="route.path"
           class="nav-link"
           :class="{ active: currentRoute.path.startsWith(route.path) }"
+          @click.prevent="handleNavClick(route)"
         >
-          <component :is="icons[route.meta.icon]" class="nav-icon" />
+          <component :is="getRouteIcon(route)" class="nav-icon" />
           <span class="nav-text">{{ route.meta.title }}</span>
         </RouterLink>
       </nav>
@@ -22,22 +23,25 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue';
-import { useRouter, useRoute, RouteRecordRaw } from 'vue-router';
+import { computed, ref } from 'vue';
+import { useRouter, useRoute, RouteRecordNormalized } from 'vue-router';
 import { ScissorsIcon, SettingsIcon } from 'lucide-vue-next';
+import type { FunctionalComponent } from 'vue';
 
 const router = useRouter();
 const currentRoute = useRoute();
+const isNavigating = ref(false);
 
 // 图标映射
-const icons = {
+const icons: Record<string, FunctionalComponent> = {
   Scissors: ScissorsIcon,
   Settings: SettingsIcon
 };
 
 // 获取需要在侧边栏显示的路由
 const routes = computed(() => {
-  return router.getRoutes()
+  const allRoutes = router.getRoutes();
+  return allRoutes
     .filter(route => route.meta.icon) // 只显示有图标的路由
     .sort((a, b) => {
       // 自定义排序，确保片段在前，设置在后
@@ -46,6 +50,84 @@ const routes = computed(() => {
       return 0;
     });
 });
+
+// 使用防抖处理导航点击，防止快速多次点击
+let navTimeout: number | null = null;
+const handleNavClick = (route: RouteRecordNormalized) => {
+  // 防止短时间内重复点击
+  if (isNavigating.value) {
+    console.log('[AppSidebar] 导航进行中，忽略点击');
+    return;
+  }
+
+  // 如果当前已经在该路由，不做任何操作
+  if (currentRoute.path === route.path) {
+    console.log(`[AppSidebar] 已经在路由 ${route.path} 上，忽略导航`);
+    return;
+  }
+  
+  console.log('[AppSidebar] 导航点击:', route.path, route.name);
+  
+  // 防抖，避免快速点击
+  if (navTimeout) {
+    clearTimeout(navTimeout);
+  }
+  
+  isNavigating.value = true;
+  
+  // 短延迟后执行导航，合并快速的多次点击
+  navTimeout = window.setTimeout(() => {
+    // 使用编程式导航确保路由跳转
+    navigateWithFallback(route.path);
+    isNavigating.value = false;
+    navTimeout = null;
+  }, 100);
+};
+
+// 添加具有错误处理的导航方法
+const navigateWithFallback = (path: string) => {
+  console.log('[AppSidebar] 开始导航到:', path);
+  
+  try {
+    // 主要导航方法
+    router.push(path).catch(error => {
+      console.error('[AppSidebar] 主要导航失败:', error);
+      
+      // 尝试替代方法1: replace
+      if (!error.message || !error.message.includes('Avoided redundant navigation')) {
+        console.log('[AppSidebar] 尝试使用 replace 方法');
+        router.replace(path).catch(e => {
+          console.error('[AppSidebar] 替代导航也失败:', e);
+          fallbackNavigation(path);
+        });
+      }
+    });
+  } catch (err) {
+    console.error('[AppSidebar] 导航过程中发生异常:', err);
+    fallbackNavigation(path);
+  }
+};
+
+// 最后的备选导航方法
+const fallbackNavigation = (path: string) => {
+  console.log('[AppSidebar] 使用备选导航方法');
+  // 直接修改URL哈希
+  if (typeof window !== 'undefined') {
+    try {
+      console.log('[AppSidebar] 直接修改 URL hash');
+      window.location.hash = path;
+    } catch (err) {
+      console.error('[AppSidebar] 修改 URL 失败:', err);
+    }
+  }
+};
+
+// 添加函数获取图标
+const getRouteIcon = (route: RouteRecordNormalized) => {
+  // 获取路由元数据中的图标名称，并从icons映射中获取对应组件
+  const iconName = route.meta.icon as string;
+  return icons[iconName] || null;
+};
 </script>
 
 <style scoped>

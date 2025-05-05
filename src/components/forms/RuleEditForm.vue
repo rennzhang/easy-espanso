@@ -685,7 +685,85 @@ const emit = defineEmits<{
 // 获取 store
 const store = useEspansoStore();
 const formStore = useFormStore();
+// Map rule to formData - Use RuleFormState here
+const mapRuleToFormData = (rule: Match | null): RuleFormState => {
+  if (!rule) {
+    // Return default RuleFormState
+    return {
+      trigger: "", triggers: [], label: "", description: "",
+      content: "", contentType: "plain", word: false, leftWord: false, rightWord: false,
+      propagateCase: false, uppercaseStyle: "", forceMode: "", apps: [], exclude_apps: [],
+      search_terms: [], priority: 0, hotkey: "", image_path: "", vars: [],
+    };
+  }
 
+  // 1. 确定实际的 contentType (如果缺失或无效，则默认为 'plain')
+  let contentType: ContentType = 'plain'; // 从默认开始
+  if (rule.contentType && ['plain', 'markdown', 'html', 'image', 'form'].includes(rule.contentType)) {
+      contentType = rule.contentType;
+  } else {
+      // 如果 contentType 缺失或无效，尝试推断 (可选, 但有助于恢复)
+      if (rule.markdown !== undefined) contentType = 'markdown';
+      else if (rule.html !== undefined) contentType = 'html';
+      else if (rule.image_path !== undefined) contentType = 'image';
+      // 否则保持 'plain' (如果需要，可以根据 'form' 字段推断 'form')
+  }
+
+  // 2. 根据确定的 contentType 获取内容
+  let content = "";
+  switch (contentType) {
+      case 'markdown':
+          content = rule.markdown ?? rule.replace ?? ""; // 如果 markdown 缺失，回退到 replace
+          break;
+      case 'html':
+          content = rule.html ?? rule.replace ?? ""; // 如果 html 缺失，回退到 replace
+          break;
+      case 'image':
+          content = rule.image_path ?? "";
+          break;
+      case 'form': // 假设 form 使用 'replace'
+          content = rule.replace ?? "";
+          break;
+      case 'plain':
+      default:
+          content = rule.replace ?? ""; // 默认使用 replace
+          break;
+  }
+
+  // 合并 trigger 和 triggers (用于显示)
+  const triggers = rule.triggers || [];
+  let singleTrigger = rule.trigger || "";
+  if (triggers.length > 0) { singleTrigger = triggers.join("\n"); } // 在 textarea 中使用 \n 显示
+  let uiForceMode = rule.force_mode || "";
+  if (uiForceMode === 'default') { uiForceMode = ''; }
+
+  // 3. 返回完整的表单状态
+  return {
+    trigger: singleTrigger,
+    triggers: triggers, // 如果其他地方需要，保留原始 triggers 数组
+    label: rule.label || "",
+    description: rule.description || "",
+    content: content, // 使用派生出的内容
+    contentType: contentType, // 使用确定的 contentType
+    word: rule.word || false,
+    leftWord: rule.left_word || false,
+    rightWord: rule.right_word || false,
+    propagateCase: rule.propagate_case || false,
+    uppercaseStyle: rule.uppercase_style || "",
+    forceMode: uiForceMode as "" | "clipboard" | "keys",
+    apps: rule.apps || [],
+    exclude_apps: rule.exclude_apps || [],
+    search_terms: rule.search_terms || [],
+    priority: rule.priority || 0,
+    hotkey: rule.hotkey || "",
+    vars: Array.isArray(rule.vars) ? [...rule.vars] : [],
+    // 如果需要，可以保留内部字段，例如用于图片预览的原始 image_path
+    image_path: rule.image_path || "", // 保留此项以用于预览逻辑
+    // 注意: 如果 content 是核心, 不要在 formState 中直接包含 markdown/html/replace
+  };
+};
+// Reactive form data - Use RuleFormState here
+const formData = ref<RuleFormState>(mapRuleToFormData(props.rule));
 // Ref for the hidden file input
 const imageInputRef = ref<HTMLInputElement | null>(null);
 // State for drag-over effect
@@ -1485,86 +1563,9 @@ const isImageUrl = (str: string): boolean => {
   return imageExtensions.some((ext) => str.toLowerCase().endsWith(ext));
 };
 
-// Map rule to formData - Use RuleFormState here
-const mapRuleToFormData = (rule: Match | null): RuleFormState => {
-  if (!rule) {
-    // Return default RuleFormState
-    return {
-      trigger: "", triggers: [], label: "", description: "",
-      content: "", contentType: "plain", word: false, leftWord: false, rightWord: false,
-      propagateCase: false, uppercaseStyle: "", forceMode: "", apps: [], exclude_apps: [],
-      search_terms: [], priority: 0, hotkey: "", image_path: "", vars: [],
-    };
-  }
 
-  // 1. 确定实际的 contentType (如果缺失或无效，则默认为 'plain')
-  let contentType: ContentType = 'plain'; // 从默认开始
-  if (rule.contentType && ['plain', 'markdown', 'html', 'image', 'form'].includes(rule.contentType)) {
-      contentType = rule.contentType;
-  } else {
-      // 如果 contentType 缺失或无效，尝试推断 (可选, 但有助于恢复)
-      if (rule.markdown !== undefined) contentType = 'markdown';
-      else if (rule.html !== undefined) contentType = 'html';
-      else if (rule.image_path !== undefined) contentType = 'image';
-      // 否则保持 'plain' (如果需要，可以根据 'form' 字段推断 'form')
-  }
 
-  // 2. 根据确定的 contentType 获取内容
-  let content = "";
-  switch (contentType) {
-      case 'markdown':
-          content = rule.markdown ?? rule.replace ?? ""; // 如果 markdown 缺失，回退到 replace
-          break;
-      case 'html':
-          content = rule.html ?? rule.replace ?? ""; // 如果 html 缺失，回退到 replace
-          break;
-      case 'image':
-          content = rule.image_path ?? "";
-          break;
-      case 'form': // 假设 form 使用 'replace'
-          content = rule.replace ?? "";
-          break;
-      case 'plain':
-      default:
-          content = rule.replace ?? ""; // 默认使用 replace
-          break;
-  }
 
-  // 合并 trigger 和 triggers (用于显示)
-  const triggers = rule.triggers || [];
-  let singleTrigger = rule.trigger || "";
-  if (triggers.length > 0) { singleTrigger = triggers.join("\n"); } // 在 textarea 中使用 \n 显示
-  let uiForceMode = rule.force_mode || "";
-  if (uiForceMode === 'default') { uiForceMode = ''; }
-
-  // 3. 返回完整的表单状态
-  return {
-    trigger: singleTrigger,
-    triggers: triggers, // 如果其他地方需要，保留原始 triggers 数组
-    label: rule.label || "",
-    description: rule.description || "",
-    content: content, // 使用派生出的内容
-    contentType: contentType, // 使用确定的 contentType
-    word: rule.word || false,
-    leftWord: rule.left_word || false,
-    rightWord: rule.right_word || false,
-    propagateCase: rule.propagate_case || false,
-    uppercaseStyle: rule.uppercase_style || "",
-    forceMode: uiForceMode as "" | "clipboard" | "keys",
-    apps: rule.apps || [],
-    exclude_apps: rule.exclude_apps || [],
-    search_terms: rule.search_terms || [],
-    priority: rule.priority || 0,
-    hotkey: rule.hotkey || "",
-    vars: Array.isArray(rule.vars) ? [...rule.vars] : [],
-    // 如果需要，可以保留内部字段，例如用于图片预览的原始 image_path
-    image_path: rule.image_path || "", // 保留此项以用于预览逻辑
-    // 注意: 如果 content 是核心, 不要在 formState 中直接包含 markdown/html/replace
-  };
-};
-
-// Reactive form data - Use RuleFormState here
-const formData = ref<RuleFormState>(mapRuleToFormData(props.rule));
 
 // Detect changes on mount - Use RuleFormState here
 watch(

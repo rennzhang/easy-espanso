@@ -448,137 +448,240 @@ function registerIpcHandlers(mw) {
 
 // --- 窗口创建函数 ---
 function createWindow() {
-  console.log("创建浏览器窗口...");
-  mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    autoHideMenuBar: true, // 自动隐藏菜单栏
-     // ...(process.platform === 'darwin' ? { appIcon } : {}), // macOS 图标设置
-    icon: appIconPath, // 在所有平台尝试设置图标
-    ...(process.platform === 'darwin' ? {
-      // macOS 特定样式
-      titleBarStyle: 'hiddenInset',
-      // trafficLightPosition: { x: 15, y: 15 }, // 可选：调整红绿灯位置
-    } : {
-      // Windows/Linux 移除原生边框 (需要实现自定义拖动和控制按钮)
-      frame: false
-    }),
-    webPreferences: {
-      // **重要路径:** 确保这个路径指向你编译后的 preload.js 文件
-      preload: path.join(__dirname, '../preload/index.js'),
+    console.log('[Main] Creating main window...');
+    const windowOptions = {
+        width: 1280,
+        height: 768,
+        minWidth: 980,
+        minHeight: 600,
+        show: false, // 先不显示窗口
+        backgroundColor: '#f8f9fa',
+        icon: appIconPath,
+        title: 'Espanso GUI',
+        webPreferences: {
+            nodeIntegration: false,
+            contextIsolation: true,
+            devTools: true, // 开发工具在生产环境也暂时打开，以便诊断问题
+            preload: path.join(__dirname, '../preload/index.js'),
+            // 添加安全策略
+            nativeWindowOpen: true,
+            spellcheck: false,
+            webSecurity: true, // 保持网络安全性
+        },
+        frame: false, // 无边框窗口
+        titleBarStyle: 'hidden', // 隐藏标题栏
+    };
 
-      // **安全建议:**
-      // nodeIntegration: true, // <-- 强烈建议改为 false。如果改为 false, preload 脚本中不能使用 require, 且 Node API 访问受限。
-      nodeIntegration: false, // **推荐**：改为 false 以提高安全性
-      contextIsolation: true, // **推荐**：保持 true
-      sandbox: false // **推荐**：在 nodeIntegration 为 false 且 preload 不需要广泛 OS 权限时，尝试设为 true。如果 preload 需要 fs 等，保持 false。
+    mainWindow = new BrowserWindow(windowOptions);
+    console.log('[Main] Main window created.');
 
-      // 旧设置保留，但请评估是否必要
-      // enableRemoteModule: false, // 保持 false
-      // worldSafeExecuteJavaScript: true, // 保持 true
-    }
-  });
-
-  // 打开开发者工具
-  if (!app.isPackaged) { // 只在非打包状态下默认打开
-    mainWindow.webContents.openDevTools();
-  }
-
-  // --- 全屏事件监听 (保持不变) ---
-  mainWindow.on('enter-full-screen', () => { /* ... */ mainWindow.webContents.send(CHANNELS.APP_FULLSCREEN_CHANGED, true); });
-  mainWindow.on('leave-full-screen', () => { /* ... */ mainWindow.webContents.send(CHANNELS.APP_FULLSCREEN_CHANGED, false); });
-  // --- 全屏事件监听结束 ---
-
-  // --- 页面加载失败处理 (保持不变) ---
-  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => { /* ... 显示错误页面 ... */ });
-  // --- 页面加载失败处理结束 ---
-
-  // --- DOM Ready & Console Message (保持不变) ---
-  mainWindow.webContents.on('dom-ready', () => { console.log('DOM已就绪'); });
-  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => { /* ... */ });
-  // --- DOM Ready & Console Message 结束 ---
-
-
-  // --- 加载应用 ---
-  if (process.env.VITE_DEV_SERVER_URL) {
-    // 开发模式
-    console.log('开发模式：加载开发服务器地址', process.env.VITE_DEV_SERVER_URL);
-    mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-  } else {
-    // 生产模式
-    console.log('生产模式：加载本地文件');
-    const rendererPath = path.join(__dirname, '../renderer/index.html');
-    console.log('尝试加载主路径:', rendererPath);
-
-    if (fsSync.existsSync(rendererPath)) {
-        console.log('主路径文件存在，开始加载');
-        mainWindow.loadFile(rendererPath);
+    // --- 加载应用 ---
+    if (process.env.VITE_DEV_SERVER_URL) {
+        // 开发模式
+        console.log('开发模式：加载开发服务器地址', process.env.VITE_DEV_SERVER_URL);
+        mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     } else {
-        console.error('主路径文件不存在:', rendererPath);
-        // --- 生产模式备选路径查找 (保持不变) ---
-        const possiblePaths = [ /* ... 省略 ... */ ];
-        let found = false;
-        for (const tryPath of possiblePaths) { /* ... 省略 ... */ }
-        if (!found) { /* ... 显示路径错误页面 ... */ }
-        // --- 生产模式备选路径查找结束 ---
-    }
-  }
-  // --- 加载应用结束 ---
+        // 生产模式
+        console.log('生产模式：加载本地文件');
+        const rendererPath = path.join(__dirname, '../renderer/index.html');
+        console.log('尝试加载主路径:', rendererPath);
 
-  // --- 窗口关闭处理 (保持不变) ---
-  mainWindow.on('closed', function () {
-    console.log("主窗口已关闭");
-    mainWindow = null;
-  });
-  // --- 窗口关闭处理结束 ---
+        if (fsSync.existsSync(rendererPath)) {
+            console.log('主路径文件存在，开始加载');
+            mainWindow.loadFile(rendererPath);
+        } else {
+            console.error('主路径文件不存在:', rendererPath);
+            // 尝试备选路径
+            const altPath = path.join(__dirname, '../../dist/electron/renderer/index.html');
+            console.log('尝试备选路径:', altPath);
+            
+            if (fsSync.existsSync(altPath)) {
+                console.log('备选路径文件存在，开始加载');
+                mainWindow.loadFile(altPath);
+            } else {
+                console.error('备选路径文件也不存在，尝试更多备选项');
+                const possiblePaths = [
+                    path.join(__dirname, '../../dist/index.html'),
+                    path.join(app.getAppPath(), 'dist/index.html'),
+                    path.join(app.getAppPath(), 'dist/electron/renderer/index.html')
+                ];
+                
+                let found = false;
+                for (const tryPath of possiblePaths) {
+                    console.log('尝试路径:', tryPath);
+                    if (fsSync.existsSync(tryPath)) {
+                        console.log('找到可用路径，加载:', tryPath);
+                        mainWindow.loadFile(tryPath);
+                        found = true;
+                        break;
+                    }
+                }
+                
+                if (!found) {
+                    // 显示错误页面
+                    mainWindow.loadURL(`data:text/html;charset=utf-8,
+                        <html>
+                            <head>
+                                <title>加载错误</title>
+                                <style>
+                                    body { font-family: system-ui; text-align: center; padding: 2rem; }
+                                    h1 { color: #e53e3e; }
+                                    pre { text-align: left; background: #f8f8f8; padding: 1rem; border-radius: 4px; overflow: auto; }
+                                </style>
+                            </head>
+                            <body>
+                                <h1>无法加载应用</h1>
+                                <p>找不到应用主文件，请确保应用已正确构建。</p>
+                                <p>Electron 路径: ${__dirname}</p>
+                                <pre>${possiblePaths.join('\n')}</pre>
+                            </body>
+                        </html>
+                    `);
+                }
+            }
+        }
+    }
+    // --- 加载应用结束 ---
+
+    // 处理刷新失败问题
+    mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription) => {
+        console.log(`[Main] Failed to load: ${errorCode} - ${errorDescription}`);
+        // 错误代码-3通常是刷新时的路径问题
+        if (errorCode === -3 || errorCode === -6) {
+            console.log('[Main] Detected refresh error, reloading app...');
+            
+            // 重新加载应用
+            if (process.env.VITE_DEV_SERVER_URL) {
+                mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+            } else {
+                // 尝试重新加载，避免相对路径#/路径问题
+                const indexPath = path.join(__dirname, '../renderer/index.html');
+                const altPath = path.join(__dirname, '../../dist/electron/renderer/index.html');
+                
+                if (fsSync.existsSync(indexPath)) {
+                    mainWindow.loadFile(indexPath);
+                } else if (fsSync.existsSync(altPath)) {
+                    mainWindow.loadFile(altPath);
+                } else {
+                    mainWindow.loadFile(path.join(app.getAppPath(), 'dist/index.html'));
+                }
+            }
+        }
+    });
+
+    // 监听内容加载完成事件，然后显示窗口
+    mainWindow.webContents.on('did-finish-load', () => {
+        console.log('[Main] Content loaded, showing window');
+        if (!mainWindow) {
+            console.error('[Main] Window was closed before content finished loading');
+            return;
+        }
+        
+        // 解析当前URL
+        const currentURL = mainWindow.webContents.getURL();
+        console.log('[Main] Current URL:', currentURL);
+        
+        // 检查URL是否包含chrome-error，如果是则重新加载应用
+        if (currentURL.includes('chrome-error:') || currentURL.includes('chrome-extension:')) {
+            console.log('[Main] Detected chrome error, reloading app...');
+            if (process.env.VITE_DEV_SERVER_URL) {
+                mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+                return;
+            } else {
+                const indexPath = path.join(__dirname, '../renderer/index.html');
+                if (fsSync.existsSync(indexPath)) {
+                    mainWindow.loadFile(indexPath);
+                    return;
+                }
+            }
+        }
+        
+        // 延迟显示窗口以避免白屏
+        setTimeout(() => {
+            mainWindow.show();
+            mainWindow.focus();
+        }, 100);
+    });
+
+    // --- 全屏事件监听 ---
+    mainWindow.on('enter-full-screen', () => { 
+        console.log('[Main] Entered full screen');
+        if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+            mainWindow.webContents.send(CHANNELS.APP_FULLSCREEN_CHANGED, true);
+        }
+    });
+    
+    mainWindow.on('leave-full-screen', () => { 
+        console.log('[Main] Left full screen');
+        if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+            mainWindow.webContents.send(CHANNELS.APP_FULLSCREEN_CHANGED, false);
+        }
+    });
+
+    // --- DOM Ready & Console Message ---
+    mainWindow.webContents.on('dom-ready', () => { 
+        console.log('[Main] DOM ready event fired'); 
+    });
+    
+    mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+        const levels = ['log', 'warning', 'error', 'info'];
+        const levelName = levels[level] || 'log';
+        console.log(`[Renderer Console][${levelName}] ${message} (${sourceId}:${line})`);
+    });
+
+    // --- 窗口关闭处理 ---
+    mainWindow.on('closed', function () {
+        console.log("[Main] Main window closed");
+        mainWindow = null;
+    });
 }
 
 // --- Electron 应用生命周期事件 ---
 
 app.whenReady().then(async () => {
-  console.log('Electron就绪，开始初始化...');
+    console.log('Electron就绪，开始初始化...');
 
-  // 安装Vue开发者工具 (只在开发环境)
-  if (!app.isPackaged) {
-      try {
-        await installExtension(VUE_DEVTOOLS);
-        console.log('Vue Devtools安装成功');
-      } catch (err) {
-        console.error('Vue Devtools安装失败:', err);
-      }
-  }
+    // 安装Vue开发者工具 (只在开发环境)
+    if (!app.isPackaged) {
+        try {
+            await installExtension(VUE_DEVTOOLS);
+            console.log('Vue Devtools安装成功');
+        } catch (err) {
+            console.error('Vue Devtools安装失败:', err);
+        }
+    }
 
-  createWindow(); // 创建窗口
+    createWindow(); // 创建窗口
 
-  // **在这里调用 IPC 处理器注册函数**
-  if (mainWindow) {
-    registerIpcHandlers(mainWindow);
-  } else {
-    console.error("无法注册 IPC Handlers，因为 mainWindow 未成功创建！");
-  }
+    // **在这里调用 IPC 处理器注册函数**
+    if (mainWindow) {
+        registerIpcHandlers(mainWindow);
+    } else {
+        console.error("无法注册 IPC Handlers，因为 mainWindow 未成功创建！");
+    }
 
-  app.on('activate', function () {
-    // macOS specific behavior
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+    app.on('activate', function () {
+        // macOS specific behavior
+        if (BrowserWindow.getAllWindows().length === 0) createWindow();
+    });
 });
 
 app.on('window-all-closed', function () {
-  console.log("所有窗口已关闭");
-  // 在 macOS 上保留应用活动状态
-  if (process.platform !== 'darwin') {
-      console.log("非 macOS 平台，退出应用");
-      app.quit();
-  }
+    console.log("所有窗口已关闭");
+    // 在 macOS 上保留应用活动状态
+    if (process.platform !== 'darwin') {
+        console.log("非 macOS 平台，退出应用");
+        app.quit();
+    }
 });
 
 app.on('will-quit', () => {
-   // 清理日志流等资源
-   if (logStream) {
-       console.log("关闭日志流...");
-       logStream.end();
-       logStream = null; // 解除引用
-   }
+    // 清理日志流等资源
+    if (logStream) {
+        console.log("关闭日志流...");
+        logStream.end();
+        logStream = null; // 解除引用
+    }
     // 可选：移除 IPC 监听器 (通常不需要手动移除)
     // Object.values(CHANNELS).forEach(channel => ipcMain.removeAllListeners(channel)); // 移除 on
     // Object.values(CHANNELS).forEach(channel => ipcMain.removeHandler(channel)); // 移除 handle
