@@ -83,7 +83,11 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     const item = node.match ?? node.group; // 获取 Match 或 Group 对象
     if (item) {
       ClipboardManager.copyItem(item);
-      toast.success(`${node.type === 'match' ? '片段' : '分组'}已复制`, { description: node.name });
+      // 使用触发词作为名称
+      const itemName = node.type === 'match' ? 
+        (item.trigger || item.label || '片段') : 
+        (item.name || '分组');
+      toast.success(`已复制: ${itemName}`);
     } else {
       toast.error('无法复制此项目');
     }
@@ -95,7 +99,11 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     const item = node.match ?? node.group;
     if (item) {
       ClipboardManager.cutItem(item);
-      toast.success(`${node.type === 'match' ? '片段' : '分组'}已剪切`, { description: node.name });
+      // 使用触发词作为名称
+      const itemName = node.type === 'match' ? 
+        (item.trigger || item.label || '片段') : 
+        (item.name || '分组');
+      toast.success(`已剪切: ${itemName}`);
     } else {
        toast.error('无法剪切此项目');
     }
@@ -156,7 +164,11 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     try {
         // 传递当前索引作为插入位置，使新项目插入到当前选中节点的后面
         await store.pasteItem(targetParentId, currentIndex);
-        toast.success(`"${clipboardItem.label || clipboardItem.name || clipboardItem.id}"粘贴成功`);
+        // 使用触发词作为名称
+        const itemName = clipboardItem.type === 'match' ? 
+          (clipboardItem.trigger || clipboardItem.label || clipboardItem.id) : 
+          (clipboardItem.name || clipboardItem.id);
+        toast.success(`已粘贴: ${itemName}`);
     } catch (error: any) {
         console.error("粘贴失败:", error);
         toast.error(`粘贴失败: ${error.message || '未知错误'}`);
@@ -258,26 +270,47 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
       if (!node || node.type !== type) return;
 
       const id = node.id;
-      const name = node.name || (node.match?.label || node.group?.name || '未知项');
+      // 根据节点类型获取适当的名称
+      let name = '';
+      if (type === 'match' && node.match) {
+          name = node.match.trigger || node.match.label || '未知片段';
+      } else if (type === 'group' && node.group) {
+          name = node.group.name || '未知分组';
+      } else {
+          name = node.name || '未知项';
+      }
+      
       let title = '';
       let message = '';
 
       if (type === 'match') {
           title = '确认删除片段';
-          message = `确定要删除片段 " ${name} " 吗？`;
-          pendingAction.value = async () => store.deleteItem(id, 'match');
+          message = `确定要删除片段 "${name}" 吗？`;
+          pendingAction.value = async () => {
+            await store.deleteItem(id, 'match');
+            toast.success(`已删除: ${name}`);
+          };
       } else if (type === 'group') {
            title = '确认删除分组';
-           message = `确定要删除分组 " ${name} " 及其所有内容吗？此操作不可撤销。`;
-           pendingAction.value = async () => store.deleteItem(id, 'group');
+           message = `确定要删除分组 "${name}" 及其所有内容吗？此操作不可撤销。`;
+           pendingAction.value = async () => {
+             await store.deleteItem(id, 'group');
+             toast.success(`已删除: ${name}`);
+           };
       } else if (type === 'file') {
            title = '确认删除文件';
-           message = `确定要删除配置文件 " ${name} " 吗？此操作会从文件系统中移除该文件，且不可撤销。`;
-            pendingAction.value = async () => store.deleteFileNode(id); // 调用新的 Store Action
+           message = `确定要删除配置文件 "${name}" 吗？此操作会从文件系统中移除该文件，且不可撤销。`;
+           pendingAction.value = async () => {
+             await store.deleteFileNode(id);
+             toast.success(`已删除: ${name}`);
+           };
       } else if (type === 'folder') {
            title = '确认删除文件夹';
-           message = `确定要删除文件夹 " ${name} " 及其所有内容吗？此操作会从文件系统中移除该文件夹及其包含的所有文件和子文件夹，且不可撤销。`;
-           pendingAction.value = async () => store.deleteFolderNode(id); // 调用新的 Store Action
+           message = `确定要删除文件夹 "${name}" 及其所有内容吗？此操作会从文件系统中移除该文件夹及其包含的所有文件和子文件夹，且不可撤销。`;
+           pendingAction.value = async () => {
+             await store.deleteFolderNode(id);
+             toast.success(`已删除: ${name}`);
+           };
       } else {
           return; // 未知类型
       }

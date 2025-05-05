@@ -428,14 +428,17 @@ export const useEspansoStore = defineStore('espanso', () => {
              return;
          }
          const filePath = itemRef.filePath;
-         const itemName = itemRef.type === 'group' ? itemRef.name : (itemRef.label || itemRef.trigger);
+         // 使用触发词作为名称
+         const itemName = itemRef.type === 'group' ? 
+             (itemRef.name || 'Unknown Group') : 
+             (itemRef.trigger || itemRef.label || 'Unknown Match');
 
          if (!filePath) {
              _setError(`Cannot delete ${itemType} ${itemId}: missing file path.`);
              return;
          }
 
-         _setStatus(`Deleting ${itemName}...`);
+         _setStatus(`正在删除: ${itemName}...`);
 
          try {
              // Remove item reference from the tree
@@ -451,27 +454,33 @@ export const useEspansoStore = defineStore('espanso', () => {
              if (state.value.selectedItemId === itemId) {
                  selectItem(null, null);
              }
-              _setStatus(`${itemType === 'match' ? 'Match' : 'Group'} deleted.`);
-              setTimeout(() => { if (state.value.statusMessage === `${itemType === 'match' ? 'Match' : 'Group'} deleted.`) _setStatus(null); }, 2000);
+             // 统一toast提示格式
+             _setStatus(`已删除: ${itemName}`);
+             setTimeout(() => { if (state.value.statusMessage === `已删除: ${itemName}`) _setStatus(null); }, 2000);
          } catch (err: any) {
              console.error(`Failed to delete ${itemType} ${itemId}:`, err);
-             _setError(`Delete failed: ${err.message}`);
-             // Consider reloading config if deletion failed mid-way?
+             _setError(`删除失败: ${err.message}`);
          }
     };
 
     const moveItem = async (itemId: string, targetParentNodeId: string | null, newIndex: number) => {
         const movedItemRef = findItemInTreeById(state.value.configTree, itemId);
         if (!movedItemRef || (movedItemRef.type !== 'match' && movedItemRef.type !== 'group')) {
-            _setError(`Item ${itemId} not found or is not a Match/Group.`);
+            _setError(`项目 ${itemId} 未找到或不是有效的片段/分组。`);
             return;
         }
         const originalFilePath = movedItemRef.filePath;
         if (!originalFilePath) {
-             _setError(`Item ${itemId} cannot be moved: missing original file path.`);
+             _setError(`项目 ${itemId} 无法移动: 缺少原始文件路径。`);
              return;
         }
-        _setStatus(`Moving ${movedItemRef.type}...`);
+        
+        // 使用触发词作为名称
+        const itemName = movedItemRef.type === 'match' ? 
+            (movedItemRef.trigger || movedItemRef.label || 'Unknown Match') : 
+            (movedItemRef.name || 'Unknown Group');
+        
+        _setStatus(`正在移动: ${itemName}...`);
 
         try {
             // 1. Find Target Parent Node and File Path
@@ -484,22 +493,22 @@ export const useEspansoStore = defineStore('espanso', () => {
                  if (targetParentNode.type === 'file') newFilePath = targetParentNode.path;
                  else if (targetParentNode.type === 'group') newFilePath = targetParentNode.filePath;
                  else { // Target is folder or something else? Invalid drop target for Match/Group
-                     throw new Error(`Invalid target parent type: ${targetParentNode.type}`);
+                     throw new Error(`无效的目标父节点类型: ${targetParentNode.type}`);
                  }
             } else {
                  // If targetParentId is null, where does it go? Assume root of *some* file.
                  // This logic needs clarification. Let's assume it stays in the original file for now if targetParentId is null.
                  newFilePath = originalFilePath;
-                 console.warn(`[Store moveItem] targetParentNodeId is null, assuming move within file: ${originalFilePath}`);
+                 console.warn(`[Store moveItem] targetParentNodeId 为空，假设在文件内移动: ${originalFilePath}`);
              }
 
              if (!newFilePath) {
-                throw new Error(`Could not determine target file path for move operation.`);
+                throw new Error(`无法确定移动操作的目标文件路径。`);
              }
 
             // 2. Remove from old location in tree
             if (!removeItemFromTree(state.value.configTree, itemId)) {
-                throw new Error(`Failed to remove item ${itemId} from its original location in the tree.`);
+                throw new Error(`无法从树中移除项目 ${itemId}。`);
             }
 
             // 3. Update filePath if changed
@@ -513,7 +522,7 @@ export const useEspansoStore = defineStore('espanso', () => {
              // This util needs to handle adding the *reference* back into the tree structure
             if (!addItemToTree(state.value.configTree, movedItemRef, targetParentNodeId, newIndex)) {
                  // Attempt to rollback? This is tricky. Reload might be safer.
-                 throw new Error(`Failed to add item ${itemId} to its new location in the tree.`);
+                 throw new Error(`无法将项目 ${itemId} 添加到新位置。`);
             }
 
             // 5. Save affected files
@@ -526,14 +535,13 @@ export const useEspansoStore = defineStore('espanso', () => {
 
             // 6. Update selection (optional, could keep it selected)
             selectItem(itemId, movedItemRef.type);
-             _setStatus('Item moved.');
-             setTimeout(() => { if (state.value.statusMessage === 'Item moved.') _setStatus(null); }, 2000);
+            // 统一提示格式
+            _setStatus(`已移动: ${itemName}`);
+            setTimeout(() => { if (state.value.statusMessage === `已移动: ${itemName}`) _setStatus(null); }, 2000);
 
         } catch (err: any) {
              console.error(`Failed to move item ${itemId}:`, err);
-             _setError(`Move failed: ${err.message}. Configuration may be inconsistent. Consider reloading.`);
-            // Force reload on error?
-             // await loadConfig(state.value.configRootDir || undefined);
+             _setError(`移动失败: ${err.message}`);
         }
     };
 
@@ -603,13 +611,13 @@ export const useEspansoStore = defineStore('espanso', () => {
      // --- File/Folder Operations (Placeholder Examples - require more service/util implementation) ---
 
      const createConfigFile = async (targetFolderNodeId: string | null, fileName: string) => {
-        _setStatus(`Creating file ${fileName}...`);
+        _setStatus(`正在创建: ${fileName}...`);
         let folderPath: string | null = null;
 
         if (targetFolderNodeId) {
             const folderNode = findTreeNodeById(state.value.configTree, targetFolderNodeId);
             if (!folderNode || folderNode.type !== 'folder') {
-                 _setError('Invalid target folder specified.');
+                 _setError('无效的目标文件夹。');
                  return;
             }
             folderPath = folderNode.path;
@@ -617,7 +625,7 @@ export const useEspansoStore = defineStore('espanso', () => {
             // Create in root config dir? Needs policy.
             folderPath = state.value.configRootDir ? `${state.value.configRootDir}/match` : null; // Default to match dir?
              if (!folderPath) {
-                 _setError('Cannot determine target directory.');
+                 _setError('无法确定目标目录。');
                  return;
              }
         }
@@ -626,10 +634,11 @@ export const useEspansoStore = defineStore('espanso', () => {
             const newFilePath = await espansoService.createAndSaveEmptyConfigFile(folderPath, fileName);
             // Easiest way to update UI is reload
             await loadConfig(state.value.configRootDir || undefined);
-             _setStatus(`File ${fileName} created.`);
-             // Optionally select the new file/default item
+            // 统一提示格式
+            _setStatus(`已创建: ${fileName}`);
+            setTimeout(() => { if (state.value.statusMessage === `已创建: ${fileName}`) _setStatus(null); }, 2000);
          } catch (err: any) {
-             _setError(`Failed to create file: ${err.message}`);
+             _setError(`创建文件失败: ${err.message}`);
          }
      };
 
@@ -641,7 +650,7 @@ export const useEspansoStore = defineStore('espanso', () => {
          }
          const filePath = fileNode.path;
          const fileName = fileNode.name;
-          _setStatus(`Deleting file ${fileName}...`);
+         _setStatus(`正在删除: ${fileName}...`);
 
          try {
               // 1. Remove from tree state FIRST
@@ -655,11 +664,11 @@ export const useEspansoStore = defineStore('espanso', () => {
               if (state.value.selectedItemId === fileNodeId) {
                   selectItem(null, null);
               }
-              _setStatus(`File ${fileName} deleted.`);
-              setTimeout(() => { if (state.value.statusMessage === `File ${fileName} deleted.`) _setStatus(null); }, 2000);
+              // 统一toast提示格式
+              _setStatus(`已删除: ${fileName}`);
+              setTimeout(() => { if (state.value.statusMessage === `已删除: ${fileName}`) _setStatus(null); }, 2000);
          } catch (err: any) {
-             _setError(`Failed to delete file ${fileName}: ${err.message}. Reloading might be needed.`);
-             // Consider reloading config on error
+             _setError(`删除文件失败: ${err.message}`);
          }
      };
 
@@ -671,7 +680,7 @@ export const useEspansoStore = defineStore('espanso', () => {
          }
          const folderPath = folderNode.path;
          const folderName = folderNode.name;
-          _setStatus(`Deleting folder ${folderName}...`);
+         _setStatus(`正在删除: ${folderName}...`);
 
          try {
               // 1. Remove from tree state FIRST (including descendants)
@@ -685,27 +694,26 @@ export const useEspansoStore = defineStore('espanso', () => {
               if (state.value.selectedItemId === folderNodeId) {
                   selectItem(null, null);
               }
-               _setStatus(`Folder ${folderName} deleted.`);
-               setTimeout(() => { if (state.value.statusMessage === `Folder ${folderName} deleted.`) _setStatus(null); }, 2000);
+               _setStatus(`已删除: ${folderName}`);
+               setTimeout(() => { if (state.value.statusMessage === `已删除: ${folderName}`) _setStatus(null); }, 2000);
          } catch (err: any) {
-              _setError(`Failed to delete folder ${folderName}: ${err.message}. Reloading might be needed.`);
-             // Consider reloading config on error
+              _setError(`删除文件夹失败: ${err.message}`);
          }
      };
 
       const renameNode = async (nodeId: string, newName: string) => {
          const node = findTreeNodeById(state.value.configTree, nodeId);
          if (!node || (node.type !== 'file' && node.type !== 'folder')) {
-             _setError('Node not found or not a file/folder.');
+             _setError('节点未找到或不是文件/文件夹。');
              return;
          }
          const oldPath = node.path;
          const oldName = node.name;
-          _setStatus(`Renaming ${oldName} to ${newName}...`);
+          _setStatus(`正在重命名: ${oldName} -> ${newName}...`);
 
           // Basic validation
          if (!newName || newName.includes('/') || newName.includes('\\')) {
-              _setError('Invalid name.');
+              _setError('无效的名称。');
               return;
          }
          if (newName === oldName) {
@@ -755,11 +763,12 @@ export const useEspansoStore = defineStore('espanso', () => {
                  selectItem(node.id, node.type);
              }
 
-             _setStatus(`Renamed to ${newName}.`);
-             setTimeout(() => { if (state.value.statusMessage === `Renamed to ${newName}.`) _setStatus(null); }, 2000);
+             // 统一提示格式
+             _setStatus(`已重命名: ${newName}`);
+             setTimeout(() => { if (state.value.statusMessage === `已重命名: ${newName}`) _setStatus(null); }, 2000);
 
          } catch (err: any) {
-             _setError(`Failed to rename ${oldName}: ${err.message}`);
+             _setError(`重命名失败: ${err.message}`);
              // Consider reloading config on error
          }
      };
