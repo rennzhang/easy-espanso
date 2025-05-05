@@ -6,9 +6,9 @@
 import { v4 as uuidv4 } from 'uuid'; // 使用 UUID v4 生成更可靠的唯一 ID
 
 // 核心内部类型
-import type { Match, Group } from '@/types/core/espanso.types';
+import type { Match } from '@/types/core/espanso.types';
 // Espanso YAML 格式的类型 (用于输入)
-import type { EspansoMatchYaml, EspansoGroupYaml } from '@/types/core/espanso-format.types';
+import type { EspansoMatchYaml } from '@/types/core/espanso-format.types';
 
 // --- ID 生成 ---
 

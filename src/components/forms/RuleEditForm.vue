@@ -591,6 +591,9 @@ import {
   computed,
   onBeforeUnmount,
   nextTick,
+  defineEmits,
+  defineProps,
+  PropType,
 } from "vue";
 import { useEspansoStore } from "../../store/useEspansoStore";
 import { Button } from "../ui/button";
@@ -656,12 +659,23 @@ import { Editor } from "codemirror";
 // import 'codemirror/theme/material-darker.css';
 
 // 定义props
-const props = defineProps<{
-  rule: Match | null;
-}>();
+const props = defineProps({
+  rule: {
+    type: Object as PropType<Match | null>,
+    required: true,
+  },
+  // isModal: { // Example prop if needed
+  //   type: Boolean,
+  //   default: false,
+  // }
+});
 
-// 定义emits
-const emit = defineEmits<{ (e: "delete", id: string): void }>();
+// Define emits
+const emit = defineEmits<{
+  (e: 'modified', value: boolean): void;
+  // 添加 save 事件定义，假设 rule.id 是字符串或数字
+  (e: 'save', ruleId: string | number | undefined, data: Partial<Match>): void;
+}>();
 
 // 获取 store
 const store = useEspansoStore();
@@ -808,6 +822,8 @@ const originalFormData = ref<RuleFormState | null>(null);
 const variableSelectorRef = ref<InstanceType<typeof VariableSelector> | null>(
   null
 );
+const isInitialized = ref(false); // <--- 添加初始化标记
+
 const showPreview = () => {
   if (!formState.value.content) return;
 
@@ -847,63 +863,7 @@ const showPreview = () => {
   previewContent.value = content;
   showPreviewModal.value = true;
 };
-// Expose the methods to get the current form data and show preview
-defineExpose({
-  showPreview,
-  getFormData: (): Partial<Match> & {
-    content?: string;
-    contentType?: RuleFormState["contentType"];
-  } => {
-    const dataToSave: Partial<Match> & {
-      content?: string;
-      contentType?: RuleFormState["contentType"];
-    } = {
-      label: formState.value.label,
-      description: formState.value.description || undefined,
-      word: formState.value.word || undefined,
-      left_word: formState.value.leftWord || undefined,
-      right_word: formState.value.rightWord || undefined,
-      propagate_case: formState.value.propagateCase || undefined,
-      uppercase_style: formState.value.uppercaseStyle || undefined,
-      force_mode:
-        formState.value.forceMode === "" ||
-        formState.value.forceMode === "default"
-          ? undefined
-          : formState.value.forceMode,
-      search_terms:
-        formState.value.search_terms && formState.value.search_terms.length > 0
-          ? formState.value.search_terms
-          : undefined,
-      priority: formState.value.priority || undefined,
-      hotkey: formState.value.hotkey || undefined,
-      vars:
-        formState.value.vars && formState.value.vars.length > 0
-          ? formState.value.vars
-          : undefined,
-      content: formState.value.content,
-      contentType: formState.value.contentType,
-      trigger: undefined,
-      triggers: undefined,
-    };
 
-    const triggerLines = formState.value.trigger
-      .split("\n")
-      .map((t) => t.trim())
-      .filter((t) => t !== "");
-
-    if (triggerLines.length === 0) {
-      dataToSave.trigger = "";
-    } else if (triggerLines.length === 1) {
-      dataToSave.trigger = triggerLines[0];
-    } else {
-      dataToSave.triggers = triggerLines;
-    }
-    if (dataToSave.trigger === undefined) delete dataToSave.trigger;
-    if (dataToSave.triggers === undefined) delete dataToSave.triggers;
-
-    return dataToSave;
-  },
-});
 
 // 辅助函数：根据 Match 数据确定初始 contentType
 const determineInitialContentType = (
@@ -943,131 +903,53 @@ const determineInitialContent = (ruleData: Match): string | undefined => {
       return ruleData.content || ruleData.replace; // Fallback to replace if content is missing
   }
 };
+const resetForm = (formData: Partial<Match>) => {
+  formState.value = JSON.parse(JSON.stringify(formData));
+  // 确保设置正确的内容类型
+  if (formData.contentType) {
+    currentContentType.value = formData.contentType as ContentType;
+    console.log("[RuleEditForm] resetForm 设置内容类型:", currentContentType.value);
+  }
+}
 
 // 初始化表单
 onMounted(() => {
-  // 深拷贝props.rule到formState
-  const ruleData = JSON.parse(JSON.stringify(props.rule || {})); // Handle potential null rule
-  console.log("初始化表单数据:", ruleData);
-
-  // --- 处理触发词: trigger or triggers --- START
-  let triggerInput = "";
-  if (Array.isArray(ruleData.triggers) && ruleData.triggers.length > 0) {
-    triggerInput = ruleData.triggers.join("\n");
-  } else if (ruleData.trigger) {
-    triggerInput = ruleData.trigger;
-  }
-  // --- 处理触发词: trigger or triggers --- END
-
-  formState.value = {
-    trigger: triggerInput,
-    label: ruleData.label || "",
-    description: ruleData.description || "",
-    content: determineInitialContent(ruleData),
-    word: ruleData.word || false,
-    leftWord: ruleData.leftWord || ruleData.left_word || false,
-    rightWord: ruleData.rightWord || ruleData.right_word || false,
-    propagateCase: ruleData.propagateCase || ruleData.propagate_case || false,
-    uppercaseStyle: ruleData.uppercaseStyle || ruleData.uppercase_style || "",
-    forceMode:
-      ruleData.forceMode === "default"
-        ? ""
-        : ruleData.forceMode || ruleData.force_mode || "",
-    apps: Array.isArray(ruleData.apps) ? [...ruleData.apps] : [],
-    exclude_apps: Array.isArray(ruleData.exclude_apps)
-      ? [...ruleData.exclude_apps]
-      : [],
-    search_terms: Array.isArray(ruleData.search_terms)
-      ? [...ruleData.search_terms]
-      : [],
-    priority: ruleData.priority || 0,
-    hotkey: ruleData.hotkey || "",
-    vars: Array.isArray(ruleData.vars) ? [...ruleData.vars] : [],
-    contentType: determineInitialContentType(ruleData),
-  };
-
-  currentContentType.value = formState.value.contentType as ContentType;
-
-  // 如果有高级选项，自动展开高级选项区域
-  if (
-    formState.value.leftWord ||
-    formState.value.rightWord ||
-    formState.value.propagateCase ||
-    formState.value.uppercaseStyle ||
-    formState.value.forceMode ||
-    (formState.value.apps && formState.value.apps.length > 0) ||
-    (formState.value.exclude_apps && formState.value.exclude_apps.length > 0) ||
-    (formState.value.search_terms && formState.value.search_terms.length > 0)
-  ) {
-    // 不自动展开高级设置弹窗
-    // showAdvancedPopover.value = true;
+  console.log("[RuleEditForm] Mounted. Initializing state from props.");
+  isInitialized.value = false;
+  const initialFormState = mapRuleToFormData(props.rule);
+  formState.value = initialFormState;
+  
+  // 确保设置正确的内容类型（防止undefined）
+  if (initialFormState.contentType) {
+    currentContentType.value = initialFormState.contentType;
+    console.log("[RuleEditForm] 设置初始内容类型:", currentContentType.value);
+  } else {
+    currentContentType.value = "plain"; // 默认值
+    console.log("[RuleEditForm] 未找到内容类型，使用默认值: plain");
   }
 
-  // 使用 nextTick 确保初始化完成后再保存原始数据和重置状态
   nextTick(() => {
-    console.log("onMounted 后，nextTick中重置状态和保存原始数据");
     originalFormData.value = JSON.parse(JSON.stringify(formState.value));
     isFormModified.value = false;
-    store.state
+    isInitialized.value = true;
+    console.log("[RuleEditForm] Initial state and baseline set on mount.");
+     // Initial check for modification status (should be false)
+    checkFormModified();
   });
 });
 
 // 监听props变化
 watch(
   () => props.rule,
-  (newRule) => {
-    const ruleData = JSON.parse(JSON.stringify(newRule || {})); // Handle potential null newRule
-    console.log("监听到props变化:", ruleData);
-
-    // --- 处理触发词: trigger or triggers --- START
-    let triggerInput = "";
-    if (Array.isArray(ruleData.triggers) && ruleData.triggers.length > 0) {
-      triggerInput = ruleData.triggers.join("\n");
-    } else if (ruleData.trigger) {
-      triggerInput = ruleData.trigger;
-    }
-    // --- 处理触发词: trigger or triggers --- END
-
-    // 1. 更新 formState
-    formState.value = {
-      trigger: triggerInput,
-      label: ruleData.label || "",
-      description: ruleData.description || "",
-      content: determineInitialContent(ruleData),
-      word: ruleData.word || false,
-      leftWord: ruleData.leftWord || ruleData.left_word || false,
-      rightWord: ruleData.rightWord || ruleData.right_word || false,
-      propagateCase: ruleData.propagateCase || ruleData.propagate_case || false,
-      uppercaseStyle: ruleData.uppercaseStyle || ruleData.uppercase_style || "",
-      forceMode:
-        ruleData.forceMode === "default"
-          ? ""
-          : ruleData.forceMode || ruleData.force_mode || "",
-      apps: Array.isArray(ruleData.apps) ? [...ruleData.apps] : [],
-      exclude_apps: Array.isArray(ruleData.exclude_apps)
-        ? [...ruleData.exclude_apps]
-        : [],
-      search_terms: Array.isArray(ruleData.search_terms)
-        ? [...ruleData.search_terms]
-        : [],
-      priority: ruleData.priority || 0,
-      hotkey: ruleData.hotkey || "",
-      vars: Array.isArray(ruleData.vars) ? [...ruleData.vars] : [],
-      contentType: determineInitialContentType(ruleData),
-    };
-
-    currentContentType.value = formState.value.contentType as ContentType;
-
-    // 2. 使用 nextTick 确保 DOM 和响应式系统更新完毕
-    nextTick(() => {
-      // 3. 在 nextTick 回调中保存原始数据和重置状态
-      console.log("Props变化后，nextTick中重置状态和保存原始数据");
-      originalFormData.value = JSON.parse(JSON.stringify(formState.value));
-      isFormModified.value = false;
+  (newRule, oldRule) => {
+    if (newRule?.id !== oldRule?.id) {
+      formData.value = mapRuleToFormData(newRule);
+      originalFormData.value = JSON.parse(JSON.stringify(formData.value)); // Update original data too
+      isFormModified.value = false; // Reset modified state
       store.state.hasUnsavedChanges = false;
-    });
+    }
   },
-  { deep: true, immediate: true } // 使用 immediate 确保初始加载也执行
+  { immediate: true, deep: true }
 );
 
 // 监听内容类型变化 - 不再直接调用 checkFormModified
@@ -1102,23 +984,25 @@ watch(() => formState.value.propagateCase, (isPropagateCaseEnabled) => {
 
 // 检查表单是否被修改
 const checkFormModified = () => {
-  // 如果原始表单数据为空，则不认为表单被修改
+  // 确保在初始化完成后再检查
+  if (!isInitialized.value) { // <--- 检查初始化标记
+      console.log("检查修改跳过：尚未初始化");
+      return;
+  }
+
+  // 如果原始表单数据为空 (理论上初始化后不应为空)
   if (!originalFormData.value) {
+    console.log("检查修改：原始数据为空");
     isFormModified.value = false;
     store.state.hasUnsavedChanges = false;
+    emit('modified', false);
     return;
   }
 
   // 深度比较当前表单数据和原始表单数据
-  const currentFormData = JSON.stringify({
-    ...formState.value,
-    contentType: undefined,
-  });
-
-  const originalDataForComparison = JSON.stringify({
-    ...originalFormData.value,
-    contentType: undefined,
-  });
+  // !!! 包含 contentType 进行比较 !!!
+  const currentFormData = JSON.stringify(formState.value);
+  const originalDataForComparison = JSON.stringify(originalFormData.value);
 
   // 只有当数据实际发生变化时，才标记为已修改
   const hasChanged = currentFormData !== originalDataForComparison;
@@ -1126,8 +1010,10 @@ const checkFormModified = () => {
   // 更新状态
   isFormModified.value = hasChanged;
   store.state.hasUnsavedChanges = hasChanged;
+  // 触发 modified 事件，将修改状态传递给父组件
+  emit('modified', hasChanged);
 
-  console.log("表单修改状态:", hasChanged);
+  console.log("表单初始化完成，修改状态:", hasChanged);
 };
 
 // Trigger the hidden file input click
@@ -1371,7 +1257,7 @@ const onSubmit = () => {
   }
 
   // 准备要保存的数据
-  const dataToSave: Partial<Match> = {
+  const dataToSave: Partial<Match> & { contentType?: ContentType } = { // <--- 明确包含 contentType
     // Process trigger/triggers
     ...(formState.value.trigger.includes("\n") ||
     formState.value.trigger.includes(",")
@@ -1418,87 +1304,73 @@ const onSubmit = () => {
         ? formState.value.vars
         : undefined,
 
-    // 移除所有内容相关字段和UI专用字段
-    content: undefined,
-    contentType: undefined,
+    // !!! 始终包含 contentType !!!
+    contentType: currentContentType.value, // <--- 添加这一行
+
+    // 移除所有旧的内容相关字段 (replace/markdown/html/image_path)
+    // 这些将在下面的 switch 中被正确设置
+    replace: undefined,
+    markdown: undefined,
+    html: undefined,
+    image_path: undefined,
+    content: undefined, // 移除临时的 content 字段
   };
 
   // 根据当前内容类型，只添加对应的字段
   switch (currentContentType.value) {
     case "plain":
-      // 纯文本只使用 replace 字段
       dataToSave.replace = formState.value.content;
-      // 确保删除其他字段
-      delete dataToSave.markdown;
-      delete dataToSave.html;
-      delete dataToSave.image_path;
-      console.log("保存纯文本内容到 replace 字段");
       break;
 
     case "markdown":
-      // Markdown 只使用 markdown 字段
       dataToSave.markdown = formState.value.content;
-      // 确保删除其他字段
-      delete dataToSave.replace;
-      delete dataToSave.html;
-      delete dataToSave.image_path;
-      console.log("保存Markdown内容到 markdown 字段");
       break;
 
     case "html":
-      // HTML 只使用 html 字段
       dataToSave.html = formState.value.content;
-      // 确保删除其他字段
-      delete dataToSave.replace;
-      delete dataToSave.markdown;
-      delete dataToSave.image_path;
-      console.log("保存HTML内容到 html 字段");
       break;
 
     case "image":
-      // 图片只使用 image_path 字段
       dataToSave.image_path = formState.value.content;
-      // 确保删除其他字段
-      delete dataToSave.replace;
-      delete dataToSave.markdown;
-      delete dataToSave.html;
-      console.log("保存图片路径到 image_path 字段");
       break;
 
     case "form":
-      // 表单功能暂未实现
-      console.warn("表单功能暂未实现");
-      // 表单使用 content 字段，并标记 contentType
-      dataToSave.content = formState.value.content;
-      dataToSave.contentType = "form"; // 显式设置 contentType
-      // 确保删除其他字段
-      delete dataToSave.replace;
-      delete dataToSave.markdown;
-      delete dataToSave.html;
-      delete dataToSave.image_path;
-      console.log("保存表单内容到 content 字段");
+      // 表单内容通常存在 replace 或 content 字段，并依赖 contentType 区分
+      // 假设表单定义存储在 replace 字段
+      dataToSave.replace = formState.value.content;
+      console.log("保存表单内容到 replace 字段");
       break;
 
     default:
       console.error("未知的内容类型:", currentContentType.value);
-      // 默认使用 replace 字段
-      dataToSave.replace = formState.value.content;
-      // 确保删除其他字段
-      delete dataToSave.markdown;
-      delete dataToSave.html;
-      delete dataToSave.image_path;
+      dataToSave.replace = formState.value.content; // Fallback
   }
+
+  // 清理所有值为 undefined 的字段
+  Object.keys(dataToSave).forEach(key => {
+      if (dataToSave[key as keyof typeof dataToSave] === undefined) {
+          delete dataToSave[key as keyof typeof dataToSave];
+      }
+  });
 
   // 记录最终保存的数据结构
   console.log("最终保存的数据:", JSON.stringify(dataToSave, null, 2));
 
-  // 保存后更新原始表单数据
-  originalFormData.value = JSON.parse(JSON.stringify(formState.value));
-  isFormModified.value = false;
-  store.state.hasUnsavedChanges = false;
+  // 调用 emit 保存数据，并添加必要的检查
+  if (props.rule && props.rule.id !== undefined && props.rule.id !== null) {
+    emit('save', props.rule.id, dataToSave); // 使用清理后的 dataToSave
 
-  console.log("正在保存:", dataToSave);
-  // REMOVED: emit('save', props.rule.id, dataToSave);
+    // 保存成功后更新原始表单数据并重置修改状态
+    originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+    isFormModified.value = false;
+    store.state.hasUnsavedChanges = false;
+    console.log("保存事件已触发，状态已重置。");
+
+  } else {
+    console.error("无法保存: 规则 ID 无效或缺失。", props.rule);
+    // 这里可以添加用户提示，例如使用 alert 或 toast
+    alert("保存失败：规则 ID 无效。");
+  }
 };
 
 // 取消编辑
@@ -1590,95 +1462,76 @@ const mapRuleToFormData = (rule: Match | null): RuleFormState => {
   if (!rule) {
     // Return default RuleFormState
     return {
-      trigger: "",
-      triggers: [],
-      label: "",
-      description: "",
-      content: "",
-      contentType: "plain",
-      word: false,
-      leftWord: false,
-      rightWord: false,
-      propagateCase: false,
-      uppercaseStyle: "",
-      forceMode: "default",
-      apps: [],
-      exclude_apps: [],
-      search_terms: [],
-      priority: 0,
-      hotkey: "",
-      image_path: "",
+      trigger: "", triggers: [], label: "", description: "",
+      content: "", contentType: "plain", word: false, leftWord: false, rightWord: false,
+      propagateCase: false, uppercaseStyle: "", forceMode: "", apps: [], exclude_apps: [],
+      search_terms: [], priority: 0, hotkey: "", image_path: "", vars: [],
     };
   }
 
-  // Determine initial contentType and content
-  let contentType: ContentType = "plain";
-  let content = "";
-
-  // 根据存在的字段确定内容类型和内容
-  // 优先级: image_path > markdown > html > replace
-  if (rule.image_path !== undefined && rule.image_path !== null) {
-    // 图片类型
-    contentType = "image";
-    content = rule.image_path;
-    console.log("检测到图片类型，路径:", rule.image_path);
-  } else if (rule.markdown !== undefined && rule.markdown !== null) {
-    // Markdown类型
-    contentType = "markdown";
-    content = rule.markdown;
-    console.log("检测到Markdown类型");
-  } else if (rule.html !== undefined && rule.html !== null) {
-    // HTML类型
-    contentType = "html";
-    content = rule.html;
-    console.log("检测到HTML类型");
-  } else if (rule.replace !== undefined && rule.replace !== null) {
-    // 检查是否可能是表单
-    if (isLikelyForm(rule.replace)) {
-      contentType = "form";
-      content = rule.replace;
-      console.log("检测到表单类型");
-    } else {
-      // 默认为纯文本
-      contentType = "plain";
-      content = rule.replace;
-      console.log("检测到纯文本类型");
-    }
+  // 1. 确定实际的 contentType (如果缺失或无效，则默认为 'plain')
+  let contentType: ContentType = 'plain'; // 从默认开始
+  if (rule.contentType && ['plain', 'markdown', 'html', 'image', 'form'].includes(rule.contentType)) {
+      contentType = rule.contentType;
   } else {
-    // 如果没有内容，默认为纯文本
-    contentType = "plain";
-    content = "";
-    console.log("未检测到内容，默认为纯文本");
+      // 如果 contentType 缺失或无效，尝试推断 (可选, 但有助于恢复)
+      if (rule.markdown !== undefined) contentType = 'markdown';
+      else if (rule.html !== undefined) contentType = 'html';
+      else if (rule.image_path !== undefined) contentType = 'image';
+      // 否则保持 'plain' (如果需要，可以根据 'form' 字段推断 'form')
   }
 
-  // 记录检测到的内容类型
-  console.log("最终确定的内容类型:", contentType);
+  // 2. 根据确定的 contentType 获取内容
+  let content = "";
+  switch (contentType) {
+      case 'markdown':
+          content = rule.markdown ?? rule.replace ?? ""; // 如果 markdown 缺失，回退到 replace
+          break;
+      case 'html':
+          content = rule.html ?? rule.replace ?? ""; // 如果 html 缺失，回退到 replace
+          break;
+      case 'image':
+          content = rule.image_path ?? "";
+          break;
+      case 'form': // 假设 form 使用 'replace'
+          content = rule.replace ?? "";
+          break;
+      case 'plain':
+      default:
+          content = rule.replace ?? ""; // 默认使用 replace
+          break;
+  }
 
-  // Combine trigger and triggers
+  // 合并 trigger 和 triggers (用于显示)
   const triggers = rule.triggers || [];
   let singleTrigger = rule.trigger || "";
-  if (triggers.length > 0) {
-    singleTrigger = triggers.join("\n");
-  }
+  if (triggers.length > 0) { singleTrigger = triggers.join("\n"); } // 在 textarea 中使用 \n 显示
+  let uiForceMode = rule.force_mode || "";
+  if (uiForceMode === 'default') { uiForceMode = ''; }
 
+  // 3. 返回完整的表单状态
   return {
     trigger: singleTrigger,
-    triggers: triggers,
+    triggers: triggers, // 如果其他地方需要，保留原始 triggers 数组
     label: rule.label || "",
     description: rule.description || "",
-    content: content,
-    contentType: contentType,
+    content: content, // 使用派生出的内容
+    contentType: contentType, // 使用确定的 contentType
     word: rule.word || false,
     leftWord: rule.left_word || false,
     rightWord: rule.right_word || false,
     propagateCase: rule.propagate_case || false,
     uppercaseStyle: rule.uppercase_style || "",
-    forceMode: rule.force_mode === "default" ? "" : rule.force_mode || "",
+    forceMode: uiForceMode as "" | "clipboard" | "keys",
+    apps: rule.apps || [],
+    exclude_apps: rule.exclude_apps || [],
     search_terms: rule.search_terms || [],
     priority: rule.priority || 0,
     hotkey: rule.hotkey || "",
-    image_path: rule.image_path || "",
     vars: Array.isArray(rule.vars) ? [...rule.vars] : [],
+    // 如果需要，可以保留内部字段，例如用于图片预览的原始 image_path
+    image_path: rule.image_path || "", // 保留此项以用于预览逻辑
+    // 注意: 如果 content 是核心, 不要在 formState 中直接包含 markdown/html/replace
   };
 };
 
@@ -1717,23 +1570,182 @@ const isTextBasedContent = computed(() => {
   );
 });
 
-// --- Methods ---
-// REMOVED: addTag method and related logic
-// const addTag = (tag: string) => {
-//   // Ensure tags array exists before pushing
-//   if (!formData.value.tags) {
-//     formData.value.tags = [];
-//   }
-//   // Additional check before includes
-//   if (
-//     tag &&
-//     Array.isArray(formData.value.tags) &&
-//     !formData.value.tags.includes(tag)
-//   ) {
-//     formData.value.tags.push(tag);
-//     checkFormModified(); // Check if adding a tag modifies the form
-//   }
-// };
+// --- resetModifiedState 함수 선언 (defineExpose 앞으로 이동) ---
+const resetModifiedState = (savedData: Partial<Match>) => {
+  console.log("[RuleEditForm] Resetting state after save.");
+  isInitialized.value = false; // Temporarily disable modification checks during reset
+
+  // 1. Map the SAVED data back to the expected form state structure
+  const newFormState = mapRuleToFormData(savedData as Match);
+
+  // 2. Directly update the reactive form state
+  formState.value = newFormState;
+  
+  // 确保设置正确的内容类型（防止undefined）
+  if (newFormState.contentType) {
+    currentContentType.value = newFormState.contentType;
+    console.log("[RuleEditForm] resetModifiedState 设置内容类型:", currentContentType.value);
+  } else {
+    currentContentType.value = "plain"; // 默认值
+    console.log("[RuleEditForm] resetModifiedState 未找到内容类型，使用默认值: plain");
+  }
+
+  // 3. Update the baseline for modification checks using the NEW form state
+  nextTick(() => {
+    originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+    isFormModified.value = false; // Reset modified flag
+    store.state.hasUnsavedChanges = false; // Sync global state
+    isInitialized.value = true; // Re-enable modification checks
+    console.log("[RuleEditForm] State and baseline reset complete.");
+  });
+};
+
+// --- getFormData 함수 선언 (defineExpose 앞으로 이동) ---
+const getFormData = (): Partial<Match> => {
+  const dataToSave: Partial<Match> = {
+    // 基本字段
+    label: formState.value.label || undefined,
+    description: formState.value.description || undefined,
+    word: formState.value.word || undefined,
+    left_word: formState.value.leftWord || undefined,
+    right_word: formState.value.rightWord || undefined,
+    propagate_case: formState.value.propagateCase || undefined,
+    uppercase_style: formState.value.uppercaseStyle || undefined,
+    force_mode:
+      formState.value.forceMode === "" ||
+      formState.value.forceMode === "default"
+        ? undefined
+        : formState.value.forceMode,
+    search_terms:
+      formState.value.search_terms && formState.value.search_terms.length > 0
+        ? formState.value.search_terms
+        : undefined,
+    priority: formState.value.priority || undefined,
+    hotkey: formState.value.hotkey || undefined,
+    vars:
+      formState.value.vars && formState.value.vars.length > 0
+        ? formState.value.vars
+        : undefined,
+    contentType: currentContentType.value, // 确保包含 contentType
+
+    // 显式将所有内容字段初始化为 undefined
+    replace: undefined,
+    markdown: undefined,
+    html: undefined,
+    image_path: undefined,
+
+    trigger: undefined,
+    triggers: undefined,
+  };
+
+  // --- 处理 trigger/triggers ---
+  const triggerLines = formState.value.trigger
+    .split(/[\n,]/) // 支持逗号和换行分隔
+    .map((t) => t.trim())
+    .filter((t) => t !== "");
+
+  if (triggerLines.length === 0) {
+    dataToSave.trigger = "";
+  } else if (triggerLines.length === 1) {
+    dataToSave.trigger = triggerLines[0];
+  } else {
+    dataToSave.triggers = triggerLines;
+  }
+
+  // --- 根据内容类型设置对应字段，其他字段保持 undefined ---
+  switch (currentContentType.value) {
+    case "plain":
+      dataToSave.replace = formState.value.content;
+      break;
+    case "markdown":
+      dataToSave.markdown = formState.value.content;
+      break;
+    case "html":
+      dataToSave.html = formState.value.content;
+      break;
+    case "image":
+      dataToSave.image_path = formState.value.content;
+      break;
+    case "form":
+      // 表单内容使用 replace 字段
+      dataToSave.replace = formState.value.content;
+      break;
+    default:
+      console.error("[getFormData] 未知的内容类型:", currentContentType.value);
+      dataToSave.replace = formState.value.content; // Fallback
+  }
+
+  // 清理多余字段
+  Object.keys(dataToSave).forEach(key => {
+    if (dataToSave[key as keyof typeof dataToSave] === undefined) {
+      delete dataToSave[key as keyof typeof dataToSave];
+    }
+  });
+
+  console.log("[getFormData] 返回数据:", JSON.stringify(dataToSave, null, 2));
+  return dataToSave;
+};
+
+// --- defineExpose 블록 ---
+defineExpose({
+  showPreview,
+  getFormData,
+  resetModifiedState,
+});
+
+// --- Watcher 및 onMounted 등 나머지 코드는 그대로 ---
+// Watcher - only reset fully when ID changes
+watch(
+  () => props.rule?.id, // Watch only the ID for navigation changes
+  (newId, oldId) => {
+    if (newId === undefined || newId === oldId) {
+        // If ID is same or undefined, do nothing here.
+        // State updates for the *same* item are handled by resetModifiedState.
+        return;
+    }
+
+    // ID has changed, indicating navigation to a different rule
+    console.log("[RuleEditForm Watcher] Rule ID changed, resetting form state.");
+    isInitialized.value = false;
+    const newFormState = mapRuleToFormData(props.rule); // Use current props.rule
+    formState.value = newFormState;
+    
+    // 确保设置正确的内容类型（防止undefined）
+    if (newFormState.contentType) {
+      currentContentType.value = newFormState.contentType;
+      console.log("[RuleEditForm] 切换规则，设置内容类型:", currentContentType.value);
+    } else {
+      currentContentType.value = "plain"; // 默认值
+      console.log("[RuleEditForm] 切换规则，未找到内容类型，使用默认值: plain");
+    }
+
+    nextTick(() => {
+      originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+      isFormModified.value = false;
+      store.state.hasUnsavedChanges = false; // Reset global state on item change
+      isInitialized.value = true;
+      console.log("[RuleEditForm Watcher] Form reset complete after ID change.");
+    });
+  }
+  // No deep: true needed if only watching ID
+);
+
+// onMounted remains the same
+onMounted(() => {
+  console.log("[RuleEditForm] Mounted. Initializing state from props.");
+  isInitialized.value = false;
+  const initialFormState = mapRuleToFormData(props.rule);
+  formState.value = initialFormState;
+
+  nextTick(() => {
+    originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+    isFormModified.value = false;
+    isInitialized.value = true;
+    console.log("[RuleEditForm] Initial state and baseline set on mount.");
+     // Initial check for modification status (should be false)
+    checkFormModified();
+  });
+});
 </script>
 <style>
 /* .codemirror-container.hidden-line-numbers .CodeMirror-gutters {
