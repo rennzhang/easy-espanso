@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { toast } from 'vue-sonner'; // Assuming toast notifications are still used
+import { v4 as uuidv4 } from 'uuid';
 
 // Import Core Types
 import type { ConfigTreeNode, ConfigFileNode, ConfigFolderNode } from '@/types/core/ui.types'; // Renamed/Moved
@@ -128,24 +129,32 @@ export const useEspansoStore = defineStore('espanso', () => {
     const _saveFileByPath = async (filePath: string) => {
         const fileNode = findFileNode(state.value.configTree, filePath);
         if (!fileNode) {
-            console.warn(`[Store _saveFileByPath] Could not find file node for path: ${filePath}`);
-            return; // Or throw?
+            throw new Error(`File node not found: ${filePath}`);
         }
-        _setStatus(`Saving ${fileNode.name}...`);
+        
+        _setStatus(`正在保存 ${fileNode.name}...`);
+        
         try {
-            // Extract all matches and groups *directly* associated with this file node
+            // 提取所有直接与此文件节点关联的匹配项和分组
             const itemsToSave = [
                 ...(fileNode.matches || []),
                 ...(fileNode.groups || [])
             ];
-            await espansoService.saveConfigurationFile(filePath, itemsToSave, fileNode.content);
-             _setStatus(`${fileNode.name} saved.`);
-             // Clear status after a short delay
-             setTimeout(() => { if (state.value.statusMessage === `${fileNode.name} saved.`) _setStatus(null); }, 2000);
+            
+            // 使用正确的API
+            await espansoService.saveConfigurationFile(filePath, itemsToSave, fileNode.content || {});
+            
+            state.value.hasUnsavedChanges = false;
+            _setStatus(`${fileNode.name} 已保存`);
+            // 短暂延迟后清除状态
+            setTimeout(() => { 
+                if (state.value.statusMessage === `${fileNode.name} 已保存`) 
+                    _setStatus(null); 
+            }, 2000);
         } catch (err: any) {
-            console.error(`[Store _saveFileByPath] Error saving file ${filePath}:`, err);
-            _setError(`Failed to save ${fileNode.name}: ${err.message}`);
-            throw err; // Re-throw to allow action-specific handling if needed
+            console.error(`[EspansoStore] 保存文件失败: ${filePath}`, err);
+            _setError(`保存失败: ${err.message}`);
+            throw err; // 重新抛出以允许调用者处理
         }
     };
 
@@ -337,42 +346,77 @@ export const useEspansoStore = defineStore('espanso', () => {
         }
     };
 
-    const addItem = async (itemData: Omit<Match, 'id'|'type'> | Omit<Group, 'id'|'type'>, itemType: 'match' | 'group', targetParentNodeId: string | null) => {
+    const addItem = async (itemData: Omit<Match, 'id'|'type'> | Omit<Group, 'id'|'type'>, itemType: 'match' | 'group', targetParentNodeId: string | null, insertIndex: number = -1) => {
         _setStatus(`Adding ${itemType}...`);
         try {
-            const newItem = {
-                id: generateId(itemType),
-                type: itemType,
+            // Create a new item with UUID
+            const newItem: Match | Group = {
                 ...itemData,
+                id: uuidv4(),
+                type: itemType,
                 updatedAt: new Date().toISOString(),
-                 // filePath needs to be determined and set correctly BEFORE adding to tree
-                 // This requires finding the target parent node, getting its file path, etc.
-                 // Let's assume addItemToTree handles finding the parent and setting filePath
-            } as Match | Group; // Type assertion needed
+                createdAt: new Date().toISOString()
+            };
 
-            // Add the item reference to the tree structure
+            // Determine the file path for this item
+            let filePath: string | null = null;
+            
+            if (targetParentNodeId) {
+                // Find the target parent node 
+                const targetNode = findItemInTreeById(state.value.configTree, targetParentNodeId);
+                if (targetNode) {
+                    if ('path' in targetNode && targetNode.type === 'file') {
+                        filePath = targetNode.path;
+                    } else if ('filePath' in targetNode && targetNode.filePath) {
+                        filePath = targetNode.filePath;
+                    }
+                }
+            }
+            
+            if (!filePath) {
+                // Fall back to a default config file (e.g. base.yml in config dir)
+                // (Logic would depend on the specific context - e.g. current location in UI)
+                console.warn("[Store addItem] No valid parent found, falling back to default file");
+                // ...logic to determine default file...
+            }
+            
+            if (!filePath) {
+                throw new Error("Cannot determine which file to add the item to.");
+            }
+            
+            // Set the filePath for the new item
+            newItem.filePath = filePath;
+
             // This util needs to find the parent (File/Group) and add the newItem ref
             // It should also determine and set newItem.filePath based on the parent
-            const addedItemRef = addItemToTree(state.value.configTree, newItem, targetParentNodeId);
+            const addedItemRef = addItemToTree(state.value.configTree, newItem, targetParentNodeId, insertIndex);
 
-            if (!addedItemRef || !addedItemRef.filePath) {
-                throw new Error(`Failed to add ${itemType} to the configuration tree or determine its file path.`);
+            if (!addedItemRef) {
+                throw new Error(`Failed to add ${itemType} to the tree structure.`);
             }
 
-             // Save the file where the item was added
-            await _saveFileByPath(addedItemRef.filePath);
-
-            // Select the newly added item
-            selectItem(addedItemRef.id, itemType);
-            _setStatus(`${itemType === 'match' ? 'Match' : 'Group'} added.`);
-            setTimeout(() => { if (state.value.statusMessage === `${itemType === 'match' ? 'Match' : 'Group'} added.`) _setStatus(null); }, 2000);
-
-            return addedItemRef; // Return the added item with its ID/filePath
-
+            // 修复第358行和363行错误
+            if ('filePath' in addedItemRef) {
+                if (!addedItemRef.filePath) {
+                    throw new Error(`Added ${itemType} missing file path reference.`);
+                }
+            
+                // Save the file that contains the new item
+                await _saveFileByPath(addedItemRef.filePath);
+                
+                // Select the newly added item
+                selectItem(addedItemRef.id, itemType);
+                
+                return addedItemRef;
+            } else {
+                throw new Error(`Unexpected item type returned from addItemToTree.`);
+            }
         } catch (err: any) {
             console.error(`Failed to add ${itemType}:`, err);
-            _setError(`Add failed: ${err.message}`);
-             return null;
+            _setError(`Failed to add ${itemType}: ${err.message}`);
+            return null;
+        } finally {
+            _setStatus(null);
         }
     };
 
@@ -493,7 +537,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         }
     };
 
-    const pasteItem = async (targetParentNodeId: string | null) => {
+    const pasteItem = async (targetParentNodeId: string | null, insertIndex: number = -1) => {
         const { item: clipboardItem, operation } = ClipboardManager.getItem();
         if (!clipboardItem) {
             toast.error('剪贴板为空。');
@@ -544,10 +588,10 @@ export const useEspansoStore = defineStore('espanso', () => {
                 delete itemData.id;
                 delete itemData.filePath;
                 
-                await addItem(itemData, clipboardItem.type, effectiveTargetNodeId);
+                await addItem(itemData, clipboardItem.type, effectiveTargetNodeId, insertIndex);
                 
             } else if (operation === 'cut') {
-                await moveItem(clipboardItem.id, effectiveTargetNodeId, -1);
+                await moveItem(clipboardItem.id, effectiveTargetNodeId, insertIndex);
                 ClipboardManager.clear(); // 剪切后清空剪贴板
             }
         } catch (err: any) {

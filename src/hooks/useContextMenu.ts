@@ -117,22 +117,45 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
 
     // 确定粘贴的目标父节点 ID
     let targetParentId: string | null = null;
+    // 查找当前节点在其父节点子列表中的索引位置
+    let currentIndex: number = -1;
+    
     if (targetNode.type === 'file' || targetNode.type === 'folder' || targetNode.type === 'group') {
         // 如果目标是文件、文件夹或分组，它们可以作为父节点
         targetParentId = targetNode.id;
+        // 文件、文件夹或分组作为父节点时，新项目插入为第一个子项
+        currentIndex = 0; // 添加到顶部
     } else if (targetNode.type === 'match') {
         // 如果目标是片段，则粘贴到该片段的父节点（分组或文件）下
         const parentNode = findParentNodeInTree(store.state.configTree, targetNode.id);
         if (parentNode) {
             targetParentId = parentNode.id;
+            
+            // 查找当前match节点在父节点children中的索引
+            let siblings: any[] = [];
+            if (parentNode.type === 'file' && parentNode.matches) {
+                siblings = parentNode.matches;
+            } else if (parentNode.type === 'group' && parentNode.matches) {
+                siblings = parentNode.matches;
+            } else if (parentNode.type === 'folder' && parentNode.children) {
+                siblings = parentNode.children;
+            }
+            
+            // 查找当前节点的索引
+            currentIndex = siblings.findIndex(item => item.id === targetNode.id);
+            if (currentIndex !== -1) {
+                // 找到索引后，将粘贴位置设为当前索引+1(紧跟在当前节点后面)
+                currentIndex += 1;
+            }
         }
     }
 
-    console.log(`[ContextMenu] 准备粘贴 ${clipboardItem.type} (${clipboardItem.id}) 到父节点 ${targetParentId}`);
+    console.log(`[ContextMenu] 准备粘贴 ${clipboardItem.type} (${clipboardItem.id}) 到父节点 ${targetParentId} 的位置 ${currentIndex}`);
 
     // 调用store的pasteItem函数，让它处理默认节点的查找
     try {
-        await store.pasteItem(targetParentId);
+        // 传递当前索引作为插入位置，使新项目插入到当前选中节点的后面
+        await store.pasteItem(targetParentId, currentIndex);
         toast.success(`"${clipboardItem.label || clipboardItem.name || clipboardItem.id}"粘贴成功`);
     } catch (error: any) {
         console.error("粘贴失败:", error);
