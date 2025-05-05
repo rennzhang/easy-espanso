@@ -23,6 +23,7 @@
             required
             rows="2"
             spellcheck="false"
+            @blur="autoSave"
           />
         </div>
 
@@ -40,6 +41,7 @@
             placeholder="输入规则名称..."
             rows="2"
             spellcheck="false"
+            @blur="autoSave"
           />
         </div>
       </div>
@@ -101,6 +103,7 @@
                   : '输入替换内容...'
               "
               class="h-full"
+              @blur="autoSave"
             />
           </div>
 
@@ -522,7 +525,7 @@
         <!-- 右侧列 -->
         <div class="space-y-6">
           <!-- 应用限制 -->
-          <div class="space-y-3">
+          <!-- <div class="space-y-3">
             <div class="flex items-center">
               <h3 class="text-base font-medium mr-2">应用限制</h3>
               <HelpTip content="限制片段在哪些应用中生效或不生效" />
@@ -552,7 +555,7 @@
                 />
               </div>
             </div>
-          </div>
+          </div> -->
 
           <!-- 搜索设置 -->
           <div class="space-y-3">
@@ -596,6 +599,8 @@ import {
   PropType,
 } from "vue";
 import { useEspansoStore } from "../../store/useEspansoStore";
+import { useFormStore } from "../../store/useFormStore";
+import { toast } from "vue-sonner";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
@@ -679,6 +684,7 @@ const emit = defineEmits<{
 
 // 获取 store
 const store = useEspansoStore();
+const formStore = useFormStore();
 
 // Ref for the hidden file input
 const imageInputRef = ref<HTMLInputElement | null>(null);
@@ -755,7 +761,6 @@ const contentTypeOptions = [
 
 // 大小写样式选项
 const uppercaseStyleOptions = [
-  { value: "", label: "无" },
   { value: "uppercase", label: "全部大写" },
   { value: "capitalize", label: "首字母大写" },
   { value: "capitalize_words", label: "单词首字母大写" },
@@ -918,7 +923,7 @@ onMounted(() => {
   isInitialized.value = false;
   const initialFormState = mapRuleToFormData(props.rule);
   formState.value = initialFormState;
-  
+
   // 确保设置正确的内容类型（防止undefined）
   if (initialFormState.contentType) {
     currentContentType.value = initialFormState.contentType;
@@ -1012,6 +1017,12 @@ const checkFormModified = () => {
   store.state.hasUnsavedChanges = hasChanged;
   // 触发 modified 事件，将修改状态传递给父组件
   emit('modified', hasChanged);
+
+  // 如果有修改，保存到 FormStore
+  if (hasChanged && props.rule?.id) {
+    formStore.saveFormData(props.rule.id, formState.value);
+    console.log(`[RuleEditForm] 已保存修改后的表单数据到 FormStore: ${props.rule.id}`);
+  }
 
   console.log("表单初始化完成，修改状态:", hasChanged);
 };
@@ -1239,138 +1250,155 @@ const insertCommonVariable = (variableId: string) => {
 };
 
 // 提交表单
-const onSubmit = () => {
-  // 简单验证
-  if (
-    !formState.value.trigger ||
-    (!formState.value.content && currentContentType.value !== "image")
-  ) {
-    alert("触发词和替换内容不能为空");
-    return;
-  }
-
-  // 添加 null 检查
-  if (!props.rule) {
-    console.error("Cannot save, props.rule is null.");
-    alert("保存错误：规则数据丢失。");
-    return;
-  }
-
-  // 准备要保存的数据
-  const dataToSave: Partial<Match> & { contentType?: ContentType } = { // <--- 明确包含 contentType
-    // Process trigger/triggers
-    ...(formState.value.trigger.includes("\n") ||
-    formState.value.trigger.includes(",")
-      ? {
-          triggers: formState.value.trigger
-            .split(/[\n,]/)
-            .map((t) => t.trim())
-            .filter((t) => t),
-        }
-      : { trigger: formState.value.trigger.trim() }),
-    // Explicitly delete the other trigger field if one exists
-    ...(formState.value.trigger.includes("\n") ||
-    formState.value.trigger.includes(",")
-      ? { trigger: undefined }
-      : { triggers: undefined }),
-
-    label: formState.value.label || undefined,
-    word: formState.value.word || undefined,
-    left_word: formState.value.leftWord || undefined,
-    right_word: formState.value.rightWord || undefined,
-    propagate_case: formState.value.propagateCase || undefined,
-    uppercase_style: formState.value.uppercaseStyle || undefined,
-    force_mode:
-      formState.value.forceMode === "" ||
-      formState.value.forceMode === "default"
-        ? undefined
-        : formState.value.forceMode, // Map empty/default back to undefined for saving
-    apps:
-      formState.value.apps && formState.value.apps.length > 0
-        ? formState.value.apps
-        : undefined,
-    exclude_apps:
-      formState.value.exclude_apps && formState.value.exclude_apps.length > 0
-        ? formState.value.exclude_apps
-        : undefined,
-    search_terms:
-      formState.value.search_terms && formState.value.search_terms.length > 0
-        ? formState.value.search_terms
-        : undefined,
-    priority: formState.value.priority || undefined,
-    hotkey: formState.value.hotkey || undefined,
-    vars:
-      formState.value.vars && formState.value.vars.length > 0
-        ? formState.value.vars
-        : undefined,
-
-    // !!! 始终包含 contentType !!!
-    contentType: currentContentType.value, // <--- 添加这一行
-
-    // 移除所有旧的内容相关字段 (replace/markdown/html/image_path)
-    // 这些将在下面的 switch 中被正确设置
-    replace: undefined,
-    markdown: undefined,
-    html: undefined,
-    image_path: undefined,
-    content: undefined, // 移除临时的 content 字段
-  };
-
-  // 根据当前内容类型，只添加对应的字段
-  switch (currentContentType.value) {
-    case "plain":
-      dataToSave.replace = formState.value.content;
-      break;
-
-    case "markdown":
-      dataToSave.markdown = formState.value.content;
-      break;
-
-    case "html":
-      dataToSave.html = formState.value.content;
-      break;
-
-    case "image":
-      dataToSave.image_path = formState.value.content;
-      break;
-
-    case "form":
-      // 表单内容通常存在 replace 或 content 字段，并依赖 contentType 区分
-      // 假设表单定义存储在 replace 字段
-      dataToSave.replace = formState.value.content;
-      console.log("保存表单内容到 replace 字段");
-      break;
-
-    default:
-      console.error("未知的内容类型:", currentContentType.value);
-      dataToSave.replace = formState.value.content; // Fallback
-  }
-
-  // 清理所有值为 undefined 的字段
-  Object.keys(dataToSave).forEach(key => {
-      if (dataToSave[key as keyof typeof dataToSave] === undefined) {
-          delete dataToSave[key as keyof typeof dataToSave];
+const onSubmit = async (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    try {
+      // 简单验证
+      if (
+        !formState.value.trigger ||
+        (!formState.value.content && currentContentType.value !== "image")
+      ) {
+        const error = new Error("触发词和替换内容不能为空");
+        toast.error(error.message);
+        reject(error);
+        return;
       }
+
+      // 添加 null 检查
+      if (!props.rule) {
+        const error = new Error("保存错误：规则数据丢失");
+        console.error("Cannot save, props.rule is null.");
+        toast.error(error.message);
+        reject(error);
+        return;
+      }
+
+      // 准备要保存的数据
+      const dataToSave: Partial<Match> & { contentType?: ContentType } = { // <--- 明确包含 contentType
+        // Process trigger/triggers
+        ...(formState.value.trigger.includes("\n") ||
+        formState.value.trigger.includes(",")
+          ? {
+              triggers: formState.value.trigger
+                .split(/[\n,]/)
+                .map((t) => t.trim())
+                .filter((t) => t),
+            }
+          : { trigger: formState.value.trigger.trim() }),
+        // Explicitly delete the other trigger field if one exists
+        ...(formState.value.trigger.includes("\n") ||
+        formState.value.trigger.includes(",")
+          ? { trigger: undefined }
+          : { triggers: undefined }),
+
+        label: formState.value.label || undefined,
+        word: formState.value.word || undefined,
+        left_word: formState.value.leftWord || undefined,
+        right_word: formState.value.rightWord || undefined,
+        propagate_case: formState.value.propagateCase || undefined,
+        uppercase_style: formState.value.uppercaseStyle || undefined,
+        force_mode:
+          formState.value.forceMode === "" ||
+          formState.value.forceMode === "default"
+            ? undefined
+            : formState.value.forceMode, // Map empty/default back to undefined for saving
+        apps:
+          formState.value.apps && formState.value.apps.length > 0
+            ? formState.value.apps
+            : undefined,
+        exclude_apps:
+          formState.value.exclude_apps && formState.value.exclude_apps.length > 0
+            ? formState.value.exclude_apps
+            : undefined,
+        search_terms:
+          formState.value.search_terms && formState.value.search_terms.length > 0
+            ? formState.value.search_terms
+            : undefined,
+        priority: formState.value.priority || undefined,
+        hotkey: formState.value.hotkey || undefined,
+        vars:
+          formState.value.vars && formState.value.vars.length > 0
+            ? formState.value.vars
+            : undefined,
+
+        // !!! 始终包含 contentType !!!
+        contentType: currentContentType.value, // <--- 添加这一行
+
+        // 移除所有旧的内容相关字段 (replace/markdown/html/image_path)
+        // 这些将在下面的 switch 中被正确设置
+        replace: undefined,
+        markdown: undefined,
+        html: undefined,
+        image_path: undefined,
+        content: undefined, // 移除临时的 content 字段
+      };
+
+      // 根据当前内容类型，只添加对应的字段
+      switch (currentContentType.value) {
+        case "plain":
+          dataToSave.replace = formState.value.content;
+          break;
+
+        case "markdown":
+          dataToSave.markdown = formState.value.content;
+          break;
+
+        case "html":
+          dataToSave.html = formState.value.content;
+          break;
+
+        case "image":
+          dataToSave.image_path = formState.value.content;
+          break;
+
+        case "form":
+          // 表单内容通常存在 replace 或 content 字段，并依赖 contentType 区分
+          // 假设表单定义存储在 replace 字段
+          dataToSave.replace = formState.value.content;
+          console.log("保存表单内容到 replace 字段");
+          break;
+
+        default:
+          console.error("未知的内容类型:", currentContentType.value);
+          dataToSave.replace = formState.value.content; // Fallback
+      }
+
+      // 清理所有值为 undefined 的字段
+      Object.keys(dataToSave).forEach(key => {
+          if (dataToSave[key as keyof typeof dataToSave] === undefined) {
+              delete dataToSave[key as keyof typeof dataToSave];
+          }
+      });
+
+      // 记录最终保存的数据结构
+      console.log("最终保存的数据:", JSON.stringify(dataToSave, null, 2));
+
+      // 调用 emit 保存数据，并添加必要的检查
+      if (props.rule && props.rule.id !== undefined && props.rule.id !== null) {
+        // 调用 store 的 updateMatch 方法
+        store.updateMatch(props.rule.id, dataToSave)
+          .then(() => {
+            // 注意：状态更新由调用方（autoSave）处理，这里只返回成功
+            console.log("保存成功。");
+            resolve();
+          })
+          .catch((error) => {
+            console.error("保存失败:", error);
+            toast.error(`保存失败: ${error.message || '未知错误'}`);
+            reject(error);
+          });
+      } else {
+        const error = new Error("无法保存: 规则 ID 无效或缺失");
+        console.error(error.message, props.rule);
+        toast.error(error.message);
+        reject(error);
+      }
+    } catch (error: any) {
+      console.error("保存过程中发生错误:", error);
+      toast.error(`保存失败: ${error.message || '未知错误'}`);
+      reject(error);
+    }
   });
-
-  // 记录最终保存的数据结构
-  console.log("最终保存的数据:", JSON.stringify(dataToSave, null, 2));
-
-  // 调用 emit 保存数据，并添加必要的检查
-  if (props.rule && props.rule.id !== undefined && props.rule.id !== null) {
-    emit('save', props.rule.id, dataToSave); // 使用清理后的 dataToSave
-
-    // 保存成功后更新原始表单数据并重置修改状态
-    originalFormData.value = JSON.parse(JSON.stringify(formState.value));
-    isFormModified.value = false;
-    store.state.hasUnsavedChanges = false;
-    console.log("保存事件已触发，状态已重置。");
-
-  } else {
-    console.error("无法保存: 规则 ID 无效或缺失。", props.rule);
-    // 这里可以添加用户提示，例如使用 alert 或 toast
-    alert("保存失败：规则 ID 无效。");
-  }
 };
 
 // 取消编辑
@@ -1566,7 +1594,7 @@ const isTextBasedContent = computed(() => {
     type === "plain" ||
     type === "markdown" ||
     type === "html" ||
-    type === "form" 
+    type === "form"
   );
 });
 
@@ -1580,7 +1608,7 @@ const resetModifiedState = (savedData: Partial<Match>) => {
 
   // 2. Directly update the reactive form state
   formState.value = newFormState;
-  
+
   // 确保设置正确的内容类型（防止undefined）
   if (newFormState.contentType) {
     currentContentType.value = newFormState.contentType;
@@ -1686,11 +1714,64 @@ const getFormData = (): Partial<Match> => {
   return dataToSave;
 };
 
+// 自动保存状态
+const isSaving = ref(false);
+const saveState = ref<'idle' | 'success' | 'error'>('idle');
+let saveStateTimeout: ReturnType<typeof setTimeout> | null = null;
+
+// 自动保存方法
+const autoSave = async () => {
+  if (isFormModified.value && props.rule?.id) {
+    console.log(`[RuleEditForm] 自动保存触发`);
+
+    // 清除可能存在的保存状态反馈
+    if (saveStateTimeout) {
+      clearTimeout(saveStateTimeout);
+      saveStateTimeout = null;
+    }
+
+    isSaving.value = true;
+    saveState.value = 'idle';
+
+    try {
+      await onSubmit();
+      saveState.value = 'success';
+      toast.success("自动保存成功！");
+
+      // 确保修改状态被重置
+      isFormModified.value = false;
+      store.state.hasUnsavedChanges = false;
+      emit('modified', false);
+
+      // 更新原始表单数据
+      originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+
+      // 从 FormStore 中删除保存的表单数据
+      if (props.rule?.id) {
+        formStore.deleteFormData(props.rule.id);
+        console.log(`[RuleEditForm] 自动保存成功，已从 FormStore 中删除表单数据: ${props.rule.id}`);
+      }
+
+      console.log("[RuleEditForm] 自动保存成功，状态已重置。");
+    } catch (error: any) {
+      console.error('自动保存失败:', error);
+      saveState.value = 'error';
+      toast.error(`自动保存失败: ${error.message || '未知错误'}`);
+    } finally {
+      isSaving.value = false;
+      saveStateTimeout = setTimeout(() => {
+        saveState.value = 'idle';
+      }, saveState.value === 'success' ? 1500 : 3000);
+    }
+  }
+};
+
 // --- defineExpose 블록 ---
 defineExpose({
   showPreview,
   getFormData,
   resetModifiedState,
+  autoSave, // 暴露自动保存方法
 });
 
 // --- Watcher 및 onMounted 등 나머지 코드는 그대로 ---
@@ -1709,7 +1790,7 @@ watch(
     isInitialized.value = false;
     const newFormState = mapRuleToFormData(props.rule); // Use current props.rule
     formState.value = newFormState;
-    
+
     // 确保设置正确的内容类型（防止undefined）
     if (newFormState.contentType) {
       currentContentType.value = newFormState.contentType;
@@ -1730,10 +1811,41 @@ watch(
   // No deep: true needed if only watching ID
 );
 
-// onMounted remains the same
+// onMounted with FormStore check
 onMounted(() => {
   console.log("[RuleEditForm] Mounted. Initializing state from props.");
   isInitialized.value = false;
+
+  // 检查 FormStore 中是否有保存的表单数据
+  if (props.rule?.id && formStore.hasFormData(props.rule.id)) {
+    // 从 FormStore 中恢复表单数据
+    const savedFormData = formStore.getFormData(props.rule.id);
+    if (savedFormData) {
+      console.log(`[RuleEditForm] 组件挂载，从 FormStore 恢复表单数据: ${props.rule.id}`);
+      formState.value = savedFormData;
+
+      // 确保设置正确的内容类型
+      if (savedFormData.contentType) {
+        currentContentType.value = savedFormData.contentType;
+        console.log("[RuleEditForm] 组件挂载，从 FormStore 恢复，设置内容类型:", currentContentType.value);
+      } else {
+        currentContentType.value = "plain"; // 默认值
+        console.log("[RuleEditForm] 组件挂载，从 FormStore 恢复，未找到内容类型，使用默认值: plain");
+      }
+
+      nextTick(() => {
+        originalFormData.value = JSON.parse(JSON.stringify(formState.value));
+        isFormModified.value = true; // 设置为已修改，因为是从 FormStore 恢复的未保存数据
+        store.state.hasUnsavedChanges = true;
+        isInitialized.value = true;
+        console.log("[RuleEditForm] 组件挂载，从 FormStore 恢复表单数据完成。");
+        emit('modified', true); // 通知父组件表单已修改
+      });
+      return;
+    }
+  }
+
+  // 如果没有保存的表单数据，使用 props.rule 初始化
   const initialFormState = mapRuleToFormData(props.rule);
   formState.value = initialFormState;
 

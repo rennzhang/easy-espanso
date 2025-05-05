@@ -36,33 +36,7 @@
             </div>
           </Button>
 
-          <Button
-            size="sm"
-            variant="outline"
-            class="h-8 px-2 py-0 w-28 justify-center transition-colors duration-300"
-            @click="saveItem"
-            :class="{'btn-save': true, 'success': saveState === 'success', 'error': saveState === 'error', 'opacity-80': !isFormModified && saveState === 'idle'}"
-            title="保存当前修改 (Ctrl/Cmd + S)"
-          >
-            <Transition name="fade" mode="out-in">
-              <div v-if="isSaving" key="saving" class="flex items-center justify-center w-full">
-                <Loader2Icon class="h-4 w-4 mr-1 animate-spin" />
-                <span>保存中...</span>
-              </div>
-              <div v-else-if="saveState === 'success'" key="success" class="flex items-center justify-center w-full">
-                <CheckIcon class="h-4 w-4 mr-1 text-green-500" />
-                <span>已保存</span>
-              </div>
-              <div v-else-if="saveState === 'error'" key="error" class="flex items-center justify-center w-full">
-                <XIcon class="h-4 w-4 mr-1 text-red-500" />
-                <span>保存失败</span>
-              </div>
-              <div v-else key="idle" class="flex items-center justify-center w-full">
-                <SaveIcon class="h-4 w-4 mr-1" />
-                <span>{{ isFormModified ? '保存' : '已保存' }}</span>
-              </div>
-            </Transition>
-          </Button>
+          <!-- 保存按钮已隐藏，改为自动保存 -->
         </div>
       </div>
     </div>
@@ -77,7 +51,7 @@
         <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未选择项目</h4>
         <p class="m-0 max-w-md">请从左侧列表选择一个规则或分组进行编辑</p>
       </div>
-      <div v-else-if="selectedItem.type === 'match'" class="flex flex-col gap-4 h-full">
+      <div v-else-if="selectedItem.type === 'match'" class="flex flex-col h-full">
         <RuleEditForm
           ref="ruleFormRef"
           :key="selectedItem.id"
@@ -320,7 +294,9 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
     });
     if (selectedItem.value && isFormModified.value && !isSaving.value) { // 只有在有修改且未保存时才触发
       console.log('[RightPane Shortcut] Save triggered.');
-      saveItem();
+      if (ruleFormRef.value) {
+        ruleFormRef.value.autoSave();
+      }
     } else {
       console.log('[RightPane Shortcut] Save ignored (no changes or already saving).');
     }

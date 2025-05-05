@@ -5,6 +5,11 @@
  */
 
 /**
+ * 内容类型
+ */
+export type ContentType = 'plain' | 'html' | 'image' | 'form' | 'markdown';
+
+/**
  * 基础项目接口
  * Match和Group的共有属性
  */
@@ -37,7 +42,7 @@ export interface Match extends BaseItem {
   forceMode?: "default" | "clipboard" | "keys" | "";
   force_clipboard?: boolean;
   content?: string; // 内部字段，用于存储实际内容
-  contentType?: 'plain'  | 'html' | 'image'  | 'form' | 'markdown'; // 内部字段，用于区分内容类型
+  contentType?: ContentType; // 内部字段，用于区分内容类型
   apps?: string[];
   vars?: { name: string; params?: Record<string, any> }[];
   tags?: string[]; // 用于UI分类的内部字段
@@ -70,4 +75,4 @@ export interface AppSettings {
   theme: 'light' | 'dark' | 'system';
   language: string;
   autoSave: boolean;
-} 
+}
