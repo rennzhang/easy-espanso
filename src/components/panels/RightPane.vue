@@ -380,21 +380,58 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
       toast.error("剪贴板为空");
     }
   } else if (
-    // 删除快捷键逻辑保持不变，依赖右侧选中的项
+    // 删除快捷键逻辑
     (isMacOS() && event.metaKey && key === 'Backspace') ||
     (!isMacOS() && key === 'Delete')
   ) {
-    const currentItemForDelete = selectedItem.value;
-    if (!currentItemForDelete || (currentItemForDelete.type !== 'match' && currentItemForDelete.type !== 'group')) {
-       console.log('[RightPane Shortcut] Delete ignored: No valid item selected in right pane.');
-       return;
+    // 检查树是否有焦点，以及是否有选中的节点ID
+    if (!isTreeFocused || !selectedNodeIdInTree) {
+      console.log('[RightPane Shortcut] Delete ignored: Tree not focused or no node selected.');
+      return;
     }
-    console.log('[RightPane Shortcut] Delete');
-    event.preventDefault(); // 阻止默认行为 (例如浏览器后退)
-    if (currentItemForDelete.type === 'match') {
-        deleteRule(currentItemForDelete.id); // 调用删除方法
-    } else if (currentItemForDelete.type === 'group') {
-        deleteGroup(currentItemForDelete.id); // 调用删除方法
+
+    // 通过ID从树中查找实际选中的节点
+    const nodeToDelete = findItemInTreeById(store.state.configTree, selectedNodeIdInTree);
+    if (!nodeToDelete) {
+      console.log('[RightPane Shortcut] Delete ignored: Selected node not found in tree.');
+      return;
+    }
+
+    console.log(`[RightPane Shortcut] Delete triggered for node type: ${nodeToDelete.type}`);
+    event.preventDefault(); // 阻止默认行为
+
+    // 根据节点类型执行删除
+    if (nodeToDelete.type === 'match') {
+      // 保留对右侧面板编辑项的删除逻辑 (如果用户习惯于此)
+      // 或者统一为只删除树中选中的项？ 暂时保留两种方式
+       const currentItemForDelete = selectedItem.value;
+       if(currentItemForDelete && currentItemForDelete.id === nodeToDelete.id) {
+           deleteRule(nodeToDelete.id); 
+       } else {
+           // 如果右侧编辑的不是选中的match，提示用户
+           if (confirm(`是否要删除树中选中的片段: ${nodeToDelete.trigger || nodeToDelete.label}?`)) {
+               store.deleteItem(nodeToDelete.id, 'match');
+           }
+       }
+    } else if (nodeToDelete.type === 'group') {
+       const currentItemForDelete = selectedItem.value;
+       if(currentItemForDelete && currentItemForDelete.id === nodeToDelete.id) {
+          deleteGroup(nodeToDelete.id);
+       } else {
+           if (confirm(`是否要删除树中选中的分组: ${nodeToDelete.name}?`)) {
+                store.deleteItem(nodeToDelete.id, 'group');
+           }
+       }
+    } else if (nodeToDelete.type === 'file') {
+      // 文件删除逻辑 - 使用 window.confirm，更新提示信息
+      if (confirm(`确定要删除文件 "${nodeToDelete.name}" 及其包含的所有片段和分组吗？此操作不可撤销。`)) {
+        store.deleteFileNode(nodeToDelete.id);
+      }
+    } else if (nodeToDelete.type === 'folder'){
+        // 文件夹删除逻辑 - 使用 window.confirm
+        if(confirm(`确定要删除文件夹 "${nodeToDelete.name}" 及其所有内容吗？此操作不可撤销。`)){
+            store.deleteFolderNode(nodeToDelete.id);
+        }
     }
   }
 };

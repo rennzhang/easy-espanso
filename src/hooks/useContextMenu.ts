@@ -299,7 +299,7 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
            };
       } else if (type === 'file') {
            title = '确认删除文件';
-           message = `确定要删除配置文件 "${name}" 吗？此操作会从文件系统中移除该文件，且不可撤销。`;
+           message = `确定要删除配置文件 "${name}" 及其包含的所有片段和分组吗？此操作会从文件系统中移除该文件，且不可撤销。`; 
            pendingAction.value = async () => {
              await store.deleteFileNode(id);
              toast.success(`已删除: ${name}`);
