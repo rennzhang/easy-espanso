@@ -187,8 +187,24 @@ watch(()=>store.state.selectedItemId, (newId, oldId) => {
 const previewRule = () => {
   if (selectedItem.value?.type === 'match' && ruleFormRef.value) {
     const formData = ruleFormRef.value.getFormData(); // 获取当前表单数据用于预览
+    console.log('[RightPane] Preview form data:', formData);
+
     previewTrigger.value = formData.trigger || (formData.triggers ? formData.triggers[0] + '...' : '');
-    previewContent.value = formData.content || '';
+
+    // 根据内容类型获取正确的内容
+    if (formData.contentType === 'plain') {
+      previewContent.value = formData.replace || '';
+    } else if (formData.contentType === 'markdown') {
+      previewContent.value = formData.markdown || '';
+    } else if (formData.contentType === 'html') {
+      previewContent.value = formData.html || '';
+    } else if (formData.contentType === 'image') {
+      previewContent.value = formData.image_path || '';
+    } else {
+      // 默认使用 replace 字段
+      previewContent.value = formData.replace || '';
+    }
+
     previewIsImage.value = formData.contentType === 'image';
     showPreviewModal.value = true;
   }
