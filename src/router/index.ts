@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router';
+import i18n from '../i18n'; // 导入i18n实例
 
 // 导入视图组件
 // 使用动态导入避免预加载问题
@@ -24,7 +25,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'snippets',
     component: SnippetsView,
     meta: {
-      title: '片段管理',
+      title: 'sidebar.snippets',
       icon: 'Scissors'
     }
   },
@@ -33,7 +34,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'settings',
     component: SettingsView,
     meta: {
-      title: '设置',
+      title: 'sidebar.settings',
       icon: 'Settings'
     }
   },
@@ -42,7 +43,7 @@ const routes: Array<RouteRecordRaw> = [
     name: 'not-found',
     component: NotFoundView,
     meta: {
-      title: '页面不存在'
+      title: 'common.pageNotFound'
     }
   }
 ];
@@ -92,8 +93,13 @@ router.beforeEach((to, from, next) => {
   // 更新时间并继续
   lastNavigationTime = now;
   
-  // 设置文档标题
-  document.title = `Espanso - ${to.meta.title || '管理工具'}`;
+  // 设置文档标题 - 使用i18n翻译路由元数据中的标题
+  if (to.meta.title) {
+    const translatedTitle = i18n.global.t(to.meta.title as string);
+    document.title = `Espanso - ${translatedTitle}`;
+  } else {
+    document.title = 'Espanso - 管理工具';
+  }
   
   // 正常导航
   next();

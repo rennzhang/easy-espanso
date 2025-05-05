@@ -2,6 +2,7 @@ import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import App from './App.vue'
 import router from './router'
+import i18n from './i18n' // 导入 i18n 实例
 import './assets/styles/shadcn.css'
 import './assets/styles/main.css'
 import './assets/styles/tailwind.css'
@@ -50,6 +51,9 @@ app.use(createPinia())
 
 // 使用路由
 app.use(router)
+
+// 使用 i18n
+app.use(i18n)
 
 // 挂载应用
 app.mount('#app').$nextTick(() => {

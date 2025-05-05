@@ -3,7 +3,7 @@
     <div class="flex flex-col py-2 px-4 border-b">
       <div class="flex items-center justify-between">
         <div class="flex items-center">
-          <h3 class="text-lg font-semibold text-foreground m-0">片段列表</h3>
+          <h3 class="text-lg font-semibold text-foreground m-0">{{ $t('snippets.listTitle') }}</h3>
           <Badge variant="outline" class="ml-2">
             {{ totalItemCount }} 项
           </Badge>
@@ -35,7 +35,7 @@
       <div v-show="showSearchBar" class="mt-2">
         <Input
           v-model="searchQuery"
-          placeholder="搜索规则..."
+          :placeholder="$t('snippets.searchPlaceholder')"
           class="w-full h-8 text-sm"
           ref="searchInputRef"
           id="search-input"

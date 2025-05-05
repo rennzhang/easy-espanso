@@ -145,6 +145,35 @@
               </div>
               <p class="text-xs text-gray-500 mt-1">配置修改后自动重启服务</p>
             </div>
+
+            <!-- 语言选择器 -->
+            <div class="form-item">
+              <div class="flex items-center gap-1">
+                <Label for="language">{{ t('settings.language') }}</Label>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div class="cursor-help text-muted-foreground">
+                        <HelpCircleIcon class="h-4 w-4" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p class="max-w-xs">{{ t('settings.languageTooltip') }}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Select v-model="locale">
+                <SelectTrigger id="language" class="w-full">
+                  <SelectValue :placeholder="t('settings.selectLanguagePlaceholder')" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="loc in availableLocales" :key="loc" :value="loc">
+                    {{ loc === 'zh-CN' ? '简体中文' : 'English' }} <!-- 简单的语言名称映射 -->
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           
           <!-- 通知设置 -->
@@ -781,6 +810,7 @@ import { ref, reactive, computed, onMounted, watch, onErrorCaptured } from "vue"
 import { useEspansoStore } from "@/store/useEspansoStore";
 import { cloneDeep, isEqual } from "lodash-es";
 import { toast } from "vue-sonner";
+import { useI18n } from 'vue-i18n';
 import {
   Settings,
   Save,
@@ -814,6 +844,9 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Separator } from "../components/ui/separator";
+
+// 获取 i18n 函数和状态
+const { t, locale, availableLocales } = useI18n();
 
 // 获取store
 const store = useEspansoStore();

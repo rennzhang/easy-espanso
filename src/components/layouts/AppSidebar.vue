@@ -15,7 +15,7 @@
           @click.prevent="handleNavClick(route)"
         >
           <component :is="getRouteIcon(route)" class="nav-icon" />
-          <span class="nav-text">{{ route.meta.title }}</span>
+          <span class="nav-text">{{ $t(route.meta.title as string) }}</span>
         </RouterLink>
       </nav>
     </div>
@@ -25,8 +25,16 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { useRouter, useRoute, RouteRecordNormalized } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import { ScissorsIcon, SettingsIcon } from 'lucide-vue-next';
 import type { FunctionalComponent } from 'vue';
+
+// 初始化国际化
+const { t, locale } = useI18n();
+
+// // 调试日志：检查 t 函数和 locale
+// console.log('[AppSidebar] i18n initialized:', { t: typeof t, locale: locale.value });
+// console.log('[AppSidebar] Testing t function with key sidebar.settings:', t('sidebar.settings'));
 
 const router = useRouter();
 const currentRoute = useRoute();
