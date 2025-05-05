@@ -123,8 +123,11 @@ import { useEspansoStore } from '../../store/useEspansoStore'; // 使用重构�
 import { useUserPreferences } from '../../store/useUserPreferences'; // 用户偏好设置 Store
 import { useContextMenu } from '@/hooks/useContextMenu'; // 上下文菜单 Hook
 import ClipboardManager from '@/utils/ClipboardManager'; // 剪贴板管理器
-import { findItemInTreeById } from '@/utils/configTreeUtils'; // 导入 findItemInTreeById
+import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
+import { findItemInTreeById, findParentNodeInTree } from '@/utils/configTreeUtils'; // 导入 findParentNodeInTree
 import type { Match } from '@/types/core/espanso.types'; // 导入类型
+import type { ConfigTreeNode, ConfigFileNode } from '@/types/core/ui.types'; // 导入 ConfigFileNode
+import type { TreeNodeItem } from '@/components/ConfigTree.vue';
 import { toast } from 'vue-sonner'; // 导入 toast
 import { isMacOS } from '@/lib/utils'; // 导入 isMacOS
 import { SaveIcon, Loader2Icon, CheckIcon, XIcon, EyeIcon } from 'lucide-vue-next'; // 图标
@@ -344,24 +347,53 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
       toast.error("请先在左侧树中选择粘贴位置");
       return;
     }
-    
-    // 直接调用 store.pasteItem，使用树中选中的节点作为目标
-    if (ClipboardManager.hasItem()) {
-       const targetNode = findItemInTreeById(store.state.configTree, selectedNodeIdInTree);
-       if (targetNode && targetNode.type === 'folder') {
-           console.log('[RightPane Shortcut] Paste ignored: Cannot paste directly into a folder via shortcut.');
-           toast.error("无法直接粘贴到文件夹，请选择文件、分组或片段。");
-           return;
-       }
-      
-       console.log(`[RightPane Shortcut] Pasting to target node ID: ${selectedNodeIdInTree}`);
-       // 注意：这里的 pasteItem 调用没有提供具体的插入索引，
-       // 它将使用 store.pasteItem 内部的默认逻辑（插入到父节点的开头或末尾，取决于实现）
-       // 这与右键菜单的行为可能略有不同（右键菜单计算了插入位置）
-       store.pasteItem(selectedNodeIdInTree, 0); // 默认粘贴到目标内部的开头 (index 0)
-    } else {
+
+    if (!ClipboardManager.hasItem()) {
       console.log("[RightPane Shortcut] Paste ignored: Clipboard empty");
       toast.error("剪贴板为空");
+      return;
+    }
+
+    const targetNode = findItemInTreeById(store.state.configTree, selectedNodeIdInTree);
+    if (!targetNode) {
+        console.error(`[RightPane Shortcut] Paste error: Target node ${selectedNodeIdInTree} not found in tree.`);
+        toast.error("粘贴失败：找不到目标节点");
+        return;
+    }
+
+    let targetParentIdForPaste: string | null = null;
+    let insertIndexForPaste: number = 0;
+
+    if (targetNode.type === 'folder') {
+        console.log('[RightPane Shortcut] Paste ignored: Cannot paste directly into a folder via shortcut.');
+        toast.error("无法直接粘贴到文件夹，请选择文件或片段。");
+        return;
+    } else if (targetNode.type === 'file') {
+        targetParentIdForPaste = targetNode.id;
+        insertIndexForPaste = 0; // 默认粘贴到文件开头
+        console.log(`[RightPane Shortcut] Pasting into file: ${targetParentIdForPaste} at index ${insertIndexForPaste}`);
+    } else if (targetNode.type === 'match') {
+        const parentFileNode = findParentNodeInTree(store.state.configTree, targetNode.id);
+        if (parentFileNode && parentFileNode.type === 'file') {
+            targetParentIdForPaste = parentFileNode.id;
+            const siblings = (parentFileNode as ConfigFileNode).matches || [];
+            const currentMatchIndex = siblings.findIndex(m => m.id === targetNode.id);
+            insertIndexForPaste = (currentMatchIndex !== -1) ? currentMatchIndex + 1 : siblings.length;
+            console.log(`[RightPane Shortcut] Pasting after match ${targetNode.id} in file: ${targetParentIdForPaste} at index ${insertIndexForPaste}`);
+        } else {
+            console.error(`[RightPane Shortcut] Paste error: Could not find parent file for match ${targetNode.id}.`);
+            toast.error("粘贴失败：无法找到片段所属的文件。");
+            return;
+        }
+    }
+
+    if (targetParentIdForPaste !== null) {
+        // 调用 store action，传递正确的父节点 ID 和索引
+        // store.pasteItem 内部会处理剪贴板内容和操作类型 (copy/cut)
+        store.pasteItem(targetParentIdForPaste, insertIndexForPaste);
+    } else {
+         console.error('[RightPane Shortcut] Paste error: Could not determine target parent ID.');
+         toast.error("粘贴失败：无法确定粘贴目标。");
     }
   } else if (
     // 删除快捷键逻辑
