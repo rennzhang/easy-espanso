@@ -20,6 +20,7 @@
             @move="handleItemMove"
             @moveNode="handleNodeMove"
             @request-rename="handleRequestRename"
+            :on-request-rename="handleRequestRename"
           />
       </template>
     </div>
@@ -30,18 +31,16 @@
 import { ref, computed, defineProps, defineEmits, onMounted, watch, onUnmounted, PropType } from 'vue';
 import { useEspansoStore } from '../store/useEspansoStore';
 import TreeNode from './TreeNode.vue';
-import { ConfigTreeNode } from '@/types/core/ui.types';
-import type { Match, Group } from '@/types/core/espanso.types';
+import type { Match } from '@/types/core/espanso.types';
 import Sortable from 'sortablejs';
 
 // 定义树节点类型
 export interface TreeNodeItem {
   id: string;
-  type: 'folder' | 'file' | 'match' | 'group';
+  type: 'folder' | 'file' | 'match';
   name: string;
   children: TreeNodeItem[];
   match?: Match;
-  group?: Group;
   path?: string;
 }
 
@@ -51,7 +50,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  (e: 'select', item: Match | Group): void;
+  (e: 'select', item: Match): void;
   (e: 'request-rename', item: TreeNodeItem): void;
 }>();
 
@@ -80,24 +79,6 @@ const createMatchNode = (match: Match): TreeNodeItem => {
   };
 };
 
-// 创建分组节点
-const createGroupNode = (group: Group): TreeNodeItem => {
-  const groupNode: TreeNodeItem = {
-    id: group.id,
-    type: 'group',
-    name: group.name || '',
-    group: group,
-    children: []
-  };
-  // Recursively add nested matches and groups
-  if (group.matches) {
-    group.matches.forEach(m => groupNode.children.push(createMatchNode(m)));
-  }
-  if (group.groups) {
-    group.groups.forEach(g => groupNode.children.push(createGroupNode(g)));
-  }
-  return groupNode;
-};
 
 // 递归转换 store 的 configTree 结构为 TreeNodeItem 结构
 const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false): TreeNodeItem | null => {
@@ -119,7 +100,7 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
         if (packageSubDir.type === 'folder') {
           const packageNode: TreeNodeItem = {
             id: packageSubDir.id || `folder-${packageSubDir.path}`,
-            type: 'folder', // Represent the package itself as a folder/group
+            type: 'folder', // Represent the package itself as a folder
             name: packageSubDir.name,
             path: packageSubDir.path,
             children: []
@@ -133,10 +114,7 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
             if (packageYml.matches && Array.isArray(packageYml.matches)) {
                packageNode.children.push(...packageYml.matches.map(createMatchNode));
             }
-            // Add groups from package.yml directly to the package node
-            if (packageYml.groups && Array.isArray(packageYml.groups)) {
-               packageNode.children.push(...packageYml.groups.map((g: Group) => createGroupNode(g)));
-            }
+
           }
 
           // Only add the package node if it has children (matches/groups from package.yml)
@@ -176,10 +154,7 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
     children = [...children, ...node.matches.map(createMatchNode)];
   }
 
-  // Add groups defined directly under this node (typically a file)
-  if (node.groups && Array.isArray(node.groups)) {
-    children = [...children, ...node.groups.map((group: Group) => createGroupNode(group))];
-  }
+
 
   // Create the current node
   const treeNode: TreeNodeItem = {
@@ -190,7 +165,6 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
     path: node.path,
     children: children,
     match: node.type === 'match' ? node : undefined,
-    group: node.type === 'group' ? node : undefined
   };
 
   // Filter out file nodes that have no children *unless* it's specifically selected
@@ -207,41 +181,31 @@ const treeData = computed(() => {
   const configTree = store.state.configTree || [];
   console.log('[ConfigTree] 原始 store.state.configTree:', JSON.stringify(configTree, null, 2));
   const tree = configTree
-    // Pass true for isTopLevel for the root nodes
     .map((node: any) => convertStoreNodeToTreeNodeItem(node, true))
-    .filter((item: TreeNodeItem | null): item is TreeNodeItem => item !== null) // Filter out null results
-    // Filter top-level 'config' folder (moved here to happen *after* conversion)
-    .filter(node => !(node.type === 'folder' && node.name === 'config'));
-  
+    .filter((item: TreeNodeItem | null): item is TreeNodeItem => item !== null)
+    .filter((node: TreeNodeItem) => !(node.type === 'folder' && node.name === 'config'));
+
   // 重新排序，将 Packages 文件夹移到最后
-  const packagesNode = tree.find(node => node.type === 'folder' && node.name === 'Packages');
-  const otherNodes = tree.filter(node => !(node.type === 'folder' && node.name === 'Packages'));
-  
+  const packagesNode = tree.find((node: TreeNodeItem) => node.type === 'folder' && node.name === 'Packages');
+  const otherNodes = tree.filter((node: TreeNodeItem) => !(node.type === 'folder' && node.name === 'Packages'));
+
   // 如果找到 Packages 节点，将其添加到数组末尾
   const sortedTree = [...otherNodes];
   if (packagesNode) {
     sortedTree.push(packagesNode);
   }
-  
+
   console.log('[ConfigTree] 转换后的 treeData:', JSON.stringify(sortedTree, null, 2));
   return sortedTree;
 });
 
 const handleSelect = (item: TreeNodeItem) => {
-  // 处理所有类型的节点选择
   if (item.type === 'match' && item.match) {
-    // 发出匹配项的原始对象
     emit('select', item.match);
-  } else if (item.type === 'group' && item.group) {
-    // 发出分组的原始对象
-    emit('select', item.group);
   } else if (item.type === 'file') {
-    // 对于文件，我们设置selectedItemId
     store.state.selectedItemId = item.id;
-    store.state.selectedItemType = null; // 不是match或group
-    // 注意：这里不需要emit select事件，因为对文件我们只更新视觉效果
+    store.state.selectedItemType = null;
   }
-  // 对于文件夹类型，不做任何处理
 };
 
 // --- NEW: Handler for file/folder node move event from TreeNode ---
@@ -250,7 +214,7 @@ const handleNodeMove = (payload: { nodeId: string; targetParentId: string | null
   store.moveItem(payload.nodeId, payload.targetParentId, payload.newIndex);
 };
 
-// --- Handler for match/group move event from TreeNode ---
+// --- Handler for match move event from TreeNode ---
 const handleItemMove = (payload: { itemId: string; oldParentId: string | null; newParentId: string | null; oldIndex: number; newIndex: number }) => {
   console.log('[ConfigTree] Received move event (for item):', JSON.stringify(payload));
   store.moveItem(payload.itemId, payload.newParentId, payload.newIndex);
@@ -276,13 +240,13 @@ const handleRootDragMove = (event: Sortable.MoveEvent): boolean => {
 
   console.log(`[ConfigTree Root onMove] Dragged: ${draggedNodeType} (${draggedElement.dataset.id}) into Root`);
 
-  // 只允许match和group节点拖拽，禁止文件夹和文件的拖拽
-  if (draggedNodeType !== 'match' && draggedNodeType !== 'group') {
-    console.log(`[ConfigTree Root onMove] Denied: Only match and group nodes can be dragged.`);
+  // 只允许match节点拖拽，禁止文件夹和文件的拖拽
+  if (draggedNodeType !== 'match') {
+    console.log(`[ConfigTree Root onMove] Denied: Only match nodes can be dragged.`);
     return false;
   }
 
-  // 允许match和group节点拖入root
+  // 允许match节点拖入root
   console.log('[ConfigTree Root onMove] Allowed move.');
   return true;
 };
@@ -317,10 +281,10 @@ const handleRootSortEnd = (event: Sortable.SortableEvent) => {
      return;
   }
 
-  // 只处理match和group类型的拖拽
-  if (itemType === 'match' || itemType === 'group') {
+  // 只处理match类型的拖拽
+  if (itemType === 'match') {
     // 触发moveItem操作，将targetParentId设为null（根目录）
-  store.moveItem(itemId, oldParentId, newIndex);
+    store.moveItem(itemId, oldParentId, newIndex);
 
   } else {
     console.warn(`[ConfigTree Root onEnd] Unexpected item type dropped at root: ${itemType}`);
@@ -352,16 +316,16 @@ const handleRequestRename = (item: TreeNodeItem) => {
     return;
   }
 
-  // 只处理 group 类型的节点 for renaming
-  if (item.type !== 'group') {
-    console.log('[ConfigTree] Ignoring request-rename for non-group node:', item.type);
+  // 只处理 file 和 folder 类型的节点 for renaming
+  if (item.type !== 'file' && item.type !== 'folder') {
+    console.log('[ConfigTree] Ignoring request-rename for non-file/folder node:', item.type);
     return;
   }
 
   console.log('[ConfigTree] Received request-rename event from TreeNode:', item.id, item.type);
 
   // Re-emit the event upwards
-  emit('request-rename', item); 
+  emit('request-rename', item);
   console.log('[ConfigTree] Emitted request-rename upwards with item:', item);
 };
 

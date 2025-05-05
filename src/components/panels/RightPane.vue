@@ -86,15 +86,7 @@
           @delete="deleteRule(selectedItem.id)"
         />
       </div>
-       <div v-else-if="selectedItem.type === 'group'" class="flex flex-col gap-4 h-full">
-        <GroupEditForm
-          ref="groupFormRef"
-          :key="selectedItem.id"
-          :group="selectedItem"
-          @modified="handleFormModified"
-          @delete="deleteGroup(selectedItem.id)"
-        />
-      </div>
+
     </div>
 
      <div v-if="showPreviewModal" class="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -131,10 +123,8 @@ import { useEspansoStore } from '../../store/useEspansoStore'; // 使用重构�
 import { useUserPreferences } from '../../store/useUserPreferences'; // 用户偏好设置 Store
 import { useContextMenu } from '@/hooks/useContextMenu'; // 上下文菜单 Hook
 import ClipboardManager from '@/utils/ClipboardManager'; // 剪贴板管理器
-import TreeNodeRegistry from '@/utils/TreeNodeRegistry'; // 树节点注册表 (可能仍用于上下文菜单)
 import { findItemInTreeById } from '@/utils/configTreeUtils'; // 导入 findItemInTreeById
-import type { Match, Group } from '@/types/core/espanso.types'; // 导入类型
-import type { TreeNodeItem } from '@/components/ConfigTree.vue'; // 导入类型
+import type { Match } from '@/types/core/espanso.types'; // 导入类型
 import { toast } from 'vue-sonner'; // 导入 toast
 import { isMacOS } from '@/lib/utils'; // 导入 isMacOS
 import { SaveIcon, Loader2Icon, CheckIcon, XIcon, EyeIcon } from 'lucide-vue-next'; // 图标
@@ -168,7 +158,7 @@ const previewIsImage = ref(false);
 const middlePaneRef = ref<any>(null); // 用于接收 MiddlePane 引用
 
 // --- 计算属性 ---
-const selectedItem = computed(() => store.selectedItem as Match | Group | null); // 类型断言
+const selectedItem = computed(() => store.selectedItem as Match | null); // 类型断言
 const selectedId = computed(() => store.state.selectedItemId);
 
 // 根据选中项动态生成标题
@@ -244,7 +234,7 @@ const saveItem = async () => {
   isSaving.value = true;
   saveState.value = 'idle'; // 重置为 idle，显示加载动画
 
-  let formData: Partial<Match> | Partial<Group> | null = null;
+  let formData: Partial<Match> | null = null;
   let success = false;
 
   try {
@@ -254,11 +244,6 @@ const saveItem = async () => {
       if (!formData) throw new Error("无法获取规则表单数据");
       console.log('[RightPane] Saving Match:', currentItem.id, formData);
       await store.updateMatch(currentItem.id, formData as Partial<Match>); // 调用 Store Action
-    } else if (currentItem.type === 'group' && groupFormRef.value) {
-      formData = groupFormRef.value.getFormData();
-      if (!formData) throw new Error("无法获取分组表单数据");
-       console.log('[RightPane] Saving Group:', currentItem.id, formData);
-      await store.updateGroup(currentItem.id, formData as Partial<Group>); // 调用 Store Action
     } else {
       throw new Error("没有找到对应的表单组件或选中的项目类型无效");
     }
@@ -287,7 +272,7 @@ const saveItem = async () => {
 const { handleCopyItem, handleCutItem } = useContextMenu({
   getNode: () => {
     const item = selectedItem.value;
-    if (!item || (item.type !== 'match' && item.type !== 'group')) return null;
+    if (!item || (item.type !== 'match' )) return null;
     // 创建一个临时的 TreeNodeItem 供 useContextMenu 使用
     return {
       id: item.id,
@@ -295,7 +280,6 @@ const { handleCopyItem, handleCutItem } = useContextMenu({
       name: item.name || '',
       children: [],
       match: item.type === 'match' ? item : undefined,
-      group: item.type === 'group' ? item : undefined,
       path: item.filePath || '', // 确保传递路径信息
       isSelected: true // 标记为选中
     };
@@ -337,17 +321,17 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
   // 获取当前 store 中记录的选中项 ID (可能是在树中选中的ID)
   const selectedNodeIdInTree = store.state.selectedItemId; 
 
-  // 复制和剪切仍然依赖右侧面板选中的 Match 或 Group
+  // 复制和剪切仍然依赖右侧面板选中的 Match 
   const currentItemForCopyCut = selectedItem.value;
   if (isModKey && key.toLowerCase() === 'c') {
-    if (currentItemForCopyCut && (currentItemForCopyCut.type === 'match' || currentItemForCopyCut.type === 'group')) {
+    if (currentItemForCopyCut && (currentItemForCopyCut.type === 'match')) {
       console.log('[RightPane Shortcut] Copy');
       handleCopyItem();
     } else {
        console.log('[RightPane Shortcut] Copy ignored: No valid item selected in right pane.');
     }
   } else if (isModKey && key.toLowerCase() === 'x') {
-    if (currentItemForCopyCut && (currentItemForCopyCut.type === 'match' || currentItemForCopyCut.type === 'group')) {
+    if (currentItemForCopyCut && (currentItemForCopyCut.type === 'match' )) {
       console.log('[RightPane Shortcut] Cut');
       handleCutItem();
     } else {
@@ -413,15 +397,6 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
                store.deleteItem(nodeToDelete.id, 'match');
            }
        }
-    } else if (nodeToDelete.type === 'group') {
-       const currentItemForDelete = selectedItem.value;
-       if(currentItemForDelete && currentItemForDelete.id === nodeToDelete.id) {
-          deleteGroup(nodeToDelete.id);
-       } else {
-           if (confirm(`是否要删除树中选中的分组: ${nodeToDelete.name}?`)) {
-                store.deleteItem(nodeToDelete.id, 'group');
-           }
-       }
     } else if (nodeToDelete.type === 'file') {
       // 文件删除逻辑 - 使用 window.confirm，更新提示信息
       if (confirm(`确定要删除文件 "${nodeToDelete.name}" 及其包含的所有片段和分组吗？此操作不可撤销。`)) {
@@ -445,12 +420,6 @@ const deleteRule = (id: string) => {
   }
 };
 
-const deleteGroup = (id: string) => {
-  if (confirm('确定要删除这个分组及其所有内容吗？此操作无法撤销。')) {
-    store.deleteItem(id, 'group'); // 调用新的 Store Action
-    // store action 应该处理后续状态
-  }
-};
 
 // --- 生命周期钩子 ---
 onMounted(() => {

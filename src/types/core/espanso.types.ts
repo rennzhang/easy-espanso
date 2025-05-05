@@ -44,26 +44,12 @@ export interface Match extends BaseItem {
   [key: string]: any; // 允许其他未知属性
 }
 
-/**
- * 分组接口
- */
-export interface Group extends BaseItem {
-  type: 'group';
-  name?: string;
-  prefix?: string;
-  label?: string;
-  matches?: Match[];
-  groups?: Group[];
-  tags?: string[]; // 用于UI分类的内部字段
-  [key: string]: any; // 允许其他未知属性
-}
 
 /**
  * Espanso内部配置结构
  */
 export interface EspansoConfig {
   matches: Match[];
-  groups: Group[];
 }
 
 /**
@@ -71,7 +57,7 @@ export interface EspansoConfig {
  */
 export interface UIState {
   selectedItemId: string | null;
-  selectedItemType: 'match' | 'group' | null;
+  selectedItemType: 'match' | null;
   leftMenuCollapsed: boolean;
   middlePaneFilterTags: string[];
   expandedNodeIds: string[];

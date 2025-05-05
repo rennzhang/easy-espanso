@@ -130,65 +130,6 @@ export const processMatch = (
     return processed;
 };
 
-/**
- * 递归处理从 YAML 解析出的原始 Group 数据，转换为内部 Group 类型。
- * @param rawGroup 从 YAML 解析出的原始分组对象。
- * @param filePath 该 Group 所属文件的路径。
- * @param counter 一个包含 'count' 属性的可变对象，用于分配 guiOrder。
- * @returns 处理后的内部 Group 对象 (包含递归处理过的子项)。
- */
-export const processGroup = (
-    rawGroup: EspansoGroupYaml,
-    filePath: string,
-    counter: GuiOrderCounter
-): Group => {
-    counter.count++; // 分组也占用一个顺序号
-    const newId = generateId('group');
-    // console.log(`[processGroup] Processing raw group: ${rawGroup.name || 'Unnamed'}, assigning ID: ${newId}, guiOrder: ${counter.count}, path: ${filePath}`);
-
-    const processed: Group = {
-        // --- 内部字段 ---
-        id: newId,
-        type: 'group',
-        filePath: filePath,
-        guiOrder: counter.count,
-        updatedAt: new Date().toISOString(),
-
-        // --- Espanso 核心字段 ---
-        name: rawGroup.name || '未命名分组', // 提供默认名称
-        label: rawGroup.label,
-        prefix: rawGroup.prefix, // 新增字段
-
-        // --- 嵌套内容 (递归处理) ---
-        matches: [], // 先初始化为空数组
-        groups: [],
-
-        // --- 其他 Espanso 允许的字段 ---
-        // 使用扩展运算符 (...) 来复制 rawGroup 中未显式处理的其他可能的键值对
-        // 但要注意这可能引入非预期的属性，谨慎使用
-        // ...rawGroup, // <-- 暂时注释掉，优先使用已知字段
-
-         // 如果原始数据中有其他键，显式地复制它们 (更安全)
-         ...(Object.fromEntries(
-             Object.entries(rawGroup).filter(([key]) =>
-                 !['name', 'label', 'prefix', 'matches', 'groups'].includes(key)
-             )
-         )),
-    };
-
-    // 递归处理子 Matches
-    if (Array.isArray(rawGroup.matches)) {
-        processed.matches = rawGroup.matches.map(match => processMatch(match, filePath, counter));
-    }
-
-    // 递归处理子 Groups
-    if (Array.isArray(rawGroup.groups)) {
-        processed.groups = rawGroup.groups.map(group => processGroup(group, filePath, counter));
-    }
-
-    return processed;
-};
-
 
 // --- 用于保存时清理数据 ---
 
@@ -237,37 +178,3 @@ export const cleanMatchForSaving = (match: Match): EspansoMatchYaml => {
     return cleaned;
 };
 
-/**
- * 递归清理内部 Group 对象及其子项，移除内部字段，准备序列化为 YAML。
- * @param group 内部 Group 对象。
- * @returns 清理后的、适合写入 YAML 的对象。
- */
-export const cleanGroupForSaving = (group: Group): EspansoGroupYaml => {
-    const cleaned: EspansoGroupYaml = {
-        // 核心字段
-        name: group.name, // name 是必需的
-
-        // 可选字段
-        ...(group.label ? { label: group.label } : {}),
-        ...(group.prefix ? { prefix: group.prefix } : {}),
-
-        // 其他允许的 Espanso 字段 (从原始对象复制，排除已知和内部字段)
-         ...(Object.fromEntries(
-             Object.entries(group).filter(([key]) =>
-                 !['id', 'type', 'filePath', 'guiOrder', 'updatedAt', 'name', 'label', 'prefix', 'matches', 'groups'].includes(key)
-             )
-         )),
-    };
-
-    // 递归清理子 Matches (仅当存在时)
-    if (group.matches && group.matches.length > 0) {
-        cleaned.matches = group.matches.map(cleanMatchForSaving);
-    }
-
-    // 递归清理子 Groups (仅当存在时)
-    if (group.groups && group.groups.length > 0) {
-        cleaned.groups = group.groups.map(cleanGroupForSaving);
-    }
-
-    return cleaned;
-};

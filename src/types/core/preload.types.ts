@@ -27,11 +27,6 @@ export interface YamlData {
     replace?: string; // Make optional
     [key: string]: any;
   }>;
-  groups?: Array<{
-    label?: string;
-    prefix?: string;
-    [key: string]: any;
-  }>;
   [key: string]: any;
 }
 

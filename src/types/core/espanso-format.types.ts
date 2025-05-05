@@ -39,24 +39,12 @@ export interface EspansoMatchYaml {
   [key: string]: any; // 其他可能的属性
 }
 
-/**
- * Espanso分组YAML结构
- */
-export interface EspansoGroupYaml {
-  name?: string;
-  label?: string;
-  prefix?: string;
-  matches?: EspansoMatchYaml[];
-  groups?: EspansoGroupYaml[];
-  [key: string]: any; // 其他可能的属性
-}
 
 /**
  * Espanso配置YAML文件结构
  */
 export interface EspansoConfigYaml {
   matches?: EspansoMatchYaml[];
-  groups?: EspansoGroupYaml[];
   [key: string]: any; // 其他可能的属性
 }
 

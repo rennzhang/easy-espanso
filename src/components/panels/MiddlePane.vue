@@ -99,9 +99,7 @@
         </p>
       </div>
       <div
-        v-else-if="
-          store.allMatches.length === 0 && store.allGroups.length === 0
-        "
+        v-else-if="store.allMatches.length === 0"
         class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
       >
         <FileTextIcon class="h-12 w-12 mb-4" />
@@ -142,7 +140,6 @@
             :selected-id="selectedItemId"
             :searchQuery="searchQuery.trim()"
             @select="handleTreeItemSelect"
-            @request-rename="openRenameDialog"
           />
         </div>
 
@@ -206,46 +203,12 @@
                     }}</span>
                   </div>
                 </div>
-                <div v-else-if="item.type === 'group'">
-                  <div class="flex justify-between items-start">
-                    <span class="font-semibold text-foreground">
-                      <HighlightText
-                        v-if="searchQuery.trim()"
-                        :text="(item as Group).name || ''"
-                        :searchQuery="searchQuery.trim()"
-                      />
-                      <template v-else>{{ (item as Group).name }}</template>
-                    </span>
-                    <Badge variant="secondary" v-if="(item as Group).matches"
-                      >{{ (item as Group).matches?.length || 0 }} 项</Badge
-                    >
-                  </div>
-                  <div
-                    class="flex justify-between text-xs text-muted-foreground mt-1"
-                  >
-                    <Badge variant="outline" class="bg-muted">分组</Badge>
-                    <span v-if="(item as Group).updatedAt">{{
-                      formatDate((item as Group).updatedAt!)
-                    }}</span>
-                  </div>
-                </div>
               </div>
             </CardContent>
           </Card>
         </div>
       </div>
     </div>
-
-    <!-- 输入对话框 -->
-    <InputDialog
-      v-model:visible="inputDialogVisible"
-      :title="inputDialogTitle"
-      :label="inputDialogLabel"
-      :initial-value="inputDialogInitialValue"
-      :placeholder="inputDialogPlaceholder"
-      @submit="handleRenameSubmit"
-      @cancel="handleRenameCancel"
-    />
   </div>
 </template>
 
@@ -257,9 +220,7 @@ import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
 import { Card, CardContent } from "../ui/card";
 import ConfigTree from "@/components/ConfigTree.vue";
-import type { TreeNodeItem } from "@/components/ConfigTree.vue";
 import HighlightText from "@/components/common/HighlightText.vue";
-import InputDialog from "@/components/common/InputDialog.vue";
 import {
   SearchIcon,
   FolderIcon,
@@ -267,25 +228,14 @@ import {
   XIcon,
   ListIcon,
   FolderTreeIcon,
-  Trash2Icon,
-  PencilIcon,
 } from "lucide-vue-next";
-import { Group, Match } from "@/types/core/espanso.types";
+import { Match } from "@/types/core/espanso.types";
 
 const store = useEspansoStore();
 const searchQuery = ref("");
 const viewMode = ref<"tree" | "list">("tree");
 const showSearchBar = ref(false);
 const searchInputRef = ref<HTMLInputElement | null>(null);
-
-// --- Input Dialog State ---
-const inputDialogVisible = ref(false);
-const inputDialogTitle = ref("");
-const inputDialogLabel = ref("");
-const inputDialogInitialValue = ref("");
-const inputDialogPlaceholder = ref("");
-let renameActionCallback: ((newValue: string) => void) | null = null;
-let renameTargetItem: Group | null = null;
 
 // 引用树组件实例
 const configTreeRef = ref<InstanceType<typeof ConfigTree> | null>(null);
@@ -435,11 +385,10 @@ const loading = computed(() => store.state.loading);
 
 // 过滤和排序项目
 const filteredItems = computed(() => {
-  if (!store.allMatches || !store.allGroups) return [];
+  if (!store.allMatches) return [];
 
   let allMatches = store.allMatches;
-  let allGroups = store.allGroups;
-  let allItems = [...allMatches, ...allGroups];
+  let allItems = [...allMatches];
 
   const query = searchQuery.value.trim().toLowerCase();
   const tags = filterTags.value || [];
@@ -456,7 +405,7 @@ const filteredItems = computed(() => {
 
   // Helper function to check if a single item matches query or tags
   const itemMatchesQueryOrTags = (
-    item: Match | Group,
+    item: Match,
     query: string,
     tags: string[]
   ): boolean => {
@@ -475,10 +424,6 @@ const filteredItems = computed(() => {
             )) ||
           (match.filePath && match.filePath.toLowerCase().includes(query)) ||
           false;
-      } else if (item.type === "group") {
-        queryMatch =
-          (item.name?.toLowerCase().includes(query) ?? false) ||
-          (item.filePath?.toLowerCase().includes(query) ?? false);
       }
     }
     let tagMatch = false;
@@ -495,48 +440,20 @@ const filteredItems = computed(() => {
   };
 
   // 1. Initial Filter & 2. Identify Matched Groups
-  const directlyMatchedItems: (Match | Group)[] = [];
-  const matchedGroups: Group[] = []; // Store the actual group objects
+  const directlyMatchedItems: Match[] = [];
 
   for (const item of allItems) {
     if (itemMatchesQueryOrTags(item, query, tags)) {
       directlyMatchedItems.push(item);
-      if (item.type === "group") {
-        matchedGroups.push(item as Group);
-      }
     }
   }
 
   // 3. Second Pass - Include Matches *under* the matched groups
-  const finalItemMap = new Map<string, Match | Group>();
+  const finalItemMap = new Map<string, Match>();
 
   // Add directly matched items first
   for (const item of directlyMatchedItems) {
     finalItemMap.set(item.id, item);
-  }
-
-  // Function to recursively get all matches under a group
-  const getAllMatchesUnderGroup = (group: Group): Match[] => {
-    let matches: Match[] = [...(group.matches || [])];
-    if (group.groups) {
-      for (const subGroup of group.groups) {
-        matches = [...matches, ...getAllMatchesUnderGroup(subGroup)];
-      }
-    }
-    return matches;
-  };
-
-  // Add matches that are children of matched groups
-  if (matchedGroups.length > 0) {
-    for (const group of matchedGroups) {
-      const childMatches = getAllMatchesUnderGroup(group);
-      for (const match of childMatches) {
-        // Add child match only if it wasn't already directly matched
-        if (!finalItemMap.has(match.id)) {
-          finalItemMap.set(match.id, match);
-        }
-      }
-    }
   }
 
   // 4. Convert Map back to Array and Sort
@@ -656,7 +573,7 @@ const hideSearchBar = () => {
 };
 
 // 处理树节点选择
-const handleTreeItemSelect = (item: Match | Group) => {
+const handleTreeItemSelect = (item: Match) => {
   // console.log("选择树节点:", item); // Removed log
   // 直接调用 store action，传递 ID 和类型
   store.selectItem(item.id, item.type);
@@ -664,56 +581,10 @@ const handleTreeItemSelect = (item: Match | Group) => {
 
 // --- Total Item Count ---
 const totalItemCount = computed(() => {
-  if (!store.allMatches || !store.allGroups) return 0;
+  if (!store.allMatches) return 0;
   const matches = store.allMatches;
-  const groups = store.allGroups;
-  return matches.length + groups.length;
+  return matches.length;
 });
-
-// --- Input Dialog Logic (Adjusted for rename request) ---
-const openRenameDialog = (item: TreeNodeItem) => {
-  // Expecting item to be the TreeNodeItem for a group from ConfigTree
-  if (item.type === "group" && item.group) {
-    // Check if it's a group and has the original group data
-    renameTargetItem = item.group; // Store the actual Group object
-    inputDialogTitle.value = "重命名分组";
-    inputDialogLabel.value = "新名称";
-    inputDialogInitialValue.value = item.group.name || ""; // Use name from the group data, default to empty string
-    inputDialogPlaceholder.value = "输入新的分组名称";
-    inputDialogVisible.value = true;
-  } else {
-    console.warn(
-      "[MiddlePane] Received rename request for non-group item or missing group data:",
-      item
-    );
-    renameTargetItem = null;
-  }
-};
-
-const handleRenameSubmit = (newValue: string) => {
-  if (renameTargetItem && newValue.trim()) {
-    console.log(
-      "[MiddlePane] Submitting rename for group:",
-      renameTargetItem.id,
-      "New name:",
-      newValue.trim()
-    );
-    // 调用正确的 store action 来更新分组名称
-    store.updateGroup(renameTargetItem.id, { name: newValue.trim() });
-  } else {
-    console.warn(
-      "[MiddlePane] Rename submit failed: No target item or empty value."
-    );
-  }
-  // Reset state regardless of success
-  renameTargetItem = null;
-  inputDialogVisible.value = false;
-};
-
-const handleRenameCancel = () => {
-  renameTargetItem = null; // Clear target item on cancel
-  inputDialogVisible.value = false;
-};
 </script>
 
 <style>

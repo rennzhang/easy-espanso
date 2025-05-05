@@ -1,7 +1,7 @@
 /**
  * UI相关类型定义
  */
-import type { Match, Group } from './espanso.types';
+import type { Match } from './espanso.types';
 import type { YamlData } from './preload.types';
 
 /**
@@ -16,7 +16,6 @@ export interface ConfigTreeNode {
   parentPath?: string | null; // 父文件夹的路径
   fileType?: 'config' | 'match' | 'package'; // 文件节点的具体类型
   matches?: Match[]; // 文件节点中的匹配项
-  groups?: Group[]; // 文件节点中的分组
   content?: YamlData | null; // 文件的原始解析YAML内容
   extension?: string; // 文件扩展名
   // UI特定状态可以添加在这里或单独管理
@@ -30,7 +29,6 @@ export interface ConfigFileNode extends ConfigTreeNode {
   type: 'file';
   extension: string;
   matches?: Match[];
-  groups?: Group[];
   content?: YamlData | null;
   fileType: 'config' | 'match' | 'package';
   children?: undefined; // 文件在此上下文中没有子节点
@@ -56,10 +54,9 @@ export interface ConfigFolderNode extends ConfigTreeNode {
 export interface TreeNodeItem {
   id: string;
   label: string;
-  type: 'folder' | 'file' | 'group' | 'match';
+  type: 'folder' | 'file' | 'match';
   path?: string; // 文件路径或文件夹路径
   children?: TreeNodeItem[];
   icon?: string; // 可选的图标名称/组件
   // 添加上下文菜单或树形视图需要的其他属性
-  group?: Group | null; // 如果是分组节点，则具体引用
-} 
+}

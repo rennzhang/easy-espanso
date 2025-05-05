@@ -3,13 +3,13 @@ import * as yamlService from './yamlService';         // 用于 YAML 解析/序�
 import * as configService from './configService';     // 用于获取配置路径等
 
 // 核心类型 (假设已移至 types/core/)
-import type { Match, Group } from '@/types/core/espanso.types';
-import type { GlobalConfig, EspansoMatchYaml, EspansoGroupYaml } from '@/types/core/espanso-format.types';
+import type { Match } from '@/types/core/espanso.types';
+import type { GlobalConfig, EspansoMatchYaml } from '@/types/core/espanso-format.types';
 import type { ConfigTreeNode, ConfigFileNode } from '@/types/core/ui.types';
 import type { YamlData, FileSystemNode } from '@/types/core/preload.types';
 
 // 工具函数 (假设已重构)
-import { processMatch, processGroup, cleanMatchForSaving, cleanGroupForSaving, resetGuiOrderCounter } from '@/utils/espansoDataUtils';
+import { processMatch, cleanMatchForSaving, resetGuiOrderCounter } from '@/utils/espansoDataUtils';
 import { createFileNode, createFolderNode } from '@/utils/configTreeUtils';
 
 
@@ -102,8 +102,6 @@ export const loadConfiguration = async (configDir: string): Promise<{
                     // 使用 espansoDataUtils 处理原始 YAML 数据
                     const fileMatches = (yaml.matches as EspansoMatchYaml[] || [])
                         .map(match => processMatch(match, currentPath, counter));
-                    const fileGroups = (yaml.groups as EspansoGroupYaml[] || [])
-                        .map(group => processGroup(group, currentPath, counter)); // processGroup 会递归处理
 
                     // 创建文件节点
                     const fileNode = createFileNode(
@@ -112,7 +110,6 @@ export const loadConfiguration = async (configDir: string): Promise<{
                         'match', // 假设 match 目录下的都是 'match' 类型
                         yaml,    // 存储原始解析内容以保留其他键
                         fileMatches,
-                        fileGroups
                     );
                     currentTreeLevel.push(fileNode);
                 } catch (fileError: any) {
@@ -171,8 +168,6 @@ export const loadConfiguration = async (configDir: string): Promise<{
                 // 处理匹配项
                 const fileMatches = (yaml.matches as EspansoMatchYaml[] || [])
                     .map(match => processMatch(match, defaultBasePath, counter));
-                const fileGroups = (yaml.groups as EspansoGroupYaml[] || [])
-                    .map(group => processGroup(group, defaultBasePath, counter));
                 
                 // 创建文件节点并添加到树中
                 const baseFileNode = createFileNode(
@@ -181,7 +176,6 @@ export const loadConfiguration = async (configDir: string): Promise<{
                     'match',
                     yaml,
                     fileMatches,
-                    fileGroups
                 );
                 configTree.push(baseFileNode);
                 console.log(`[EspansoService] 成功加载已存在的base.yml文件`);
@@ -217,7 +211,6 @@ export const loadConfiguration = async (configDir: string): Promise<{
                     'match',
                     defaultYamlData, // 存储这个默认内容
                     [defaultMatch], // 内部状态包含处理后的 Match
-                    []
                 );
                 configTree.push(defaultFileNode);
 
@@ -239,30 +232,30 @@ export const loadConfiguration = async (configDir: string): Promise<{
 
 /**
  * 将指定文件路径的内容保存到文件系统。
- * 它会清理传入的 Match/Group 对象 (移除内部字段)，与现有 YAML 数据合并 (保留非 matches/groups 键)，
+ * 它会清理传入的 Match 对象 (移除内部字段)，与现有 YAML 数据合并 (保留非 matches 键)，
  * 然后序列化并写入文件。
  * @param filePath 要保存的文件的完整路径。
- * @param itemsToSave 该文件中包含的 Match 和 Group 对象数组 (直接来自 configTree 的引用)。
+ * @param itemsToSave 该文件中包含的 Match 对象数组 (直接来自 configTree 的引用)。
  * @param existingYamlData 可选的，该文件原始解析的 YAML 数据，用于保留未被管理的顶层键。
  * @throws 如果序列化或写入文件失败，则抛出错误。
  */
 export const saveConfigurationFile = async (
     filePath: string,
-    itemsToSave: (Match | Group)[],
+    itemsToSave: (Match)[],
     existingYamlData: YamlData = {} // 提供一个默认空对象
 ): Promise<void> => {
     console.log(`[EspansoService] 准备保存文件: ${filePath}`);
 
     const saveData: YamlData = {};
 
-    // 1. 保留原始 YAML 中非 matches/groups 的顶层键
+    // 1. 保留原始 YAML 中非 matches 的顶层键
     for (const key in existingYamlData) {
-        if (key !== 'matches' && key !== 'groups') {
+        if (key !== 'matches') {
             saveData[key] = existingYamlData[key];
         }
     }
 
-    // 2. 分离并清理 Matches 和顶层 Groups
+    // 2. 分离并清理 Matches 
     const matchesForFile: any[] = [];
     const topLevelGroupsForFile: any[] = [];
 
@@ -275,11 +268,7 @@ export const saveConfigurationFile = async (
 
         if (item.type === 'match') {
             matchesForFile.push(cleanMatchForSaving(item)); // 清理内部字段
-        } else if (item.type === 'group') {
-             // 检查它是否真的是顶层 Group (没有 parentId 或 parentId 指向文件?)
-             // 这个检查逻辑比较复杂，暂时假设传入的 itemsToSave 就是正确的顶层项
-            topLevelGroupsForFile.push(cleanGroupForSaving(item)); // 清理内部字段 (递归)
-        }
+        } 
     }
 
     // 3. 添加清理后的数据到保存对象 (仅当有内容时)
@@ -300,7 +289,6 @@ export const saveConfigurationFile = async (
             Object.keys(saveData).length, 
             '个顶层键',
             saveData.matches?.length || 0, '个匹配项',
-            saveData.groups?.length || 0, '个分组'
         );
         
         // 安全检查和深度调试
@@ -362,11 +350,10 @@ export const saveConfigurationFile = async (
             // 创建一个简单的副本
             dataToSerialize = JSON.parse(JSON.stringify({
                 matches: saveData.matches ? saveData.matches.map(m => ({...m})) : undefined,
-                groups: saveData.groups ? saveData.groups.map(g => ({...g})) : undefined,
                 // 复制其他顶层键
                 ...Object.fromEntries(
                     Object.entries(saveData)
-                        .filter(([k]) => k !== 'matches' && k !== 'groups')
+                        .filter(([k]) => k !== 'matches')
                 )
             }));
         }

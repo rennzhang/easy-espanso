@@ -6,7 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 // Import Core Types
 import type { ConfigTreeNode, ConfigFileNode, ConfigFolderNode } from '@/types/core/ui.types'; // Renamed/Moved
 import type { GlobalConfig } from '@/types/core/espanso-format.types'; // Use canonical format type
-import type { Match, Group } from '@/types/core/espanso.types'; // Use canonical internal type
+import type { Match } from '@/types/core/espanso.types'; // Use canonical internal type
 
 // Import Services (Assuming they are refactored)
 import * as espansoService from '@/services/espansoService';
@@ -18,12 +18,11 @@ import { generateId } from '@/utils/espansoDataUtils';
 import {
     findFileNode,
     findNodeById as findTreeNodeById, // Disambiguate tree node search
-    findItemInTreeById, // Function to find Match/Group within the tree by ID
-    findParentNodeInTree, // Function to find the parent node (File/Group/Folder) of an item
+    findItemInTreeById, // Function to find Match within the tree by ID
+    findParentNodeInTree, // Function to find the parent node (File/Folder) of an item
     removeItemFromTree, // Function to remove an item/node reference from the tree
     addItemToTree, // Function to add an item/node reference to the tree
     extractMatchesFromTree, // New util function
-    extractGroupsFromTree, // New util function
 } from '@/utils/configTreeUtils';
 import ClipboardManager from '@/utils/ClipboardManager';
 
@@ -36,7 +35,7 @@ export interface EspansoState {
     globalConfigPath: string | null;
     configTree: ConfigTreeNode[]; // Single source of truth
     selectedItemId: string | null;
-    selectedItemType: 'match' | 'group' | 'file' | 'folder' | null;
+    selectedItemType: 'match' | 'file' | 'folder' | null;
     searchQuery: string;
     selectedTags: string[];
     leftMenuCollapsed: boolean;
@@ -72,17 +71,12 @@ export const useEspansoStore = defineStore('espanso', () => {
         return extractMatchesFromTree(state.value.configTree);
     });
 
-    const allGroups = computed((): Group[] => {
-        // This needs refinement: Should it return only top-level groups within files,
-        // or all groups recursively? Let's assume recursive for now.
-        return extractGroupsFromTree(state.value.configTree);
-    });
 
-    const allItems = computed((): (Match | Group)[] => [...allMatches.value, ...allGroups.value]);
+    const allItems = computed((): (Match )[] => [...allMatches.value]);
 
-    const selectedItem = computed((): Match | Group | ConfigTreeNode | null => {
+    const selectedItem = computed((): Match | ConfigTreeNode | null => {
         if (!state.value.selectedItemId) return null;
-        // Need a robust way to find the item (Match/Group) or node (File/Folder) by ID within the tree
+        // Need a robust way to find the item (Match) or node (File/Folder) by ID within the tree
         return findItemInTreeById(state.value.configTree, state.value.selectedItemId);
     });
 
@@ -90,7 +84,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         const item = selectedItem.value;
         if (!item) return null;
         if (item.type === 'file') return item as ConfigFileNode;
-        if (item.type === 'match' || item.type === 'group') {
+        if (item.type === 'match' ) {
              const filePath = item.filePath;
              if (!filePath) return null;
              return findFileNode(state.value.configTree, filePath);
@@ -138,7 +132,6 @@ export const useEspansoStore = defineStore('espanso', () => {
             // 提取所有直接与此文件节点关联的匹配项和分组
             const itemsToSave = [
                 ...(fileNode.matches || []),
-                ...(fileNode.groups || [])
             ];
             
             // 使用正确的API
@@ -322,35 +315,13 @@ export const useEspansoStore = defineStore('espanso', () => {
         }
     };
 
-    const updateGroup = async (groupId: string, updates: Partial<Group>) => {
-       const result = findItemInTreeById(state.value.configTree, groupId);
-        if (!result || result.type !== 'group') {
-            _setError(`Group with ID ${groupId} not found.`);
-            return;
-        }
-        const groupRef = result as Group; // Reference in the tree
-        const filePath = groupRef.filePath;
-         if (!filePath) {
-             _setError(`Group ${groupId} is missing file path.`);
-             return;
-         }
 
-        // Apply updates directly to the reactive reference
-        Object.assign(groupRef, updates); // Note: This won't update nested items unless 'updates' includes them
-        groupRef.updatedAt = new Date().toISOString();
 
-         try {
-            await _saveFileByPath(filePath); // Save the containing file
-        } catch {
-             // Error handled by helper
-        }
-    };
-
-    const addItem = async (itemData: Omit<Match, 'id'|'type'> | Omit<Group, 'id'|'type'>, itemType: 'match' | 'group', targetParentNodeId: string | null, insertIndex: number = -1) => {
+    const addItem = async (itemData: Omit<Match, 'id'|'type'>, itemType: 'match', targetParentNodeId: string | null, insertIndex: number = -1) => {
         _setStatus(`Adding ${itemType}...`);
         try {
             // Create a new item with UUID
-            const newItem: Match | Group = {
+            const newItem: Match = {
                 ...itemData,
                 id: uuidv4(),
                 type: itemType,
@@ -387,7 +358,7 @@ export const useEspansoStore = defineStore('espanso', () => {
             // Set the filePath for the new item
             newItem.filePath = filePath;
 
-            // This util needs to find the parent (File/Group) and add the newItem ref
+            // This util needs to find the parent (File) and add the newItem ref
             // It should also determine and set newItem.filePath based on the parent
             const addedItemRef = addItemToTree(state.value.configTree, newItem, targetParentNodeId, insertIndex);
 
@@ -421,17 +392,15 @@ export const useEspansoStore = defineStore('espanso', () => {
     };
 
 
-    const deleteItem = async (itemId: string, itemType: 'match' | 'group') => {
+    const deleteItem = async (itemId: string, itemType: 'match' ) => {
          const itemRef = findItemInTreeById(state.value.configTree, itemId);
          if (!itemRef || itemRef.type !== itemType) {
-             _setError(`${itemType === 'match' ? 'Match' : 'Group'} ${itemId} not found.`);
+             _setError(`${itemType === 'match' ? 'Match' : ''} ${itemId} not found.`);
              return;
          }
          const filePath = itemRef.filePath;
          // 使用触发词作为名称
-         const itemName = itemRef.type === 'group' ? 
-             (itemRef.name || 'Unknown Group') : 
-             (itemRef.trigger || itemRef.label || 'Unknown Match');
+         const itemName =(itemRef.trigger || itemRef.label || 'Unknown Match');
 
          if (!filePath) {
              _setError(`Cannot delete ${itemType} ${itemId}: missing file path.`);
@@ -465,7 +434,7 @@ export const useEspansoStore = defineStore('espanso', () => {
 
     const moveItem = async (itemId: string, targetParentNodeId: string | null, newIndex: number) => {
         const movedItemRef = findItemInTreeById(state.value.configTree, itemId);
-        if (!movedItemRef || (movedItemRef.type !== 'match' && movedItemRef.type !== 'group')) {
+        if (!movedItemRef || (movedItemRef.type !== 'match' )) {
             _setError(`项目 ${itemId} 未找到或不是有效的片段/分组。`);
             return;
         }
@@ -476,10 +445,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         }
         
         // 使用触发词作为名称
-        const itemName = movedItemRef.type === 'match' ? 
-            (movedItemRef.trigger || movedItemRef.label || 'Unknown Match') : 
-            (movedItemRef.name || 'Unknown Group');
-        
+        const itemName = (movedItemRef.trigger || movedItemRef.label || 'Unknown Match')
         _setStatus(`正在移动: ${itemName}...`);
 
         try {
@@ -491,8 +457,7 @@ export const useEspansoStore = defineStore('espanso', () => {
 
             if (targetParentNode) {
                  if (targetParentNode.type === 'file') newFilePath = targetParentNode.path;
-                 else if (targetParentNode.type === 'group') newFilePath = targetParentNode.filePath;
-                 else { // Target is folder or something else? Invalid drop target for Match/Group
+                 else { // Target is folder or something else? Invalid drop target for Match
                      throw new Error(`无效的目标父节点类型: ${targetParentNode.type}`);
                  }
             } else {
@@ -743,19 +708,15 @@ export const useEspansoStore = defineStore('espanso', () => {
 
              } else if (node.type === 'file') {
                  // Update filePath for contained matches/groups
-                  const updateContainedPaths = (items?: (Match | Group)[]) => {
+                  const updateContainedPaths = (items?: (Match)[]) => {
                       items?.forEach(item => {
                           if (item.filePath === oldPath) {
                               item.filePath = newPath;
                           }
-                          if (item.type === 'group') {
-                              updateContainedPaths(item.matches);
-                              updateContainedPaths(item.groups);
-                          }
+
                       });
                   };
                   updateContainedPaths((node as ConfigFileNode).matches);
-                  updateContainedPaths((node as ConfigFileNode).groups);
              }
 
              // Update selection ID if renamed item was selected
@@ -779,7 +740,6 @@ export const useEspansoStore = defineStore('espanso', () => {
         state, // Read-only state access preferred via computed properties
         // Computed Getters
         allMatches,
-        allGroups,
         allItems,
         selectedItem,
         selectedFileNode,
@@ -792,7 +752,6 @@ export const useEspansoStore = defineStore('espanso', () => {
         toggleLeftMenu,
         updateGlobalConfig,
         updateMatch,
-        updateGroup,
         addItem,
         deleteItem,
         moveItem,

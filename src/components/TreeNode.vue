@@ -15,9 +15,7 @@
       <div v-if="node.type !== 'match'" class="w-full">
         <div
           :class="[
-            node.name === 'Packages'
-              ? 'package-node'
-              : node.type + '-node',
+            node.name === 'Packages' ? 'package-node' : node.type + '-node',
           ]"
           @click="handleClick"
           class="cursor-pointer w-full"
@@ -25,12 +23,11 @@
           <div
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
-              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground selected':
-                node.type === 'group' && isSelected,
               'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-primary-foreground selected':
                 (node.type === 'file' || node.type === 'folder') && isSelected,
               'hover:text-accent-foreground': !isSelected,
-              'bg-gray-200': (node.type === 'file' || node.type === 'folder') && !isSelected,
+              'bg-gray-50':
+                (node.type === 'file' || node.type === 'folder') && !isSelected,
             }"
             :style="{
               paddingLeft: nodeLevel * 20 + 'px',
@@ -40,7 +37,7 @@
             <!-- 添加左侧空白区域点击处理 -->
             <div
               class="absolute left-0 h-full"
-              :style="{width: nodeLevel * 12 + 'px'}"
+              :style="{ width: nodeLevel * 12 + 'px' }"
               @click.stop="toggleFolder"
             ></div>
 
@@ -58,32 +55,17 @@
             </span>
             <!-- 文件夹图标放在名称前面 -->
             <span v-if="node.type === 'folder'" class="mr-1.5">
-              <VSCodeFolderIcon
-                v-if="!isOpen"
-                class="h-5 w-5"
-              />
-              <VSCodeFolderOpenIcon
-                v-else
-                class="h-5 w-5"
-              />
+              <VSCodeFolderIcon v-if="!isOpen" class="h-5 w-5" />
+              <VSCodeFolderOpenIcon v-else class="h-5 w-5" />
             </span>
             <!-- 文件图标放在名称前面 -->
             <span v-if="node.type === 'file'" class="mr-1.5">
-              <VSCodeYmlIcon
-                class="h-5 w-5"
-              />
-            </span>
-            <!-- 分组图标放在名称前面 -->
-            <span v-if="node.type === 'group'" class="mr-1.5">
-              <GitBranchIcon
-                :class="[
-                  'h-4 w-4',
-                  isSelected ? 'text-white' : 'text-muted-foreground'
-                ]"
-              />
+              <VSCodeYmlIcon class="h-5 w-5" />
             </span>
             <span
-              v-if="isEditing && (node.type === 'file' || node.type === 'folder')"
+              v-if="
+                isEditing && (node.type === 'file' || node.type === 'folder')
+              "
               class="text-sm font-medium flex-grow"
               @click.stop
             >
@@ -112,7 +94,11 @@
             <span
               v-if="visibleChildCount > 0 && shouldShowCount"
               class="mx-2 text-xs px-1.5 py-0.5 rounded-full"
-              :class="isSelected ? 'bg-white/20 text-white' : 'bg-muted text-muted-foreground'"
+              :class="
+                isSelected
+                  ? 'bg-white/20 text-white'
+                  : 'bg-muted text-muted-foreground'
+              "
             >
               {{ visibleChildCount }}
             </span>
@@ -128,7 +114,7 @@
             :class="{
               'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground selected':
                 isSelected,
-                'hover:text-accent-foreground bg-gray-50': !isSelected,
+              'hover:text-accent-foreground bg-gray-50': !isSelected,
             }"
             :style="{
               paddingLeft: nodeLevel * 12 + 8 + 'px',
@@ -138,7 +124,7 @@
             <!-- 添加左侧空白区域点击处理 -->
             <div
               class="absolute left-0 h-full"
-              :style="{width: nodeLevel * 12 + 'px'}"
+              :style="{ width: nodeLevel * 12 + 'px' }"
               @click.stop="toggleParentFolder"
             ></div>
 
@@ -147,7 +133,7 @@
             <ZapIcon
               :class="[
                 'h-4 w-4 mr-1',
-                isSelected ? 'text-white' : 'text-blue-500'
+                isSelected ? 'text-white' : 'text-blue-500',
               ]"
             />
             <span class="text-sm cursor-grab flex-grow">
@@ -187,11 +173,7 @@
         class="children w-full drop-zone"
         :class="{
           'shadow-[inset_0_6px_6px_-6px_rgba(0,0,0,0.21),_inset_0_-6px_6px_-6px_rgba(0,0,0,0.21)]':
-            node.type === 'file' ||
-            (node.type === 'folder' &&
-              node.path &&
-              node.path.toLowerCase().startsWith('packages/') &&
-              node.path.toLowerCase() !== 'packages'),
+            node.type === 'file',
         }"
         :group="{ name: 'configTreeGroup', pull: true, put: true }"
         :animation="150"
@@ -239,14 +221,9 @@ import {
   watch,
   onMounted,
   onUnmounted,
-  nextTick
+  nextTick,
 } from "vue";
-import {
-  ChevronRightIcon,
-  ChevronDownIcon,
-  ZapIcon,
-  GitBranchIcon,
-} from "lucide-vue-next";
+import { ChevronRightIcon, ChevronDownIcon, ZapIcon } from "lucide-vue-next";
 import VSCodeFolderIcon from "@/components/icons/VSCodeFolderIcon.vue";
 import VSCodeFolderOpenIcon from "@/components/icons/VSCodeFolderOpenIcon.vue";
 import VSCodeYmlIcon from "@/components/icons/VSCodeYmlIcon.vue";
@@ -255,8 +232,9 @@ import HighlightText from "@/components/common/HighlightText.vue";
 import { VueDraggable } from "vue-draggable-plus";
 import NodeContextMenu from "@/components/NodeContextMenu.vue";
 import { useEspansoStore } from "@/store/useEspansoStore";
-// import TreeNodeRegistry from "@/utils/TreeNodeRegistry"; // Removed dependency
+import TreeNodeRegistry from "@/utils/TreeNodeRegistry";
 import { toast } from "vue-sonner";
+import { isFileNode, isFolderNode } from "@/utils/configTreeUtils";
 
 const props = defineProps<{
   node: TreeNodeItem;
@@ -284,20 +262,18 @@ const emit = defineEmits<{
     e: "moveNode",
     payload: { nodeId: string; targetParentId: string | null; newIndex: number }
   ): void;
-  (e: "request-rename", item: TreeNodeItem): void; // Keep this emit for potential future use or alternative implementations
+  (e: "request-rename", item: TreeNodeItem): void;
   (e: "toggle-node", nodeId: string): void;
 }>();
 
 const store = useEspansoStore();
 
 // 默认展开状态：Packages 文件夹默认收起，其他节点默认展开
-// Note: This local isOpen state might need synchronization if the parent manages expansion state globally.
-// The `toggle-node` event allows the parent to manage it.
-const isOpen = ref(props.node.name === 'Packages' ? false : true);
+const isOpen = ref(props.node.name === "Packages" ? false : true);
 
 // 编辑相关的状态
 const isEditing = ref(false);
-const editingName = ref('');
+const editingName = ref("");
 const editNameInput = ref<HTMLInputElement | null>(null);
 
 watch(
@@ -315,13 +291,12 @@ const toggleFolder = (event?: MouseEvent) => {
     isOpen.value = !isOpen.value;
     // Emit event for parent component to handle state changes if needed
     emit("toggle-node", props.node.id);
-    // Removed direct calls to TreeNodeRegistry
   }
 };
 
 const selectNode = () => {
   // 如果是文件夹类型节点，则不执行选择操作
-  if (props.node.type === 'folder') {
+  if (props.node.type === "folder") {
     // Optionally, toggle the folder instead of selecting
     // toggleFolder();
     return;
@@ -485,9 +460,6 @@ const visibleChildCount = computed(() => {
       countItems(props.node.children);
       nodeCountCache.set(cacheKey, count);
       return count;
-    } else if (props.node.type === "group") {
-      // Groups only contain matches directly
-      return props.node.children.filter((child) => child.type === "match").length;
     }
     return 0; // Should not happen for valid parent types
   }
@@ -501,49 +473,63 @@ const visibleChildCount = computed(() => {
   }
 
   let count = 0;
-  const countVisibleMatches = (nodes: TreeNodeItem[], parentMatchesQuery: boolean) => {
+  const countVisibleMatches = (
+    nodes: TreeNodeItem[],
+    parentMatchesQuery: boolean
+  ) => {
     for (const child of nodes) {
       const childSelfMatches = (() => {
         try {
           const escapedQuery = escapeRegex(query);
           const regex = new RegExp(escapedQuery, "i");
-          if (child.type !== 'match') {
+          if (child.type !== "match") {
             return checkMatch(child.name, regex);
           } else if (child.match) {
             const m = child.match;
-            return checkMatch(m.trigger, regex) ||
-                   (Array.isArray(m.triggers) && m.triggers.some(t => checkMatch(t, regex))) ||
-                   checkMatch(m.label, regex) ||
-                   checkMatch(m.description, regex) ||
-                   checkMatch(m.replace?.toString(), regex);
+            return (
+              checkMatch(m.trigger, regex) ||
+              (Array.isArray(m.triggers) &&
+                m.triggers.some((t) => checkMatch(t, regex))) ||
+              checkMatch(m.label, regex) ||
+              checkMatch(m.description, regex) ||
+              checkMatch(m.replace?.toString(), regex)
+            );
           }
           return false;
-        } catch { return false; }
+        } catch {
+          return false;
+        }
       })();
 
       let childDescendantMatches = false;
       if (child.children && child.children.length > 0) {
-         // Simplified check: does *any* descendant match?
-         // A more accurate count would require full recursion here, but might be slow.
-         // Let's stick to a simpler check for performance.
-         // We only need to know if *this* node should display a count,
-         // not the exact count of *visible* descendants further down.
-         // The current `descendantMatchesSearch` logic handles visibility.
-         // Here, we just count direct children that are matches and match the query.
+        // Simplified check: does *any* descendant match?
+        // A more accurate count would require full recursion here, but might be slow.
+        // Let's stick to a simpler check for performance.
+        // We only need to know if *this* node should display a count,
+        // not the exact count of *visible* descendants further down.
+        // The current `descendantMatchesSearch` logic handles visibility.
+        // Here, we just count direct children that are matches and match the query.
       }
 
-      const childIsVisible = parentMatchesQuery || childSelfMatches || childDescendantMatches;
+      const childIsVisible =
+        parentMatchesQuery || childSelfMatches || childDescendantMatches;
 
-      if (childIsVisible && child.type === 'match') {
+      if (childIsVisible && child.type === "match") {
         count++;
       }
 
       // Recursively count for folder/file children if they are visible
-      if ((child.type === 'folder' || child.type === 'file') && child.children && child.children.length > 0 && childIsVisible) {
-         countVisibleMatches(child.children, childSelfMatches || parentMatchesQuery);
-      } else if (child.type === 'group' && child.children && child.children.length > 0 && childIsVisible) {
-         // Groups only contain matches, count them directly if the group is visible
-         countVisibleMatches(child.children, true); // Children of a visible group are considered visible in context
+      if (
+        (child.type === "folder" || child.type === "file") &&
+        child.children &&
+        child.children.length > 0 &&
+        childIsVisible
+      ) {
+        countVisibleMatches(
+          child.children,
+          childSelfMatches || parentMatchesQuery
+        );
       }
     }
   };
@@ -551,9 +537,7 @@ const visibleChildCount = computed(() => {
   countVisibleMatches(props.node.children, selfMatchesSearch.value);
   nodeCountCache.set(cacheKey, count);
   return count;
-
 });
-
 
 // Auto-expand if parent matches search (ensures visibility)
 watch(
@@ -603,8 +587,8 @@ const handleDragEnd = (event: any) => {
     return;
   }
 
-  // Emit 'move' for matches and groups (handled within YAML files)
-  if (itemType === "match" || itemType === "group") {
+  // Emit 'move' for matches (handled within YAML files)
+  if (itemType === "match") {
     console.log(
       `[TreeNode handleDragEnd] Emitting 'move' for ${itemType} with ID ${itemId}`
     );
@@ -638,21 +622,32 @@ const handleDragMove = (event: any): boolean => {
   const draggedElement = event.dragged;
   const targetContainer = event.to; // The potential drop target container element
 
-  const draggedNodeType = draggedElement.dataset.nodeType as TreeNodeItem["type"] | undefined;
+  const draggedNodeType = draggedElement.dataset.nodeType as
+    | TreeNodeItem["type"]
+    | undefined;
   // The container type is the type of the node *whose children* we are dropping into
-  const targetContainerType = targetContainer.dataset.containerType as TreeNodeItem["type"] | "root" | undefined;
+  const targetContainerType = targetContainer.dataset.containerType as
+    | TreeNodeItem["type"]
+    | "root"
+    | undefined;
   const targetParentId = targetContainer.dataset.parentId; // ID of the node whose children we are dropping into
 
   // Basic validation
   if (!draggedNodeType || !targetContainerType) {
-    console.warn("[DragMove] Missing node type or container type", draggedNodeType, targetContainerType);
+    console.warn(
+      "[DragMove] Missing node type or container type",
+      draggedNodeType,
+      targetContainerType
+    );
     return false; // Cannot determine validity
   }
 
-  // --- Dragging a Match or Group ---
-  if (draggedNodeType === "match" || draggedNodeType === "group") {
-    // Can only be dropped into a 'file' or another 'group'
-    const allowedContainerTypes: Array<TreeNodeItem["type"] | "root"> = ["file", "group"];
+  // --- Dragging a Match ---
+  if (draggedNodeType === "match") {
+    // Can only be dropped into a 'file'
+    const allowedContainerTypes: Array<TreeNodeItem["type"] | "root"> = [
+      "file",
+    ];
     if (!allowedContainerTypes.includes(targetContainerType)) {
       // console.log(`[DragMove] Invalid drop: ${draggedNodeType} cannot be in ${targetContainerType}`);
       return false;
@@ -661,7 +656,10 @@ const handleDragMove = (event: any): boolean => {
   // --- Dragging a File ---
   else if (draggedNodeType === "file") {
     // Can only be dropped into a 'folder' or the 'root'
-    const allowedContainerTypes: Array<TreeNodeItem["type"] | "root"> = ["folder", "root"];
+    const allowedContainerTypes: Array<TreeNodeItem["type"] | "root"> = [
+      "folder",
+      "root",
+    ];
     if (!allowedContainerTypes.includes(targetContainerType)) {
       // console.log(`[DragMove] Invalid drop: ${draggedNodeType} cannot be in ${targetContainerType}`);
       return false;
@@ -670,7 +668,10 @@ const handleDragMove = (event: any): boolean => {
   // --- Dragging a Folder ---
   else if (draggedNodeType === "folder") {
     // Can only be dropped into another 'folder' or the 'root'
-    const allowedContainerTypes: Array<TreeNodeItem["type"] | "root"> = ["folder", "root"];
+    const allowedContainerTypes: Array<TreeNodeItem["type"] | "root"> = [
+      "folder",
+      "root",
+    ];
     if (!allowedContainerTypes.includes(targetContainerType)) {
       // console.log(`[DragMove] Invalid drop: ${draggedNodeType} cannot be in ${targetContainerType}`);
       return false;
@@ -686,22 +687,24 @@ const handleDragMove = (event: any): boolean => {
   return true; // Allow the move
 };
 
-
-watch(
-  () => props.selectedId,
-  (newId) => {
-    // Optional: Add logic if needed when selection changes, e.g., scroll into view
-  }
-);
-
 onMounted(() => {
-  // Removed TreeNodeRegistry registration
+  TreeNodeRegistry.register(
+    props.node.id,
+    {
+      isOpen: isOpen,
+    },
+    {
+      type: props.node.type,
+      id: props.node.id,
+      parentId: props.parentId,
+      // Add other relevant info if needed
+    }
+  );
 });
 
 onUnmounted(() => {
-  // Removed TreeNodeRegistry unregistration
+  TreeNodeRegistry.unregister(props.node.id);
 });
-
 
 // 折叠当前节点 (can be called programmatically if needed)
 const collapseNode = () => {
@@ -714,25 +717,33 @@ const collapseNode = () => {
 // 开始编辑节点名称
 const startEditing = () => {
   // Only allow editing file and folder names
-  if (props.node.type !== 'file' && props.node.type !== 'folder') {
+  if (props.node.type !== "file" && props.node.type !== "folder") {
     return;
   }
 
   // Prevent renaming the root 'Packages' folder or items directly inside it (convention)
-  if (props.node.name === 'Packages' ||
-      (props.node.path && props.node.path.toLowerCase().startsWith('packages/') && props.node.path.split('/').length === 2)) {
-       // Allow renaming files/folders *within* subdirectories of Packages
-       // Example: 'packages/my_package/config.yml' IS renameable
-       // Example: 'packages/my_package' IS renameable
-       // Example: 'packages/default.yml' IS NOT renameable (direct child)
-       // Example: 'Packages' folder IS NOT renameable
-       if (props.node.name === 'Packages' || (props.node.path && props.node.path.split('/').length <= 2 && props.node.path.toLowerCase().startsWith('packages/'))) {
-         // console.log("Renaming root Packages folder or its direct children is disallowed.");
-         toast.info("根 'Packages' 文件夹及其直接子项不允许重命名。");
-         return;
-       }
+  if (
+    props.node.name === "Packages" ||
+    (props.node.path &&
+      props.node.path.toLowerCase().startsWith("packages/") &&
+      props.node.path.split("/").length === 2)
+  ) {
+    // Allow renaming files/folders *within* subdirectories of Packages
+    // Example: 'packages/my_package/config.yml' IS renameable
+    // Example: 'packages/my_package' IS renameable
+    // Example: 'packages/default.yml' IS NOT renameable (direct child)
+    // Example: 'Packages' folder IS NOT renameable
+    if (
+      props.node.name === "Packages" ||
+      (props.node.path &&
+        props.node.path.split("/").length <= 2 &&
+        props.node.path.toLowerCase().startsWith("packages/"))
+    ) {
+      // console.log("Renaming root Packages folder or its direct children is disallowed.");
+      toast.info("根 'Packages' 文件夹及其直接子项不允许重命名。");
+      return;
+    }
   }
-
 
   isEditing.value = true;
   // Use displayName which removes the extension for files
@@ -763,47 +774,45 @@ const saveNodeName = async () => {
 
   // Validate new name
   if (!newNameTrimmed) {
-    toast.error('名称不能为空');
+    toast.error("名称不能为空");
     return;
   }
   // Basic validation for invalid characters (adjust regex as needed)
   if (/[\\/:*?"<>|]/.test(newNameTrimmed)) {
-     toast.error('名称包含无效字符');
-     return;
+    toast.error("名称包含无效字符");
+    return;
   }
-
 
   // Construct the full new file/folder name (add extension back for files)
   let newFileName = newNameTrimmed;
-  if (props.node.type === 'file') {
-      const match = props.node.name.match(/\.(yml|yaml)$/i);
-      const extension = match ? match[0] : '.yml'; // Default to .yml if somehow missing
-      newFileName = `${newNameTrimmed}${extension}`;
+  if (props.node.type === "file") {
+    const match = props.node.name.match(/\.(yml|yaml)$/i);
+    const extension = match ? match[0] : ".yml"; // Default to .yml if somehow missing
+    newFileName = `${newNameTrimmed}${extension}`;
   }
-
 
   try {
     // Call the store action to handle renaming
     console.log(`Attempting to rename node ${props.node.id} to ${newFileName}`);
     await store.renameNode(props.node.id, newFileName);
-    toast.success(`${props.node.type === 'file' ? '文件' : '文件夹'}重命名成功`);
+    toast.success(
+      `${props.node.type === "file" ? "文件" : "文件夹"}重命名成功`
+    );
     // The store action should handle updating the state and file system
     // No need to manually update node.path, node.name, or call loadConfig here
   } catch (error: any) {
-    console.error('重命名失败:', error);
-    toast.error(`重命名失败: ${error.message || '未知错误'}`);
+    console.error("重命名失败:", error);
+    toast.error(`重命名失败: ${error.message || "未知错误"}`);
     // Optionally revert editingName back to originalName if needed,
     // though the UI state is already updated. The store holds the source of truth.
   }
 };
-
 
 // 当点击匹配项左侧空白区域时，触发父节点的折叠/展开
 const toggleParentFolder = () => {
   if (props.parentId) {
     // Emit event for parent component to handle toggling the parent node
     emit("toggle-node", props.parentId);
-    // Removed direct check/dependency on TreeNodeRegistry
   }
 };
 
@@ -814,7 +823,7 @@ const handleClick = (event: MouseEvent) => {
   const iconSpan = target.closest('span[class*="mr-1"]'); // More specific selector if needed
 
   // Ensure the tree component gets focus for keyboard navigation etc.
-  const treeElement = document.querySelector('.config-tree'); // Adjust selector if needed
+  const treeElement = document.querySelector(".config-tree"); // Adjust selector if needed
   if (treeElement && treeElement instanceof HTMLElement) {
     treeElement.focus();
     // console.log('TreeNode点击: 树组件获得焦点');
@@ -830,14 +839,13 @@ const handleClick = (event: MouseEvent) => {
   }
 };
 
-
 // 计算当前节点的层级
 const nodeLevel = computed(() => props.level || 0);
 
 // 判断是否应该显示计数 (Badge with number of matches)
 const shouldShowCount = computed(() => {
   // Only show count for Folders, Files, and Groups that actually contain matches
-  if (props.node.type === 'match') return false; // Matches never show count
+  if (props.node.type === "match") return false; // Matches never show count
   if (!hasChildren.value) return false; // Don't show if no children
 
   // Show count if it has visible match children (calculated by visibleChildCount)
@@ -865,7 +873,6 @@ const shouldShowCount = computed(() => {
 
 .folder-node,
 .file-node,
-.group-node,
 .match-node {
   width: 100%;
 }
@@ -977,7 +984,11 @@ const shouldShowCount = computed(() => {
   display: block;
   width: 100%;
   height: 3px; /* Make the line thicker */
-  background-image: linear-gradient(to right, #5aceff, #ee38ff); /* Example gradient */
+  background-image: linear-gradient(
+    to right,
+    #5aceff,
+    #ee38ff
+  ); /* Example gradient */
   /* position: absolute; */
   /* top: 0; */
   /* left: 0; */
