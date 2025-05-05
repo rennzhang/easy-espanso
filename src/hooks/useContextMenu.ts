@@ -48,18 +48,6 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
   };
 
   // --- 基础操作 (基本不变，只复制文本) ---
-  const handleCopyNodeName = async () => {
-    const node = getCurrentNode();
-    if (!node || !node.name) return;
-    try {
-      await navigator.clipboard.writeText(node.name);
-      toast.success('名称已复制');
-    } catch (err) {
-      console.error('复制名称失败:', err);
-      toast.error('无法复制名称');
-    }
-  };
-
   const handleCopyNodePath = async () => {
     const node = getCurrentNode();
     if (!node) return;
@@ -310,11 +298,15 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     isFile: computed(() => getCurrentNode()?.type === 'file'),
     isGroup: computed(() => getCurrentNode()?.type === 'group'),
     isMatch: computed(() => getCurrentNode()?.type === 'match'),
-    canPaste: computed(() => ClipboardManager.hasItem()), // 检查剪贴板是否有内容
+    canPaste: computed(() => {
+      const node = getCurrentNode();
+      // 文件夹类型不支持粘贴操作
+      if (node?.type === 'folder') return false;
+      return ClipboardManager.hasItem(); 
+    }),
     currentNodeHasChildren: computed(() => nodeHasChildren(getCurrentNode())),
 
     // 基础操作
-    handleCopyNodeName,
     handleCopyNodePath,
 
     // 剪贴板操作
