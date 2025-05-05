@@ -308,6 +308,15 @@ function showNotification(message) {
   }
 }
 
+// 获取环境变量
+function getEnvironmentVariable(name) {
+  console.log(`[preloadServices] 获取环境变量: ${name}`);
+  if (process.env && name in process.env) {
+    return Promise.resolve(process.env[name]);
+  }
+  return Promise.resolve(null);
+}
+
 // 导出函数
 window.preloadApi = {
   // 文件操作
@@ -328,6 +337,9 @@ window.preloadApi = {
   // Espanso相关
   getEspansoConfigDir,
   getEspansoConfigFiles,
+  
+  // 环境变量
+  getEnvironmentVariable,
 
   // 系统操作
   platform,

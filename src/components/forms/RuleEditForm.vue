@@ -592,7 +592,6 @@ import {
   onBeforeUnmount,
   nextTick,
 } from "vue";
-import { EspansoRule } from "../../types/espanso-config";
 import { useEspansoStore } from "../../store/useEspansoStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
@@ -625,7 +624,7 @@ import {
   SettingsIcon,
   UploadCloudIcon,
 } from "lucide-vue-next";
-import type { Match } from "../../types/espanso";
+import type { Match } from "@/types/core/espanso.types";
 import { Transition } from "vue";
 import {
   Select,
@@ -679,8 +678,6 @@ type ContentType =
   | "html"
   | "image"
   | "form"
-  | "script"
-  | "keystroke";
 
 // 定义表单状态接口 - 基于 Match 的字段
 interface RuleFormState {
@@ -766,9 +763,6 @@ const cmOptions = computed(() => {
       break;
     case "form": // Use YAML mode for forms?
       mode = "yaml";
-      break;
-    case "script":
-      mode = "javascript";
       break;
     case "plain":
     default:
@@ -1014,7 +1008,7 @@ onMounted(() => {
     console.log("onMounted 后，nextTick中重置状态和保存原始数据");
     originalFormData.value = JSON.parse(JSON.stringify(formState.value));
     isFormModified.value = false;
-    store.state.hasUnsavedChanges = false;
+    store.state
   });
 });
 
@@ -1719,8 +1713,7 @@ const isTextBasedContent = computed(() => {
     type === "plain" ||
     type === "markdown" ||
     type === "html" ||
-    type === "form" ||
-    type === "script"
+    type === "form" 
   );
 });
 

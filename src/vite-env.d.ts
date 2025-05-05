@@ -1,34 +1,8 @@
 /// <reference types="vite/client" />
 
-import { EspansoFile } from './types/espanso-config';
-import { FileInfo } from './types/preload';
+import { EspansoFile } from "./espanso-format.types";
+import { FileInfo } from '@/types/preload';
 
-// 声明Preload API的类型
-interface PreloadApi {
-  // 环境判断
-  isElectron?: boolean;
-  isUTools?: boolean;
-
-  // 文件操作
-  readFile: (filePath: string) => Promise<string>;
-  writeFile: (filePath: string, content: string) => Promise<void>;
-  fileExists: (filePath: string) => Promise<boolean>;
-  listFiles: (dirPath: string) => Promise<FileInfo[]>;
-  showOpenDialog: (options?: any) => Promise<string[] | undefined>;
-  showOpenDirectoryDialog: (options?: any) => Promise<string[] | undefined>;
-  showSaveDialog: (options?: any) => Promise<{ canceled: boolean, filePath?: string }>;
-
-  // YAML操作
-  parseYaml: (content: string) => any;
-  serializeYaml: (data: any) => Promise<string>;
-
-  // Espanso相关
-  getEspansoConfigDir: () => string;
-  getEspansoConfigFiles: () => Promise<EspansoFile[]>;
-
-  // 其他
-  showNotification: (message: string) => void;
-}
 
 // 扩展Window接口以包含Preload API
 declare interface Window {

@@ -1,277 +1,589 @@
-import { Match, Group } from '@/types/espanso';
-import { FileInfo, YamlData } from '@/types/preload';
+import type { Match, Group } from "@/types/core/espanso.types"; // 核心内部类型
+import type { YamlData } from "@/types/core/preload.types"; // Preload 相关类型
+import type {
+  ConfigTreeNode,
+  ConfigFileNode,
+  ConfigFolderNode,
+} from "@/types/core/ui.types"; // 核心 UI/树节点类型
 
-// --- Define Tree Node Types Here --- //
-// (Copied from useEspansoStore.ts as they relate to the tree structure)
-export interface ConfigFileNode {
-  type: 'file';
-  name: string;
-  path: string;
-  fileType: 'match' | 'config' | 'package';
-  content?: YamlData;
-  matches?: Match[];
-  groups?: Group[];
-  id?: string; // Ensure ID is part of the type
+// --- 类型守卫 (Type Guards) ---
+
+function isFileNode(node: any): node is ConfigFileNode {
+  return node?.type === "file";
 }
 
-export interface ConfigFolderNode {
-  type: 'folder';
-  name: string;
-  path: string;
-  children: (ConfigFileNode | ConfigFolderNode)[];
-  id?: string; // Ensure ID is part of the type
+function isFolderNode(node: any): node is ConfigFolderNode {
+  return node?.type === "folder";
 }
 
-export type ConfigTreeNode = ConfigFileNode | ConfigFolderNode;
+function isMatch(item: any): item is Match {
+  return item?.type === "match";
+}
 
-// Re-export types for consumers
-export type { FileInfo, YamlData };
+function isGroup(item: any): item is Group {
+  return item?.type === "group";
+}
 
-// --- Tree Creation --- //
+// --- 树节点创建 ---
 
-export const createFileNode = (file: FileInfo, content: YamlData, fileType: 'match' | 'config' | 'package', processedMatches: Match[], processedGroups: Group[]): ConfigFileNode => {
-    return {
-      type: 'file',
-      name: file.name,
-      path: file.path,
-      id: `file-${file.path}`, // Generate ID based on path
-      fileType,
-      content, 
-      matches: processedMatches,
-      groups: processedGroups
-    };
+/**
+ * 创建文件节点 (ConfigFileNode)
+ * @param name 文件名 (e.g., 'base.yml')
+ * @param path 完整文件路径
+ * @param fileType 文件类型 ('match', 'config', 'package')
+ * @param content 可选的原始 YAML 内容
+ * @param matches 该文件包含的 Match 对象数组
+ * @param groups 该文件包含的顶层 Group 对象数组
+ * @returns ConfigFileNode
+ */
+export const createFileNode = (
+  name: string,
+  path: string,
+  fileType: ConfigFileNode["fileType"],
+  content: YamlData | undefined,
+  matches: Match[],
+  groups: Group[]
+): ConfigFileNode => {
+  return {
+    type: "file",
+    id: `file-${path}`, // 使用路径生成唯一 ID
+    name,
+    path,
+    fileType,
+    content,
+    matches: matches || [],
+    groups: groups || [],
+  };
 };
 
-export const createFolderNode = (name: string, path: string): ConfigFolderNode => {
-    return {
-      type: 'folder',
-      name,
-      path,
-      id: `folder-${path}`, // Generate ID based on path
-      children: []
-    };
+/**
+ * 创建文件夹节点 (ConfigFolderNode)
+ * @param name 文件夹名称
+ * @param path 完整文件夹路径
+ * @returns ConfigFolderNode
+ */
+export const createFolderNode = (
+  name: string,
+  path: string
+): ConfigFolderNode => {
+  return {
+    type: "folder",
+    id: `folder-${path}`, // 使用路径生成唯一 ID
+    name,
+    path,
+    children: [],
+  };
 };
 
-export const addToTree = (tree: ConfigTreeNode[], fileNodeToAdd: ConfigFileNode, relativePath: string): void => {
-    // Use preloadApi for path joining if available, cast to any
-    // TODO: Consider passing joinPath function as an argument instead of relying on global window.preloadApi
-    const safeJoinPath = (...args: string[]) => {
-      const api = window.preloadApi as any;
-      if (api?.joinPath) {
-        return api.joinPath(...args);
-      } else {
-        return args.join('/'); // Basic fallback
-      }
-    };
+// --- 树数据提取 ---
 
-    if (!relativePath || relativePath === '') {
-      tree.push(fileNodeToAdd);
-      return;
-    }
-    const parts = relativePath.split('/');
-    const folderName = parts[0];
-    let folderNode = tree.find(node => node.type === 'folder' && node.name === folderName) as ConfigFolderNode | undefined;
-    if (!folderNode) {
-      // Calculate folder path based on fileNodeToAdd's path and folderName
-      const fileDir = fileNodeToAdd.path.substring(0, fileNodeToAdd.path.lastIndexOf('/'));
-      const folderPath = safeJoinPath(fileDir.substring(0, fileDir.lastIndexOf('/')), folderName);
-      // This path calculation might be brittle, depends heavily on relativePath structure
-      // It assumes relativePath starts from one level above the file's immediate parent
-      // Let's refine or simplify based on how relativePath is constructed in loadConfig
-      // A safer approach might be to build the path iteratively
-      let currentLevelPath = ''; // Assume starting from a base known path passed to addToTree initially
-      // This needs refinement based on the caller context.
-      // Sticking to simpler (potentially flawed) logic for now:
-      const parentOfFileDir = fileDir.substring(0, fileDir.lastIndexOf('/'));
-      const calculatedFolderPath = safeJoinPath(parentOfFileDir, folderName);
-
-      folderNode = createFolderNode(folderName, calculatedFolderPath); // Use calculated path
-      tree.push(folderNode);
-    }
-    if (parts.length > 1) {
-      addToTree(folderNode.children, fileNodeToAdd, parts.slice(1).join('/'));
-    } else {
-      folderNode.children.push(fileNodeToAdd);
-    }
-};
-
-// --- Tree Searching/Finding --- //
-
-export const findFileNode = (nodes: ConfigTreeNode[], path: string): ConfigFileNode | null => {
-    for (const node of nodes) {
-      if (node.type === 'file' && node.path === path) {
-        return node;
-      } else if (node.type === 'folder' && node.children) {
-        const found = findFileNode(node.children, path);
-        if (found) return found;
-      }
-    }
-    return null;
-};
-
-// Helper to find the node (file/folder) itself by ID
-const findNodeInTreeById = (nodes: ConfigTreeNode[], id: string): ConfigTreeNode | null => {
-    for (const node of nodes) {
-        if (node.id === id) return node;
-        if (node.type === 'folder' && node.children) {
-            const found = findNodeInTreeById(node.children, id);
-            if (found) return found;
-        }
-    }
-    return null;
-};
-
-// Revised findNodeById from store to search specifically within the tree structure
-export const findNodeById = (
-      nodes: ConfigTreeNode[],
-      id: string,
-      allowedTypes: Array<'file' | 'folder'> // Removed match/group as this searches tree nodes
-  ): ConfigTreeNode | null => {
-      if (!nodes || !Array.isArray(nodes) || !id) return null;
-      for (const node of nodes) {
-          if (allowedTypes.includes(node.type) && node.id === id) {
-              return node;
-          }
-          // Recurse only into folders
-          if (node.type === 'folder' && node.children) {
-              const foundInChild = findNodeById(node.children, id, allowedTypes);
-              if (foundInChild) return foundInChild;
-          }
-      }
-      return null;
-};
-
-// Gets the file path containing a match/group ID by searching the tree
-export const getFilePathForNodeId = (nodes: ConfigTreeNode[], targetItemId: string): string | null => {
-    for (const node of nodes) {
-      if (node.type === 'file') {
-         // Check if the file node itself matches (might happen if file ID is passed? unlikely)
-         // if (node.id === targetItemId) return node.path;
-
-         // Check contained matches/groups
-         if (node.matches?.some(m => m.id === targetItemId)) return node.path;
-         if (node.groups) {
-             // Need recursive search within groups defined in this file
-             const findInGroup = (group: Group): boolean => {
-                 if (group.id === targetItemId) return true;
-                 if (group.matches?.some(m => m.id === targetItemId)) return true;
-                 if (group.groups?.some(g => findInGroup(g))) return true;
-                 return false;
-             }
-             if (node.groups.some(g => findInGroup(g))) return node.path;
-         }
-      }
-      else if (node.type === 'folder' && node.children) {
-        const path = getFilePathForNodeId(node.children, targetItemId);
-        if (path) return path;
-      }
-    }
-    return null;
-};
-
-// Gets all descendant node IDs (files/folders) starting from a folder ID
-export const getDescendantNodeIds = (nodes: ConfigTreeNode[], startNodeId: string): string[] => {
-    const descendants = new Set<string>();
-    const startNode = findNodeInTreeById(nodes, startNodeId);
-
-    if (!startNode || startNode.type !== 'folder') return [];
-
-    const queue: ConfigTreeNode[] = [startNode];
-
-    while (queue.length > 0) {
-      const currentNode = queue.shift()!;
-      if (currentNode.id && !descendants.has(currentNode.id)) { // Check ID exists
-        descendants.add(currentNode.id);
-        if (currentNode.type === 'folder' && currentNode.children) {
-          queue.push(...currentNode.children);
-        }
-      }
-    }
-    return Array.from(descendants);
-};
-
-
-// --- Tree Updating --- //
-
-// Finds and updates an item (Match/Group) reference within the ConfigTreeNode structure
-// Note: This updates the REFERENCES within the tree, assuming the item itself was updated elsewhere.
-export const findAndUpdateInTree = (nodes: ConfigTreeNode[], updatedItem: Match | Group): boolean => {
-    for (const node of nodes) {
-        if (node.type === 'file') {
-            if (updatedItem.type === 'match' && node.matches) {
-                const index = node.matches.findIndex(m => m.id === updatedItem.id);
-                if (index !== -1) {
-                    node.matches[index] = updatedItem as Match;
-                    return true;
-                }
-            } else if (updatedItem.type === 'group' && node.groups) {
-                // Modify function to accept Group[] | undefined
-                const findAndUpdateNestedGroup = (groups: Group[] | undefined): boolean => {
-                    // Handle undefined case at the beginning
-                    if (!groups) {
-                        return false;
-                    }
-                    for (let i = 0; i < groups.length; i++) {
-                        if (groups[i].id === updatedItem.id) {
-                            groups[i] = updatedItem as Group;
-                            return true;
-                        }
-                        // No need for explicit check here anymore, as the function accepts undefined
-                        if (findAndUpdateNestedGroup(groups[i].groups)) {
-                            return true;
-                        }
-                    }
-                    return false;
-                }
-                // No need for check here as the function handles undefined
-                if (findAndUpdateNestedGroup(node.groups)) return true;
+/**
+ * 从 ConfigTreeNode 数组中递归提取所有的 Match 对象
+ * @param nodes 树节点数组
+ * @returns 所有找到的 Match 对象数组
+ */
+export const extractMatchesFromTree = (nodes: ConfigTreeNode[]): Match[] => {
+  const matches: Match[] = [];
+  const traverse = (currentNodes: ConfigTreeNode[]) => {
+    for (const node of currentNodes) {
+      if (isFileNode(node)) {
+        matches.push(...(node.matches || []));
+        // 递归处理文件节点内的分组
+        const traverseGroups = (groups: Group[]) => {
+          for (const group of groups) {
+            matches.push(...(group.matches || []));
+            if (group.groups) {
+              traverseGroups(group.groups);
             }
-        } else if (node.type === 'folder' && node.children) {
-            if (findAndUpdateInTree(node.children, updatedItem)) {
-                return true;
-            }
-        }
-    }
-    return false;
-};
-
-// Updates paths for a node and its descendants after a move
-export const updateDescendantPathsAndFilePaths = async (
-    node: ConfigTreeNode,
-    oldBasePath: string,
-    newBasePath: string,
-    joinPathFunc: (...paths: string[]) => Promise<string> // Pass joinPath async function
-  ) => {
-
-    const oldNodePath = node.path;
-    // Calculate new path based on the *new* base path and the node's name
-    const newNodePath = await joinPathFunc(newBasePath, node.name);
-    node.path = newNodePath;
-    // console.log(`[updateDescendantPaths] Updated path for ${node.type} ${node.id}: ${newNodePath}`);
-
-    // If it's a file node, update filePath for contained matches/groups
-    if (node.type === 'file') {
-        const updateItemPath = (item: Match | Group) => {
-          if (item.filePath === oldNodePath) { // Only update if it pointed to the old file path
-            item.filePath = newNodePath;
-          }
-          // Recurse for nested groups
-          if (item.type === 'group' && item.groups) {
-            item.groups.forEach(updateItemPath);
-          }
-           if (item.type === 'group' && item.matches) {
-            item.matches.forEach(updateItemPath);
           }
         };
-        node.matches?.forEach(updateItemPath);
-        node.groups?.forEach(updateItemPath);
-    }
-
-    // If it's a folder and has children, recursively update them using the *new* node path as their base
-    if (node.type === 'folder' && node.children && node.children.length > 0) {
-      for (const child of node.children) {
-          // Pass the NEW path of the current node as the base path for its children
-         await updateDescendantPathsAndFilePaths(child, child.path.substring(0, child.path.lastIndexOf('/')), newNodePath, joinPathFunc);
+        if (node.groups) {
+          traverseGroups(node.groups);
+        }
+      } else if (isFolderNode(node) && node.children) {
+        traverse(node.children);
       }
     }
-}; 
+  };
+  traverse(nodes);
+  return matches;
+};
+
+/**
+ * 从 ConfigTreeNode 数组中递归提取所有的 Group 对象 (包括嵌套的)
+ * @param nodes 树节点数组
+ * @returns 所有找到的 Group 对象数组
+ */
+export const extractGroupsFromTree = (nodes: ConfigTreeNode[]): Group[] => {
+  const groups: Group[] = [];
+  const traverse = (currentNodes: ConfigTreeNode[]) => {
+    for (const node of currentNodes) {
+      if (isFileNode(node)) {
+        // 递归处理文件节点内的分组
+        const collectGroups = (parentGroups: Group[]) => {
+          for (const group of parentGroups) {
+            groups.push(group); // 添加当前分组
+            if (group.groups) {
+              collectGroups(group.groups); // 递归子分组
+            }
+          }
+        };
+        if (node.groups) {
+          collectGroups(node.groups);
+        }
+      } else if (isFolderNode(node) && node.children) {
+        traverse(node.children);
+      }
+    }
+  };
+  traverse(nodes);
+  return groups;
+};
+
+// --- 树节点/项目查找 ---
+
+/**
+ * 根据路径查找文件节点 (ConfigFileNode)
+ * @param nodes 树节点数组
+ * @param path 要查找的文件路径
+ * @returns 找到的 ConfigFileNode 或 null
+ */
+export const findFileNode = (
+  nodes: ConfigTreeNode[],
+  path: string
+): ConfigFileNode | null => {
+  for (const node of nodes) {
+    if (isFileNode(node) && node.path === path) {
+      return node;
+    } else if (isFolderNode(node) && node.children) {
+      const found = findFileNode(node.children, path);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+/**
+ * **(已恢复)** 根据 ID 查找树节点 (ConfigFileNode 或 ConfigFolderNode)
+ * 这个函数只在树的顶层节点 (File/Folder) 中查找。
+ * @param nodes 树节点数组
+ * @param id 要查找的节点 ID (e.g., 'file-/path/to/file.yml', 'folder-/path/to/folder')
+ * @returns 找到的 ConfigTreeNode 或 null
+ */
+export const findNodeById = (
+  nodes: ConfigTreeNode[],
+  id: string
+): ConfigTreeNode | null => {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (isFolderNode(node) && node.children) {
+      const found = findNodeById(node.children, id); // 注意：这里之前可能写错了，应该是 findNodeById
+      if (found) return found;
+    }
+  }
+  return null;
+};
+/**
+ * **(新增)** 在树结构中查找指定 ID 的项或节点的直接父节点。
+ * 父节点可能是 ConfigFolderNode, ConfigFileNode, 或 Group。
+ * @param nodes 要搜索的树节点数组。
+ * @param targetId 要查找其父节点的项或节点的 ID。
+ * @returns 返回父节点 (Folder, File, 或 Group) 或 null (如果在顶层或未找到)。
+ */
+export const findParentNodeInTree = (
+  nodes: ConfigTreeNode[],
+  targetId: string
+): ConfigFolderNode | ConfigFileNode | Group | null => {
+  // 内部递归函数
+  const findParentRecursive = (
+    currentNodes: (ConfigTreeNode | Match | Group)[],
+    currentParent: ConfigFolderNode | ConfigFileNode | Group | null
+  ): ConfigFolderNode | ConfigFileNode | Group | null => {
+    for (const nodeOrItem of currentNodes) {
+      if (!nodeOrItem) continue;
+
+      // 检查当前节点的直接子项/匹配项/分组
+      if (isFileNode(nodeOrItem)) {
+        if (nodeOrItem.matches?.some((m) => m.id === targetId))
+          return nodeOrItem; // 父节点是文件
+        if (nodeOrItem.groups?.some((g) => g.id === targetId))
+          return nodeOrItem; // 父节点是文件
+        // 递归进入文件内的分组
+        if (nodeOrItem.groups) {
+          const foundInFileGroups = findParentRecursive(
+            nodeOrItem.groups,
+            nodeOrItem
+          );
+          if (foundInFileGroups) return foundInFileGroups;
+        }
+      } else if (isFolderNode(nodeOrItem)) {
+        if (nodeOrItem.children?.some((child) => child.id === targetId))
+          return nodeOrItem; // 父节点是文件夹
+        // 递归进入文件夹的子节点
+        if (nodeOrItem.children) {
+          const foundInFolder = findParentRecursive(
+            nodeOrItem.children,
+            nodeOrItem
+          );
+          if (foundInFolder) return foundInFolder;
+        }
+      } else if (isGroup(nodeOrItem)) {
+        if (nodeOrItem.matches?.some((m) => m.id === targetId))
+          return nodeOrItem; // 父节点是分组
+        if (nodeOrItem.groups?.some((g) => g.id === targetId))
+          return nodeOrItem; // 父节点是分组
+        // 递归进入分组的子分组
+        if (nodeOrItem.groups) {
+          const foundInNestedGroups = findParentRecursive(
+            nodeOrItem.groups,
+            nodeOrItem
+          );
+          if (foundInNestedGroups) return foundInNestedGroups;
+        }
+      }
+      // 注意：如果 targetId 是 Match，它不可能作为父节点，所以不需要检查 Match 的子项
+    }
+    return null; // 在当前层级未找到
+  };
+
+  // 从根节点开始查找，初始父节点设为 null
+  return findParentRecursive(nodes, null);
+};
+/**
+ * 根据 ID 查找树节点 (ConfigFileNode 或 ConfigFolderNode)
+ * @param nodes 树节点数组
+ * @param id 要查找的节点 ID (e.g., 'file-/path/to/file.yml', 'folder-/path/to/folder')
+ * @returns 找到的 ConfigTreeNode 或 null
+ */
+export const findTreeNodeById = (
+  nodes: ConfigTreeNode[],
+  id: string
+): ConfigTreeNode | null => {
+  for (const node of nodes) {
+    if (node.id === id) return node;
+    if (isFolderNode(node) && node.children) {
+      const found = findTreeNodeById(node.children, id);
+      if (found) return found;
+    }
+  }
+  return null;
+};
+
+/**
+ * 根据 ID 在整个树结构中查找具体的项 (Match, Group, ConfigFileNode, ConfigFolderNode)
+ * @param nodes 树节点数组
+ * @param targetId 要查找的项的 ID
+ * @returns 找到的项或节点, 或 null
+ */
+export const findItemInTreeById = (
+  nodes: ConfigTreeNode[],
+  targetId: string
+): Match | Group | ConfigTreeNode | null => {
+  for (const node of nodes) {
+    // 检查节点本身
+    if (node.id === targetId) {
+      return node;
+    }
+
+    // 如果是文件节点，检查其包含的 Matches 和 Groups (递归)
+    if (isFileNode(node)) {
+      // 检查顶层 Matches
+      const foundMatch = node.matches?.find((m) => m.id === targetId);
+      if (foundMatch) return foundMatch;
+
+      // 递归检查 Groups
+      const findInGroups = (groups: Group[]): Match | Group | null => {
+        for (const group of groups) {
+          if (group.id === targetId) return group;
+          const foundNestedMatch = group.matches?.find(
+            (m) => m.id === targetId
+          );
+          if (foundNestedMatch) return foundNestedMatch;
+          if (group.groups) {
+            const foundInNestedGroup = findInGroups(group.groups);
+            if (foundInNestedGroup) return foundInNestedGroup;
+          }
+        }
+        return null;
+      };
+      if (node.groups) {
+        const foundGroupItem = findInGroups(node.groups);
+        if (foundGroupItem) return foundGroupItem;
+      }
+    }
+    // 如果是文件夹节点，递归检查子节点
+    else if (isFolderNode(node) && node.children) {
+      const foundInChildren = findItemInTreeById(node.children, targetId);
+      if (foundInChildren) return foundInChildren;
+    }
+  }
+  return null; // 未找到
+};
+
+/**
+ * 获取指定 Match 或 Group ID 所在的文件节点的路径
+ * @param nodes 树节点数组
+ * @param targetItemId Match 或 Group 的 ID
+ * @returns 文件路径字符串或 null
+ */
+export const getFilePathForNodeId = (
+  nodes: ConfigTreeNode[],
+  targetItemId: string
+): string | null => {
+  for (const node of nodes) {
+    if (isFileNode(node)) {
+      // 检查文件节点内的 Matches 和 Groups
+      const findRecursively = (item: Match | Group): boolean => {
+        if (item.id === targetItemId) return true;
+        if (isGroup(item)) {
+          if (item.matches?.some((m) => m.id === targetItemId)) return true;
+          if (item.groups?.some((g) => findRecursively(g))) return true;
+        }
+        return false;
+      };
+
+      if (node.matches?.some((m) => m.id === targetItemId)) return node.path;
+      if (node.groups?.some((g) => findRecursively(g))) return node.path;
+    } else if (isFolderNode(node) && node.children) {
+      const path = getFilePathForNodeId(node.children, targetItemId);
+      if (path) return path;
+    }
+  }
+  return null;
+};
+
+// --- 树结构修改 ---
+
+/**
+ * 从树中移除指定 ID 的项或节点。
+ * @param nodes 树节点数组 (会被直接修改)
+ * @param targetId 要移除的项或节点的 ID
+ * @returns 如果成功移除返回 true, 否则返回 false
+ */
+export const removeItemFromTree = (
+  nodes: ConfigTreeNode[],
+  targetId: string
+): boolean => {
+  for (let i = nodes.length - 1; i >= 0; i--) {
+    const node = nodes[i];
+
+    // 1. 检查是否是顶层节点本身
+    if (node.id === targetId) {
+      nodes.splice(i, 1);
+      return true;
+    }
+
+    // 2. 如果是文件节点，检查其内部
+    if (isFileNode(node)) {
+      // 检查顶层 Matches
+      const matchIndex =
+        node.matches?.findIndex((m) => m.id === targetId) ?? -1;
+      if (matchIndex !== -1) {
+        node.matches?.splice(matchIndex, 1);
+        return true;
+      }
+
+      // 递归检查和移除 Groups 及其内容
+      const removeFromGroups = (groups: Group[]): boolean => {
+        for (let j = groups.length - 1; j >= 0; j--) {
+          const group = groups[j];
+          // 检查分组本身
+          if (group.id === targetId) {
+            groups.splice(j, 1);
+            return true;
+          }
+          // 检查分组内的 Matches
+          const groupMatchIndex =
+            group.matches?.findIndex((m) => m.id === targetId) ?? -1;
+          if (groupMatchIndex !== -1) {
+            group.matches?.splice(groupMatchIndex, 1);
+            return true;
+          }
+          // 递归检查子分组
+          if (group.groups && removeFromGroups(group.groups)) {
+            return true;
+          }
+        }
+        return false;
+      };
+      if (node.groups && removeFromGroups(node.groups)) {
+        return true;
+      }
+    }
+    // 3. 如果是文件夹节点，递归检查子节点
+    else if (isFolderNode(node) && node.children) {
+      if (removeItemFromTree(node.children, targetId)) {
+        return true;
+      }
+    }
+  }
+  return false; // 未找到或移除
+};
+
+/**
+ * 将项 (Match/Group) 或节点 (File/Folder) 添加到树中的指定父节点下。
+ * 注意：此函数修改传入的 `nodes` 数组。它负责将引用添加到正确的位置，
+ * 并 *应该* 尝试设置新添加项的 `filePath` (如果适用且父节点已知)。
+ *
+ * @param nodes 根树节点数组 (会被修改)
+ * @param itemRef 要添加的项或节点的引用 (Match, Group, ConfigFileNode, ConfigFolderNode)
+ * @param targetParentNodeId 目标父节点的 ID (可以是 File, Folder, 或 Group ID)。如果为 null，则添加到根级别 (通常意味着添加到某个默认文件，逻辑需调用者处理或在此细化)。
+ * @param index 可选的插入索引，默认为追加。
+ * @returns 添加成功则返回添加的项的引用 (可能已更新 filePath), 失败则返回 null。
+ */
+export const addItemToTree = (
+  nodes: ConfigTreeNode[],
+  itemRef: Match | Group | ConfigTreeNode,
+  targetParentNodeId: string | null,
+  index: number = -1 // 默认为追加
+): Match | Group | ConfigTreeNode | null => {
+  let targetArray: any[] | undefined;
+  let parentFilePath: string | undefined;
+
+  // --- 查找目标父节点和它的子/匹配项数组 ---
+  if (targetParentNodeId === null) {
+    // 添加到根? 这通常意味着添加到某个默认文件或文件夹，此函数无法确定。
+    // 调用者 (store action) 需要处理这种情况，比如找到默认文件节点再调用此函数。
+    console.error(
+      "[addItemToTree] targetParentNodeId is null. Cannot add to root directly."
+    );
+    return null; // 或者抛出错误
+  }
+
+  const parentNodeOrItem = findItemInTreeById(nodes, targetParentNodeId);
+
+  if (!parentNodeOrItem) {
+    console.error(
+      `[addItemToTree] Cannot find target parent node/item with ID: ${targetParentNodeId}`
+    );
+    return null;
+  }
+
+  // --- 确定目标数组和文件路径 ---
+  if (isFileNode(parentNodeOrItem)) {
+    // 父节点是文件
+    parentFilePath = parentNodeOrItem.path;
+    if (isMatch(itemRef)) {
+      if (!parentNodeOrItem.matches) parentNodeOrItem.matches = [];
+      targetArray = parentNodeOrItem.matches;
+    } else if (isGroup(itemRef)) {
+      if (!parentNodeOrItem.groups) parentNodeOrItem.groups = [];
+      targetArray = parentNodeOrItem.groups;
+    } else {
+      // 不能将文件/文件夹添加到文件内部
+      console.error(
+        `[addItemToTree] Cannot add node type '${itemRef.type}' inside a file node.`
+      );
+      return null;
+    }
+  } else if (isFolderNode(parentNodeOrItem)) {
+    // 父节点是文件夹
+    parentFilePath = undefined; // 文件路径不直接适用于文件夹的子项
+    if (isFileNode(itemRef) || isFolderNode(itemRef)) {
+      if (!parentNodeOrItem.children) parentNodeOrItem.children = [];
+      targetArray = parentNodeOrItem.children;
+      // 对于添加到文件夹的文件/子文件夹，其 filePath 应基于父文件夹路径设置
+      itemRef.path = `${parentNodeOrItem.path}/${itemRef.name}`; // 简化路径连接
+    } else {
+      // 不能将 Match/Group 直接添加到文件夹节点
+      console.error(
+        `[addItemToTree] Cannot add item type '${itemRef.type}' directly inside a folder node.`
+      );
+      return null;
+    }
+  } else if (isGroup(parentNodeOrItem)) {
+    // 父节点是分组
+    parentFilePath = parentNodeOrItem.filePath;
+    if (isMatch(itemRef)) {
+      if (!parentNodeOrItem.matches) parentNodeOrItem.matches = [];
+      targetArray = parentNodeOrItem.matches;
+    } else if (isGroup(itemRef)) {
+      if (!parentNodeOrItem.groups) parentNodeOrItem.groups = [];
+      targetArray = parentNodeOrItem.groups;
+    } else {
+      // 不能将文件/文件夹添加到分组内部
+      console.error(
+        `[addItemToTree] Cannot add node type '${itemRef.type}' inside a group item.`
+      );
+      return null;
+    }
+  } else {
+    // 父节点是 Match 或其他无效类型
+    console.error(
+      `[addItemToTree] Invalid target parent type: '${parentNodeOrItem.type}'`
+    );
+    return null;
+  }
+
+  // --- 设置文件路径 (如果适用) ---
+  if ((isMatch(itemRef) || isGroup(itemRef)) && parentFilePath) {
+    itemRef.filePath = parentFilePath;
+  }
+
+  // --- 插入到目标数组 ---
+  if (targetArray) {
+    const safeIndex =
+      index >= 0 && index <= targetArray.length ? index : targetArray.length;
+    targetArray.splice(safeIndex, 0, itemRef);
+    // TODO: 更新 guiOrder (如果需要在此层级管理)
+    return itemRef; // 返回添加的项引用
+  } else {
+    console.error(
+      "[addItemToTree] Could not determine target array for insertion."
+    );
+    return null;
+  }
+};
+
+/**
+ * 更新文件夹移动或重命名后，其所有后代节点 (文件/文件夹) 的路径，
+ * 以及文件节点内部包含的 Match/Group 的 filePath。
+ * **重要:** 此函数修改传入的 `node` 对象及其后代。
+ *
+ * @param node 要更新的起始节点 (通常是被移动/重命名的文件夹或文件)
+ * @param newBasePath 父目录的新路径 (移动/重命名后 node 应该在的目录)
+ * @param joinPathFunc 一个 *异步* 函数用于连接路径段 (应由平台适配器提供)
+ */
+export const updateDescendantPathsAndFilePaths = async (
+  node: ConfigTreeNode,
+  newBasePath: string,
+  joinPathFunc: (...paths: string[]) => Promise<string> // 传入异步连接函数
+): Promise<void> => {
+  const oldNodePath = node.path;
+  // 根据新的父路径和节点名称计算新路径
+  const newNodePath = await joinPathFunc(newBasePath, node.name);
+
+  // 更新节点自身路径和 ID (如果 ID 基于路径)
+  node.path = newNodePath;
+  node.id = `${node.type}-${newNodePath}`; // 更新 ID!
+
+  // console.log(`[updateDescendantPaths] Updated path for ${node.type} ${node.name}: ${newNodePath}`);
+
+  // 如果是文件节点，更新其内部项的 filePath
+  if (isFileNode(node)) {
+    const updateItemPath = (item: Match | Group) => {
+      // 只更新之前指向旧文件路径的项
+      if (item.filePath === oldNodePath) {
+        item.filePath = newNodePath;
+      }
+      // 递归处理嵌套分组
+      if (isGroup(item)) {
+        item.matches?.forEach(updateItemPath);
+        item.groups?.forEach(updateItemPath);
+      }
+    };
+    updateItemPath({
+      type: "group",
+      groups: node.groups,
+      matches: node.matches,
+    } as Group); // 伪 Group 启动递归
+  }
+
+  // 如果是文件夹并且有子节点，递归更新它们
+  if (isFolderNode(node) && node.children?.length) {
+    for (const child of node.children) {
+      // 传递 *当前节点的新路径* 作为子节点的新基路径
+      await updateDescendantPathsAndFilePaths(child, node.path, joinPathFunc);
+    }
+  }
+};

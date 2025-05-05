@@ -4,7 +4,7 @@
       <div class="flex items-center justify-between">
         <div class="flex items-center">
           <h3 class="text-lg font-semibold text-foreground m-0">规则列表</h3>
-          <Badge variant="outline" class="ml-2" v-if="config">
+          <Badge variant="outline" class="ml-2">
             {{ totalItemCount }} 项
           </Badge>
         </div>
@@ -87,7 +87,7 @@
         <div class="text-primary font-medium">加载中...</div>
       </div>
       <div
-        v-else-if="!config"
+        v-else-if="!store.allMatches"
         class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
       >
         <FolderIcon class="h-12 w-12 mb-4" />
@@ -100,8 +100,7 @@
       </div>
       <div
         v-else-if="
-          store.getAllMatchesFromTree().length === 0 &&
-          store.getAllGroupsFromTree().length === 0
+          store.allMatches.length === 0 && store.allGroups.length === 0
         "
         class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
       >
@@ -133,7 +132,11 @@
         <!-- 树视图 -->
         <div v-if="viewMode === 'tree'" class="h-full flex-1">
           <!-- Log: Rendering ConfigTree -->
-          {{ console.log('[MiddlePane] Rendering ConfigTree component because viewMode is tree') }}
+          {{
+            console.log(
+              "[MiddlePane] Rendering ConfigTree component because viewMode is tree"
+            )
+          }}
           <ConfigTree
             ref="configTreeRef"
             :selected-id="selectedItemId"
@@ -153,7 +156,7 @@
                 selectedItemId === item.id,
             }"
             class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md rounded-none mb-2"
-            @click="selectItem(item.id)"
+            @click="selectItem(item.id, item.type)"
           >
             <CardContent class="p-4 flex items-start gap-2">
               <div class="flex-1">
@@ -169,7 +172,7 @@
                     </span>
                     <div
                       class="flex flex-wrap gap-1"
-                      v-if="(item as Match).tags && (item as Match).tags.length > 0"
+                      v-if="(item as Match).tags && ((item as Match)?.tags?.length||0) > 0"
                     >
                       <Badge
                         v-for="tag in (item as Match).tags"
@@ -208,7 +211,7 @@
                     <span class="font-semibold text-foreground">
                       <HighlightText
                         v-if="searchQuery.trim()"
-                        :text="(item as Group).name"
+                        :text="(item as Group).name || ''"
                         :searchQuery="searchQuery.trim()"
                       />
                       <template v-else>{{ (item as Group).name }}</template>
@@ -243,13 +246,12 @@
       @submit="handleRenameSubmit"
       @cancel="handleRenameCancel"
     />
-
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, nextTick, watch, onUnmounted } from "vue";
-import { useEspansoStore } from "../../store/useEspansoStore";
+import { EspansoState, useEspansoStore } from "../../store/useEspansoStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
@@ -268,7 +270,7 @@ import {
   Trash2Icon,
   PencilIcon,
 } from "lucide-vue-next";
-import { Match, Group } from "../../types/espanso";
+import { Group, Match } from "@/types/core/espanso.types";
 
 const store = useEspansoStore();
 const searchQuery = ref("");
@@ -295,7 +297,7 @@ const getTreeFocusState = (): boolean => {
 
 // 暴露方法给父组件使用
 defineExpose({
-  getTreeFocusState
+  getTreeFocusState,
 });
 
 // 设置键盘快捷键来打开搜索
@@ -341,40 +343,13 @@ onMounted(() => {
   });
 
   // 检查是否有预加载的配置
-  if (store.state.config && store.getAllMatchesFromTree) {
-    const matches = store.getAllMatchesFromTree();
+  if (store.allMatches) {
+    const matches = store.allMatches;
     if (matches.length > 0) {
       // 如果有匹配项，选择第一个
-      selectItem(matches[0].id);
+      store.selectItem(matches[0].id, "match"); // 使用 store action
     }
   }
-
-  // 如果是从URL加载配置，在加载完成后显示列表
-  let unwatchConfig: Function | null = null; // Declare unwatch outside
-  unwatchConfig = watch(
-    () => store.state.config,
-    (newConfig) => {
-      if (newConfig && store.getAllMatchesFromTree) {
-        const matches = store.getAllMatchesFromTree();
-        if (matches.length > 0 && !store.state.selectedItemId) {
-          selectItem(matches[0].id);
-        }
-        // Check if unwatchConfig has been assigned before calling
-        if (unwatchConfig) {
-          unwatchConfig();
-        }
-      }
-    },
-    { immediate: true }
-  );
-
-  // Ensure cleanup on unmount
-  onUnmounted(() => {
-    if (unwatchConfig) {
-      unwatchConfig();
-    }
-    cleanup(); // Also call the keyboard shortcut cleanup
-  });
 });
 
 // 聚焦搜索框的函数
@@ -454,22 +429,16 @@ watch(showSearchBar, (newVal) => {
 });
 
 // 使用计算属性直接从store获取数据
-const config = computed(() => store.state.config);
 const selectedItemId = computed(() => store.state.selectedItemId);
 const filterTags = computed(() => store.state.selectedTags);
-const loading = computed(() => store.state.config === null);
+const loading = computed(() => store.state.loading);
 
 // 过滤和排序项目
 const filteredItems = computed(() => {
-  if (
-    !config.value ||
-    !store.getAllMatchesFromTree ||
-    !store.getAllGroupsFromTree
-  )
-    return [];
+  if (!store.allMatches || !store.allGroups) return [];
 
-  let allMatches = store.getAllMatchesFromTree();
-  let allGroups = store.getAllGroupsFromTree();
+  let allMatches = store.allMatches;
+  let allGroups = store.allGroups;
   let allItems = [...allMatches, ...allGroups];
 
   const query = searchQuery.value.trim().toLowerCase();
@@ -489,32 +458,37 @@ const filteredItems = computed(() => {
   const itemMatchesQueryOrTags = (
     item: Match | Group,
     query: string,
-    tags: string[],
+    tags: string[]
   ): boolean => {
     let queryMatch: boolean = false; // Initialize explicitly
     if (query) {
       if (item.type === "match") {
         const match = item as Match;
-        queryMatch = (
+        queryMatch =
           match.trigger?.toLowerCase().includes(query) ||
           match.label?.toLowerCase().includes(query) ||
           match.description?.toLowerCase().includes(query) ||
           match.replace?.toString().toLowerCase().includes(query) ||
-          match.tags?.some((tag: string) => tag.toLowerCase().includes(query)) ||
-          (match.filePath && match.filePath.toLowerCase().includes(query))
-        );
+          (match.tags &&
+            match.tags.some((tag: string) =>
+              tag.toLowerCase().includes(query)
+            )) ||
+          (match.filePath && match.filePath.toLowerCase().includes(query)) ||
+          false;
       } else if (item.type === "group") {
-        queryMatch = (
+        queryMatch =
           (item.name?.toLowerCase().includes(query) ?? false) ||
-          (item.filePath?.toLowerCase().includes(query) ?? false)
-        );
+          (item.filePath?.toLowerCase().includes(query) ?? false);
       }
     }
     let tagMatch = false;
     if (tags.length > 0) {
       if (item.type === "match") {
         const match = item as Match;
-        tagMatch = match.tags && tags.every((tag: string) => match.tags?.includes(tag));
+        tagMatch =
+          (match.tags &&
+            tags.every((tag: string) => match.tags?.includes(tag))) ||
+          false;
       }
     }
     return queryMatch || tagMatch;
@@ -555,13 +529,13 @@ const filteredItems = computed(() => {
   // Add matches that are children of matched groups
   if (matchedGroups.length > 0) {
     for (const group of matchedGroups) {
-        const childMatches = getAllMatchesUnderGroup(group);
-        for (const match of childMatches) {
-            // Add child match only if it wasn't already directly matched
-            if (!finalItemMap.has(match.id)) {
-                finalItemMap.set(match.id, match);
-            }
+      const childMatches = getAllMatchesUnderGroup(group);
+      for (const match of childMatches) {
+        // Add child match only if it wasn't already directly matched
+        if (!finalItemMap.has(match.id)) {
+          finalItemMap.set(match.id, match);
         }
+      }
     }
   }
 
@@ -630,24 +604,10 @@ const formatDate = (dateString: string) => {
   });
 };
 
-// 选择项目
-const selectItem = (id: string) => {
-  // 如果选择的是当前已选中的项目，不需要任何操作
-  if (store.state.selectedItemId === id) {
-    return;
-  }
-
-  // 检查是否有未保存的修改
-  if (store.state.hasUnsavedChanges) {
-    if (confirm('您有未保存的修改，确定要切换到其他项目吗？这将丢失当前的修改。')) {
-      // 用户确认切换，重置修改状态
-      store.state.hasUnsavedChanges = false;
-      store.state.selectedItemId = id;
-    }
-  } else {
-    // 没有修改过，直接切换
-    store.state.selectedItemId = id;
-  }
+// 选择项目 (列表视图点击)
+const selectItem = (id: string, type: EspansoState["selectedItemType"]) => {
+  // 直接调用 store action，由 store 处理选择逻辑（包括未保存检查等）
+  store.selectItem(id, type);
 };
 
 // 标签筛选
@@ -698,46 +658,52 @@ const hideSearchBar = () => {
 // 处理树节点选择
 const handleTreeItemSelect = (item: Match | Group) => {
   // console.log("选择树节点:", item); // Removed log
-  selectItem(item.id);
+  // 直接调用 store action，传递 ID 和类型
+  store.selectItem(item.id, item.type);
 };
 
 // --- Total Item Count ---
 const totalItemCount = computed(() => {
-  if (
-    !config.value ||
-    !store.getAllMatchesFromTree ||
-    !store.getAllGroupsFromTree
-  )
-    return 0;
-  const matches = store.getAllMatchesFromTree();
-  const groups = store.getAllGroupsFromTree();
+  if (!store.allMatches || !store.allGroups) return 0;
+  const matches = store.allMatches;
+  const groups = store.allGroups;
   return matches.length + groups.length;
 });
 
 // --- Input Dialog Logic (Adjusted for rename request) ---
 const openRenameDialog = (item: TreeNodeItem) => {
   // Expecting item to be the TreeNodeItem for a group from ConfigTree
-  if (item.type === 'group' && item.group) { // Check if it's a group and has the original group data
+  if (item.type === "group" && item.group) {
+    // Check if it's a group and has the original group data
     renameTargetItem = item.group; // Store the actual Group object
     inputDialogTitle.value = "重命名分组";
     inputDialogLabel.value = "新名称";
-    inputDialogInitialValue.value = item.group.name; // Use name from the group data
+    inputDialogInitialValue.value = item.group.name || ""; // Use name from the group data, default to empty string
     inputDialogPlaceholder.value = "输入新的分组名称";
     inputDialogVisible.value = true;
   } else {
-    console.warn('[MiddlePane] Received rename request for non-group item or missing group data:', item);
+    console.warn(
+      "[MiddlePane] Received rename request for non-group item or missing group data:",
+      item
+    );
     renameTargetItem = null;
   }
 };
 
 const handleRenameSubmit = (newValue: string) => {
   if (renameTargetItem && newValue.trim()) {
-    // Create the updated group object
-    const updatedGroup = { ...renameTargetItem, name: newValue.trim() };
-    console.log('[MiddlePane] Submitting rename for group:', renameTargetItem.id, 'New name:', newValue.trim());
-    store.updateItem(updatedGroup); // Call store action to update
+    console.log(
+      "[MiddlePane] Submitting rename for group:",
+      renameTargetItem.id,
+      "New name:",
+      newValue.trim()
+    );
+    // 调用正确的 store action 来更新分组名称
+    store.updateGroup(renameTargetItem.id, { name: newValue.trim() });
   } else {
-    console.warn('[MiddlePane] Rename submit failed: No target item or empty value.');
+    console.warn(
+      "[MiddlePane] Rename submit failed: No target item or empty value."
+    );
   }
   // Reset state regardless of success
   renameTargetItem = null;

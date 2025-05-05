@@ -1,4 +1,9 @@
-import { Match, Group } from '@/types/espanso';
+import { Match, Group } from '@/types/core/espanso.types';
+
+interface ClipboardItem {
+  item: Match | Group;
+  operation: 'copy' | 'cut';
+}
 
 // 剪贴板管理器
 class ClipboardManager {

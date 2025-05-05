@@ -27,11 +27,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineProps, defineEmits, onMounted, watch, onUnmounted } from 'vue';
+import { ref, computed, defineProps, defineEmits, onMounted, watch, onUnmounted, PropType } from 'vue';
 import { useEspansoStore } from '../store/useEspansoStore';
 import TreeNode from './TreeNode.vue';
-import type { Match, Group } from '../types/espanso';
-import { GripVerticalIcon } from 'lucide-vue-next';
+import { ConfigTreeNode } from '@/types/core/ui.types';
+import type { Match, Group } from '@/types/core/espanso.types';
 import Sortable from 'sortablejs';
 
 // 定义树节点类型
@@ -85,7 +85,7 @@ const createGroupNode = (group: Group): TreeNodeItem => {
   const groupNode: TreeNodeItem = {
     id: group.id,
     type: 'group',
-    name: group.name,
+    name: group.name || '',
     group: group,
     children: []
   };
@@ -247,13 +247,13 @@ const handleSelect = (item: TreeNodeItem) => {
 // --- NEW: Handler for file/folder node move event from TreeNode ---
 const handleNodeMove = (payload: { nodeId: string; targetParentId: string | null; newIndex: number }) => {
   console.log('[ConfigTree] Received moveNode event:', JSON.stringify(payload));
-  store.moveTreeNode(payload.nodeId, payload.targetParentId, payload.newIndex);
+  store.moveItem(payload.nodeId, payload.targetParentId, payload.newIndex);
 };
 
 // --- Handler for match/group move event from TreeNode ---
 const handleItemMove = (payload: { itemId: string; oldParentId: string | null; newParentId: string | null; oldIndex: number; newIndex: number }) => {
   console.log('[ConfigTree] Received move event (for item):', JSON.stringify(payload));
-  store.moveTreeItem(payload.itemId, payload.oldParentId, payload.newParentId, payload.oldIndex, payload.newIndex);
+  store.moveItem(payload.itemId, payload.newParentId, payload.newIndex);
 };
 
 // SortableJS Options for the ROOT container
@@ -319,8 +319,9 @@ const handleRootSortEnd = (event: Sortable.SortableEvent) => {
 
   // 只处理match和group类型的拖拽
   if (itemType === 'match' || itemType === 'group') {
-    // 触发moveTreeItem操作，将targetParentId设为null（根目录）
-    store.moveTreeItem(itemId, oldParentId, null, oldIndex, newIndex);
+    // 触发moveItem操作，将targetParentId设为null（根目录）
+  store.moveItem(itemId, oldParentId, newIndex);
+
   } else {
     console.warn(`[ConfigTree Root onEnd] Unexpected item type dropped at root: ${itemType}`);
   }
@@ -343,147 +344,6 @@ onMounted(() => {
 onUnmounted(() => {
   document.removeEventListener('click', handleDocumentClick);
 });
-
-// 处理 SortableJS 拖拽更新事件 (顶层或从子层拖入)
-const handleSortUpdate = (event: Sortable.SortableEvent) => {
-  console.log('[ConfigTree Root SortableJS onUpdate]', event);
-  const { item, from, to, oldIndex, newIndex } = event;
-
-  if (oldIndex === undefined || newIndex === undefined) return;
-
-  const itemId = item.dataset.id;
-  if (!itemId) return;
-
-  // 来自哪个父级 (SortableJS 会给元素添加 data-parent-id)
-  const oldParentId = from.dataset.parentId || null;
-  // 去往哪个父级 (根目录为 null)
-  const newParentId = to.dataset.parentId || null;
-
-  console.log(`Moving item ${itemId} from parent ${oldParentId} (index ${oldIndex}) to parent ${newParentId} (index ${newIndex})`);
-
-  // 调用 store action 处理移动
-  store.moveTreeItem(itemId, oldParentId, newParentId, oldIndex, newIndex);
-};
-
-// 处理从子节点冒泡上来的 move 事件
-const handleMove = (payload: { itemId: string; oldParentId: string | null; newParentId: string | null; oldIndex: number; newIndex: number }) => {
-  console.log('[ConfigTree handleMove from TreeNode]', payload);
-  // 调用 store action 处理移动 (这里的 newParentId 可能需要进一步判断)
-  store.moveTreeItem(payload.itemId, payload.oldParentId, payload.newParentId, payload.oldIndex, payload.newIndex);
-};
-
-// SortableJS 选项
-const sortableOptions = computed(() => ({
-  animation: 150,
-  ghostClass: 'sortable-ghost',
-  dragClass: 'sortable-drag',
-  group: 'nested-tree',
-  fallbackOnBody: true,       // 允许拖拽到整个body区域
-  swapThreshold: 0.65,        // 交换阈值
-  handle: '.cursor-grab',     // 只允许通过.cursor-grab元素拖拽
-  emptyInsertThreshold: 10,   // 插入空列表的距离阈值
-  onStart: (evt: Sortable.SortableEvent) => {
-    console.log('[ConfigTree SortableJS onStart]', evt);
-    // 添加样式，标识拖拽中状态
-    document.body.classList.add('dragging-active');
-
-    // 获取被拖拽元素的相关信息
-    const draggedItemId = evt.item.dataset.id;
-    const draggedItemType = evt.item.dataset.nodeType;
-
-    // 如果拖拽的是文件夹或分组，自动折叠它
-    if (draggedItemType === 'folder' || draggedItemType === 'group' || draggedItemType === 'file') {
-      // 找到拖拽元素的TreeNode组件实例
-      const treeNodeEl = evt.item;
-      if (treeNodeEl) {
-        // 查找折叠图标并触发点击
-        const chevronIcon = treeNodeEl.querySelector('.ChevronDownIcon');
-        if (chevronIcon) {
-          // 模拟点击折叠图标
-          chevronIcon.dispatchEvent(new MouseEvent('click', {
-            bubbles: true,
-            cancelable: true,
-            view: window
-          }));
-        }
-
-        // 直接隐藏子容器作为备用方案
-        const childrenContainer = treeNodeEl.querySelector('.children');
-        if (childrenContainer) {
-          (childrenContainer as HTMLElement).style.display = 'none';
-        }
-      }
-
-      // 强制隐藏克隆元素的子容器
-      setTimeout(() => {
-        const draggedClone = document.querySelector('.sortable-fallback');
-        if (draggedClone) {
-          const cloneChildren = draggedClone.querySelector('.children');
-          if (cloneChildren) {
-            (cloneChildren as HTMLElement).style.display = 'none';
-          }
-        }
-      }, 0);
-    }
-  },
-  onEnd: (evt: Sortable.SortableEvent) => {
-    console.log('[ConfigTree SortableJS onEnd]', evt);
-    // 移除拖拽样式
-    document.body.classList.remove('dragging-active');
-
-    // 移除所有指示线
-    document.querySelectorAll('.insert-indicator').forEach(el => el.remove());
-
-    // 检查是否在安全区域内结束拖拽
-    const targetContainer = evt.to;
-    const isInSafeZone = targetContainer.classList.contains('drop-zone') ||
-                         !!targetContainer.closest('.drop-zone');
-
-    // 如果不在安全区域内，不触发更新事件，元素会自动返回原位置
-    if (!isInSafeZone) {
-      console.log('[ConfigTree SortableJS onEnd] 拖拽取消：不在安全区域内');
-      return;
-    }
-
-    // 检查是否是跨容器拖拽（from和to不同）
-    const isCrossContainer = evt.from !== evt.to;
-    if (isCrossContainer) {
-      console.log('[ConfigTree SortableJS onEnd] 检测到跨容器拖拽，处理数据更新');
-
-      // 检查必要的数据是否存在
-      if (evt.oldIndex === undefined || evt.newIndex === undefined) return;
-
-      const itemId = evt.item.dataset.id;
-      if (!itemId) {
-        console.error('Dragged item missing data-id!');
-        return;
-      }
-
-      // 获取拖拽项的类型
-      const draggedType = evt.item.dataset.nodeType;
-
-      // 获取目标容器的类型
-      const targetContainerType = evt.to.dataset.containerType || '';
-
-      // 如果是match或group类型，且目标容器是folder类型，则禁止拖拽
-      if ((draggedType === 'match' || draggedType === 'group') && targetContainerType === 'folder') {
-        console.log('禁止拖拽：match/group不能拖入folder');
-        return;
-      }
-
-      // 如果是match或group类型，且目标容器不是file、group或root类型，则禁止拖拽
-      if ((draggedType === 'match' || draggedType === 'group') &&
-          targetContainerType !== 'file' && targetContainerType !== 'group' && targetContainerType !== 'root') {
-        console.log('禁止拖拽：match/group只能拖入file/group/root');
-        return;
-      }
-
-      // 调用handleSortUpdate处理跨容器拖拽
-      handleSortUpdate(evt);
-    }
-  },
-  onUpdate: handleSortUpdate,
-}));
 
 const handleRequestRename = (item: TreeNodeItem) => {
   // Add defensive check for item
@@ -531,6 +391,7 @@ const handleDocumentClick = (event: MouseEvent) => {
     console.log('树组件失去焦点 (外部点击)');
   }
 };
+
 </script>
 
 <style scoped>
