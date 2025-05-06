@@ -5,7 +5,6 @@ const path = require('path');
 const fs = require('fs/promises'); // 使用 promises API
 const fsSync = require('fs'); // 保留 fsSync 用于日志等同步操作
 const os = require('os');
-const { default: installExtension, VUE_DEVTOOLS } = require('electron-devtools-installer');
 const yaml = require('js-yaml'); // **新增：导入 YAML 库**
 
 // --- 日志记录设置 (保持不变) ---
@@ -644,6 +643,7 @@ app.whenReady().then(async () => {
     // 安装Vue开发者工具 (只在开发环境)
     if (!app.isPackaged) {
         try {
+            const { default: installExtension, VUE_DEVTOOLS } = require('electron-devtools-installer');
             await installExtension(VUE_DEVTOOLS);
             console.log('Vue Devtools安装成功');
         } catch (err) {
