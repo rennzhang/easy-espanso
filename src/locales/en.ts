@@ -183,6 +183,14 @@ export default {
     "language": "Language",
     "languageTooltip": "Select the display language for the application.",
     "selectLanguagePlaceholder": "Select Language",
+    "theme": "App Theme",
+    "themeTooltip": "Select the display theme for the application.",
+    "selectThemePlaceholder": "Select Theme",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System Default"
+    },
     "sections": {
       "basic": "Basic Settings",
       "paste": "Paste Behavior",

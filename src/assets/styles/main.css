@@ -1,100 +1,31 @@
 /* 全局样式 */
-:root {
-  /* 主色调 - 使用更现代的蓝色 */
-  --primary-color: #4f46e5;
-  --primary-hover: #4338ca;
-  --primary-light: #e0e7ff;
-
-  /* 辅助色 */
-  --secondary-color: #64748b;
-  --secondary-hover: #475569;
-  --secondary-light: #f1f5f9;
-
-  /* 功能色 */
-  --danger-color: #dc2626;
-  --danger-hover: #b91c1c;
-  --danger-light: #fee2e2;
-
-  --success-color: #16a34a;
-  --success-hover: #15803d;
-  --success-light: #dcfce7;
-
-  --warning-color: #ea580c;
-  --warning-hover: #c2410c;
-  --warning-light: #ffedd5;
-
-  --info-color: #0ea5e9;
-  --info-hover: #0284c7;
-  --info-light: #e0f2fe;
-
-  /* 文本色 */
-  --text-color: #0f172a;
-  --text-secondary: #334155;
-  --text-light-color: #64748b;
-  --text-muted: #94a3b8;
-
-  /* 边框和背景 */
-  --border-color: #e2e8f0;
-  --border-hover: #cbd5e1;
-  --divider-color: #f1f5f9;
-
-  --background-color: #ffffff;
-  --background-light-color: #f8fafc;
-  --background-dark-color: #f1f5f9;
-  --background-hover: #f8fafc;
-
-  /* 阴影 */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-
-  /* 圆角 */
-  --radius-sm: 0.125rem;
-  --radius: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-full: 9999px;
-
-  /* 间距 */
-  --spacing-1: 0.25rem;
-  --spacing-2: 0.5rem;
-  --spacing-3: 0.75rem;
-  --spacing-4: 1rem;
-  --spacing-6: 1.5rem;
-  --spacing-8: 2rem;
-
-  /* 过渡 */
-  --transition-fast: 150ms;
-  --transition: 200ms;
-  --transition-slow: 300ms;
-}
+/* :root { ... removed ... } */
 
 body {
   margin: 0;
   padding: 0;
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-  color: var(--text-color);
-  background-color: var(--background-color);
+  /* color: var(--text-color); */ /* 使用Tailwind body类替代 */
+  /* background-color: var(--background-color); */ /* 使用Tailwind body类替代 */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   font-size: 14px;
   line-height: 1.5;
 }
 
-/* 按钮样式 */
+/* 按钮样式 - 使用Tailwind类或者CSS变量 */
 button {
   cursor: pointer;
-  padding: var(--spacing-2) var(--spacing-4);
-  border: 1px solid transparent;
-  border-radius: var(--radius);
+  /* padding: var(--spacing-2) var(--spacing-4); */ /* 由具体btn类处理 */
+  /* border: 1px solid transparent; */ /* 由具体btn类处理 */
+  border-radius: var(--radius); /* 使用shadcn变量 */
   font-size: 0.875rem;
   font-weight: 500;
-  transition: all var(--transition) ease-in-out;
+  /* transition: all var(--transition) ease-in-out; */ /* 使用Tailwind transition */
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: var(--spacing-2);
+  /* gap: var(--spacing-2); */ /* 使用Tailwind gap */
   line-height: 1.5;
   outline: none;
   position: relative;
@@ -102,105 +33,37 @@ button {
 }
 
 button:focus {
-  outline: 2px solid var(--primary-light);
+  /* outline: 2px solid var(--primary-light); */ /* 使用Tailwind ring */
   outline-offset: 2px;
 }
 
-button:active {
-  transform: translateY(1px);
-}
+/* button:active { ... } */ /* 移除或使用Tailwind active: */
 
-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
+/* button:disabled { ... } */ /* 使用Tailwind disabled: */
 
-/* 主要按钮 */
-.btn-primary {
-  background-color: var(--primary-color);
-  color: white;
-  box-shadow: var(--shadow-sm);
-}
+/* 主要按钮 - 使用Tailwind */
+/* .btn-primary { ... } */ /* 改为在组件中使用Tailwind类，如 'bg-primary text-primary-foreground hover:bg-primary/90' */
 
-.btn-primary:hover {
-  background-color: var(--primary-hover);
-  box-shadow: var(--shadow);
-}
+/* 次要按钮 - 使用Tailwind */
+/* .btn-secondary { ... } */ /* 改为在组件中使用Tailwind类，如 'bg-secondary text-secondary-foreground hover:bg-secondary/80' */
 
-.btn-primary:active {
-  background-color: var(--primary-hover);
-}
+/* 危险按钮 - 使用Tailwind */
+/* .btn-danger { ... } */ /* 改为在组件中使用Tailwind类，如 'bg-destructive text-destructive-foreground hover:bg-destructive/90' */
 
-/* 次要按钮 */
-.btn-secondary {
-  background-color: white;
-  color: var(--text-color);
-  border: 1px solid var(--border-color);
-  box-shadow: var(--shadow-sm);
-}
+/* 文本按钮 - 使用Tailwind */
+/* .btn-text { ... } */ /* 改为在组件中使用Tailwind类，如 'text-primary hover:bg-accent hover:text-accent-foreground' */
 
-.btn-secondary:hover {
-  background-color: var(--background-hover);
-  border-color: var(--border-hover);
-  box-shadow: var(--shadow);
-}
+/* 图标按钮 - 使用Tailwind */
+/* .btn-icon { ... } */ /* 使用Tailwind类控制padding和圆角 */
 
-.btn-secondary:active {
-  background-color: var(--background-dark-color);
-}
-
-/* 危险按钮 */
-.btn-danger {
-  background-color: white;
-  color: var(--danger-color);
-  border: 1px solid var(--danger-light);
-  box-shadow: var(--shadow-sm);
-}
-
-.btn-danger:hover {
-  background-color: var(--danger-light);
-  color: var(--danger-hover);
-  box-shadow: var(--shadow);
-}
-
-.btn-danger:active {
-  background-color: var(--danger-light);
-}
-
-/* 文本按钮 */
-.btn-text {
-  background-color: transparent;
-  color: var(--primary-color);
-  padding: var(--spacing-1) var(--spacing-2);
-}
-
-.btn-text:hover {
-  background-color: var(--primary-light);
-}
-
-/* 图标按钮 */
-.btn-icon {
-  padding: var(--spacing-2);
-  border-radius: var(--radius-full);
-  min-width: 2rem;
-  min-height: 2rem;
-}
-
-/* 按钮尺寸 */
-.btn-sm {
-  padding: var(--spacing-1) var(--spacing-2);
-  font-size: 0.75rem;
-}
-
-.btn-lg {
-  padding: var(--spacing-3) var(--spacing-6);
-  font-size: 1rem;
-}
+/* 按钮尺寸 - 使用Tailwind */
+/* .btn-sm { ... } */ /* 使用Tailwind类，如 'h-9 px-3' */
+/* .btn-lg { ... } */ /* 使用Tailwind类，如 'h-11 px-8' */
 
 /* 表单样式 */
 input, select, textarea {
   padding: var(--spacing-3);
-  border: 1px solid var(--border-color);
+  border: 1px solid hsl(var(--border));
   border-radius: var(--radius);
   font-size: 0.875rem;
   background-color: white;
@@ -215,7 +78,7 @@ input::placeholder, textarea::placeholder {
 }
 
 input:hover, select:hover, textarea:hover {
-  border-color: var(--border-hover);
+  border-color: hsl(var(--border));
 }
 
 input:focus, select:focus, textarea:focus {
@@ -383,11 +246,11 @@ input[type="checkbox"], input[type="radio"] {
 .rounded-lg { border-radius: var(--radius-lg); }
 .rounded-full { border-radius: var(--radius-full); }
 
-.border { border: 1px solid var(--border-color); }
-.border-t { border-top: 1px solid var(--border-color); }
-.border-b { border-bottom: 1px solid var(--border-color); }
-.border-l { border-left: 1px solid var(--border-color); }
-.border-r { border-right: 1px solid var(--border-color); }
+.border { border: 1px solid hsl(var(--border)); }
+.border-t { border-top: 1px solid hsl(var(--border)); }
+.border-b { border-bottom: 1px solid hsl(var(--border)); }
+.border-l { border-left: 1px solid hsl(var(--border)); }
+.border-r { border-right: 1px solid hsl(var(--border)); }
 
 /* 阴影 */
 .shadow-sm { box-shadow: var(--shadow-sm); }
@@ -438,7 +301,7 @@ input[type="checkbox"], input[type="radio"] {
   content: '';
   width: 1.5rem;
   height: 1.5rem;
-  border: 2px solid var(--border-color);
+  border: 2px solid hsl(var(--border));
   border-top-color: var(--primary-color);
   border-radius: 50%;
   animation: spin 1s linear infinite;

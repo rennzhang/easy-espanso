@@ -174,6 +174,35 @@
                 </SelectContent>
               </Select>
             </div>
+
+            <!-- 主题选择器 -->
+            <div class="form-item">
+              <div class="flex items-center gap-1">
+                <Label for="theme">{{ t('settings.theme') }}</Label>
+                 <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div class="cursor-help text-muted-foreground">
+                        <HelpCircleIcon class="h-4 w-4" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p class="max-w-xs">{{ t('settings.themeTooltip') }}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Select v-model="selectedAppTheme">
+                <SelectTrigger id="theme" class="w-full">
+                  <SelectValue :placeholder="t('settings.selectThemePlaceholder')" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">{{ t('settings.themes.light') }}</SelectItem>
+                  <SelectItem value="dark">{{ t('settings.themes.dark') }}</SelectItem>
+                  <SelectItem value="system">{{ t('settings.themes.system') }}</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           
           <!-- 通知设置 -->
@@ -814,6 +843,7 @@ import { useEspansoStore } from "@/store/useEspansoStore";
 import { cloneDeep, isEqual } from "lodash-es";
 import { toast } from "vue-sonner";
 import { useI18n } from 'vue-i18n';
+import { useTheme } from '../hooks/useTheme';
 import {
   Settings,
   Save,
@@ -850,6 +880,9 @@ import { Separator } from "../components/ui/separator";
 
 // 获取 i18n 函数和状态
 const { t, locale, availableLocales } = useI18n();
+
+// 获取主题设置
+const { theme: appTheme, setTheme: setAppTheme } = useTheme();
 
 // 获取store
 const store = useEspansoStore();
@@ -1115,6 +1148,24 @@ const resetToDefault = () => {
     toast.info(t('settings.restoredToLastSave'));
   }
 };
+
+// 将主题状态同步到本地的 ref，以便 Select 组件可以双向绑定
+// 注意：这里我们不直接将 appTheme (来自 useTheme) 用于 v-model
+// 因为 appTheme 的更改是立即应用到 <html> 标签的
+// 我们希望用户的选择在 Select 中先被选中，但不立即应用，直到他们点击"保存"
+// 然而，对于主题切换，通常期望选择后立即生效，而不是等待保存按钮
+// 所以，这里我们直接使用 appTheme，并在选择时调用 setAppTheme
+// 为了简单起见，我们让主题选择立即生效。如果需要"保存后生效"，逻辑会更复杂。
+
+const selectedAppTheme = ref(appTheme.value); // 初始化 selectedAppTheme
+watch(appTheme, (newTheme) => { // 当通过其他方式改变主题时（例如系统切换），更新下拉框
+  selectedAppTheme.value = newTheme;
+});
+watch(selectedAppTheme, (newThemeChoice) => { // 当用户在下拉框中选择时，更新主题
+  if (newThemeChoice) {
+    setAppTheme(newThemeChoice);
+  }
+});
 </script>
 
 <style scoped>
@@ -1122,6 +1173,7 @@ const resetToDefault = () => {
   height: 100%;
   width: 100%;
   overflow: auto;
+  @apply bg-background text-foreground; /* 应用基础主题 */
 }
 
 .content-view, .loading-view, .error-view {
@@ -1129,7 +1181,8 @@ const resetToDefault = () => {
   width: 100%;
   margin: 0 auto;
   padding: 2rem;
-  background-color: white;
+  /* background-color: white; */ /* 改为使用 card 或 background */
+  @apply bg-card; /* 或根据需要使用 bg-background */
 }
 
 .loading-view, .error-view {
@@ -1139,6 +1192,7 @@ const resetToDefault = () => {
   align-items: center;
   justify-content: center;
   text-align: center;
+  @apply bg-card text-foreground; /* 确保背景和文本颜色正确 */
 }
 
 .settings-container {
@@ -1149,7 +1203,8 @@ const resetToDefault = () => {
 .settings-sidebar {
   width: 220px;
   flex-shrink: 0;
-  border-right: 1px solid #e0e0e0;
+  /* border-right: 1px solid #e0e0e0; */
+  @apply border-r border-border; /* 使用主题边框色 */
   padding-right: 1rem;
 }
 
@@ -1165,36 +1220,41 @@ const resetToDefault = () => {
   margin-bottom: 0.5rem;
   cursor: pointer;
   transition: all 0.2s;
+  @apply text-muted-foreground; /* 默认文字颜色 */
 }
 
 .category-item:hover {
-  background-color: #f5f5f5;
+  /* background-color: #f5f5f5; */
+  @apply bg-accent text-accent-foreground; /* 使用主题悬停色 */
 }
 
 .category-item.active {
-  background-color: #e0e0ff;
-  color: #4a4ae8;
-  font-weight: 500;
+  /* background-color: #e0e0ff; */
+  /* color: #4a4ae8; */
+  @apply bg-primary/10 text-primary font-medium; /* 使用主题激活色 */
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  border-top-color: #3182ce;
-  animation: spin 1s linear infinite;
+  /* border: 4px solid rgba(0, 0, 0, 0.1); */
+  border: 4px solid;
+  @apply border-border rounded-full;
+  /* border-top-color: #3182ce; */
+  @apply border-t-primary animate-spin;
 }
 
 .alert-icon {
   font-size: 3rem;
   margin-bottom: 1rem;
-  color: #e53935;
+  /* color: #e53935; */
+  @apply text-destructive; /* 使用主题危险色 */
 }
 
 .error-message {
   margin-bottom: 1.5rem;
-  color: #e53935;
+  /* color: #e53935; */
+  @apply text-destructive; /* 使用主题危险色 */
 }
 
 .form-item {
@@ -1214,9 +1274,12 @@ const resetToDefault = () => {
 .loader {
   width: 1rem;
   height: 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid;
+  /* border: 2px solid rgba(255, 255, 255, 0.3); */ /* 改为使用变量 */
+  @apply border-primary-foreground/30; /* 假设在主按钮上 */
   border-radius: 50%;
-  border-top-color: white;
+  /* border-top-color: white; */
+  @apply border-t-primary-foreground; /* 假设在主按钮上 */
   animation: spin 1s linear infinite;
 }
 </style>

@@ -69,12 +69,12 @@ const navigateHome = () => {
 .error-title {
   font-size: 1.5rem;
   font-weight: 600;
-  color: #e53e3e;
+  @apply text-destructive;
   margin-bottom: 1rem;
 }
 
 .error-message {
-  color: #666;
+  @apply text-muted-foreground;
   margin-bottom: 1.5rem;
   max-width: 500px;
 }
@@ -93,22 +93,20 @@ const navigateHome = () => {
 }
 
 .retry-button {
-  background-color: #3182ce;
-  color: white;
+  @apply bg-primary text-primary-foreground;
   border: none;
 }
 
 .retry-button:hover {
-  background-color: #2c5282;
+  @apply bg-primary/90;
 }
 
 .home-button {
-  background-color: #e2e8f0;
-  color: #4a5568;
+  @apply bg-secondary text-secondary-foreground;
   border: none;
 }
 
 .home-button:hover {
-  background-color: #cbd5e0;
+  @apply bg-secondary/80;
 }
 </style> 

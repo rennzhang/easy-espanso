@@ -184,6 +184,14 @@ export default {
     "language": "界面语言",
     "languageTooltip": "选择应用程序的显示语言。",
     "selectLanguagePlaceholder": "选择语言",
+    "theme": "应用主题",
+    "themeTooltip": "选择应用程序的显示主题。",
+    "selectThemePlaceholder": "选择主题",
+    "themes": {
+      "light": "亮色",
+      "dark": "暗色",
+      "system": "跟随系统"
+    },
     "sections": {
       "basic": "基本设置",
       "paste": "粘贴行为",

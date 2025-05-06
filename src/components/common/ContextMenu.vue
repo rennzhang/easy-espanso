@@ -10,7 +10,7 @@
         <li
           v-for="(item, index) in menuItems"
           :key="index"
-          class="relative flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none transition-colors hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+          class="relative flex cursor-pointer select-none items-center rounded-sm px-3 py-2 text-sm outline-none  hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
           :class="{ 'text-destructive hover:bg-destructive hover:text-destructive-foreground focus:bg-destructive focus:text-destructive-foreground': item.destructive }"
           @click="() => handleItemClick(item)"
         >

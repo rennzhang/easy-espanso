@@ -17,197 +17,337 @@
   }
 
   body {
-    @apply bg-gray-50 text-gray-900;
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   }
 
   h1, h2, h3, h4, h5, h6 {
-    @apply font-medium text-gray-900;
+    font-weight: 500;
+    color: hsl(var(--foreground));
   }
 
   a {
-    @apply text-primary hover:text-primary-hover;
+    color: hsl(var(--primary));
+  }
+  a:hover {
+    opacity: 0.8;
   }
 }
 
 @layer components {
-  /* 按钮样式 */
+  /* 按钮样式 - 基本结构，颜色由功能类在组件中添加 */
   .btn {
-    @apply inline-flex items-center justify-center px-4 py-2 rounded-md font-medium transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    outline: 2px solid transparent;
+    outline-offset: 2px;
   }
-
-  .btn-primary {
-    @apply bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500;
-  }
-
-  .btn-secondary {
-    @apply bg-gray-100 text-gray-700 hover:bg-gray-200 focus:ring-gray-500;
-  }
-
-  .btn-success {
-    @apply bg-success-600 text-white hover:bg-success-700 focus:ring-success-500;
-  }
-
-  .btn-warning {
-    @apply bg-warning-600 text-white hover:bg-warning-700 focus:ring-warning-500;
-  }
-
-  .btn-danger {
-    @apply bg-danger-600 text-white hover:bg-danger-700 focus:ring-danger-500;
-  }
-
-  .btn-sm {
-    @apply px-3 py-1.5 text-sm;
-  }
-
-  .btn-lg {
-    @apply px-5 py-2.5 text-lg;
-  }
-
-  .btn-icon {
-    @apply p-2;
+  .btn:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+    --tw-ring-color: hsl(var(--ring));
+    --tw-ring-offset-width: 2px;
   }
 
   /* 卡片样式 */
   .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden;
+    background-color: hsl(var(--card));
+    color: hsl(var(--card-foreground));
+    border-radius: 0.5rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    border-width: 1px;
+    border-color: hsl(var(--border));
+    overflow: hidden;
   }
 
   .card-header {
-    @apply px-6 py-4 border-b border-gray-200 bg-gray-50;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    border-bottom-width: 1px;
+    border-color: hsl(var(--border));
+    background-color: hsl(var(--muted) / 0.5);
   }
 
   .card-body {
-    @apply p-6;
+    padding: 1.5rem;
   }
 
   .card-footer {
-    @apply px-6 py-4 border-t border-gray-200 bg-gray-50;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    border-top-width: 1px;
+    border-color: hsl(var(--border));
+    background-color: hsl(var(--muted) / 0.5);
   }
 
   /* 表单控件样式 */
   .input {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 placeholder-gray-400;
+    width: 100%;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-width: 1px;
+    border-color: hsl(var(--input));
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+  .input::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+  .input:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+    --tw-ring-color: hsl(var(--ring));
+    border-color: hsl(var(--primary));
   }
 
   .select {
-    @apply w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500 text-gray-900 bg-white;
+    width: 100%;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    border-width: 1px;
+    border-color: hsl(var(--input));
+    border-radius: 0.375rem;
+    box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+  }
+   .select:focus {
+    outline: 2px solid transparent;
+    outline-offset: 2px;
+    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
+    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
+    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
+    --tw-ring-color: hsl(var(--ring));
+    border-color: hsl(var(--primary));
   }
 
   .checkbox {
-    @apply h-4 w-4 text-primary border-gray-300 rounded focus:ring-primary-500 focus:ring-offset-0;
+    height: 1rem;
+    width: 1rem;
+    color: hsl(var(--primary));
+    border-color: hsl(var(--input));
+    border-radius: 0.25rem;
+  }
+  .checkbox:focus {
+     --tw-ring-color: hsl(var(--ring));
+     --tw-ring-offset-width: 0px;
   }
 
   .radio {
-    @apply h-4 w-4 text-primary border-gray-300 rounded-full focus:ring-primary-500 focus:ring-offset-0;
+    height: 1rem;
+    width: 1rem;
+    color: hsl(var(--primary));
+    border-color: hsl(var(--input));
+    border-radius: 9999px;
+  }
+  .radio:focus {
+    --tw-ring-color: hsl(var(--ring));
+    --tw-ring-offset-width: 0px;
   }
 
   .form-label {
-    @apply block text-sm font-medium text-gray-700 mb-1;
+    display: block;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 500;
+    color: hsl(var(--foreground));
+    margin-bottom: 0.25rem;
   }
 
   .form-hint {
-    @apply mt-1 text-sm text-gray-500;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: hsl(var(--muted-foreground));
   }
 
   .form-error {
-    @apply mt-1 text-sm text-danger-600;
+    margin-top: 0.25rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: hsl(var(--destructive));
   }
 
   /* 徽章样式 */
   .badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+    display: inline-flex;
+    align-items: center;
+    padding-left: 0.625rem;
+    padding-right: 0.625rem;
+    padding-top: 0.125rem;
+    padding-bottom: 0.125rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    border-width: 1px;
   }
 
   .badge-primary {
-    @apply bg-primary-100 text-primary-800;
+    background-color: hsl(var(--primary) / 0.1);
+    color: hsl(var(--primary));
+    border-color: hsl(var(--primary) / 0.2);
   }
 
   .badge-success {
-    @apply bg-success-100 text-success-800;
+    background-color: #DCFCE7;
+    color: #166534;
+    border-color: #BBF7D0;
+  }
+  .dark .badge-success {
+    background-color: hsl(145 63% 49% / 0.3);
+    color: #6EE7B7;
+    border-color: hsl(145 63% 49% / 0.5);
   }
 
   .badge-warning {
-    @apply bg-warning-100 text-warning-800;
+     background-color: #FEF9C3;
+     color: #854D0E;
+     border-color: #FEF08A;
+  }
+   .dark .badge-warning {
+    background-color: hsl(54 92% 63% / 0.3);
+    color: #FDE047;
+    border-color: hsl(54 92% 63% / 0.5);
   }
 
   .badge-danger {
-    @apply bg-danger-100 text-danger-800;
+    background-color: hsl(var(--destructive) / 0.1);
+    color: hsl(var(--destructive));
+    border-color: hsl(var(--destructive) / 0.2);
   }
 
   /* 提示框样式 */
   .alert {
-    @apply p-4 rounded-md border;
+    padding: 1rem;
+    border-radius: 0.375rem;
+    border-width: 1px;
   }
 
   .alert-primary {
-    @apply bg-primary-50 border-primary-200 text-primary-700;
+    background-color: hsl(var(--primary) / 0.1);
+    border-color: hsl(var(--primary) / 0.3);
+    color: hsl(var(--primary));
   }
 
   .alert-success {
-    @apply bg-success-50 border-success-200 text-success-700;
+    background-color: #DCFCE7;
+    border-color: #BBF7D0;
+    color: #15803D;
+  }
+  .dark .alert-success {
+     background-color: hsl(145 63% 49% / 0.3);
+     color: #6EE7B7;
+     border-color: hsl(145 63% 49% / 0.5);
   }
 
   .alert-warning {
-    @apply bg-warning-50 border-warning-200 text-warning-700;
+     background-color: #FEF9C3;
+     border-color: #FEF08A;
+     color: #B45309;
+  }
+  .dark .alert-warning {
+    background-color: hsl(54 92% 63% / 0.3);
+    color: #FDE047;
+    border-color: hsl(54 92% 63% / 0.5);
   }
 
   .alert-danger {
-    @apply bg-danger-50 border-danger-200 text-danger-700;
+    background-color: hsl(var(--destructive) / 0.1);
+    border-color: hsl(var(--destructive) / 0.3);
+    color: hsl(var(--destructive));
   }
 
   /* 导航样式 */
   .nav-link {
-    @apply px-3 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-md transition-colors;
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    color: hsl(var(--muted-foreground));
+    border-radius: 0.375rem;
+  }
+  .nav-link:hover {
+    color: hsl(var(--foreground));
+    background-color: hsl(var(--accent));
   }
 
   .nav-link-active {
-    @apply text-primary-700 bg-primary-50;
+    color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.1);
   }
 
   /* 表格样式 */
   .table {
-    @apply min-w-full divide-y divide-gray-200;
+    min-width: 100%;
+    border-bottom-width: 0px;
+    border-color: hsl(var(--border));
+    border-top-width: 1px;
+    divide-y: hsl(var(--border));
   }
 
   .table-header {
-    @apply bg-gray-50;
+    background-color: hsl(var(--muted) / 0.5);
   }
 
   .table-header-cell {
-    @apply px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 0.75rem;
+    padding-bottom: 0.75rem;
+    text-align: left;
+    font-size: 0.75rem;
+    line-height: 1rem;
+    font-weight: 500;
+    color: hsl(var(--muted-foreground));
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
   }
 
   .table-body {
-    @apply bg-white divide-y divide-gray-200;
+    background-color: hsl(var(--background));
+    border-bottom-width: 0px;
+    border-color: hsl(var(--border));
+    border-top-width: 1px;
+    divide-y: hsl(var(--border));
   }
 
-  .table-row {
-    @apply hover:bg-gray-50;
+  .table-row:hover {
+    background-color: hsl(var(--muted) / 0.5);
   }
 
   .table-cell {
-    @apply px-6 py-4 whitespace-nowrap text-sm text-gray-500;
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+    white-space: nowrap;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: hsl(var(--muted-foreground));
   }
-}
-
-/* 强制移除按钮焦点和轮廓样式 */
-button:focus,
-button:focus-visible,
-button:focus-within,
-[role="button"]:focus,
-[role="button"]:focus-visible,
-[type="button"]:focus,
-[type="button"]:focus-visible,
-.btn:focus,
-.btn:focus-visible,
-[class*="button"]:focus,
-[class*="button"]:focus-visible {
-  outline: none !important;
-  box-shadow: none !important;
-  -webkit-box-shadow: none !important;
-  -moz-box-shadow: none !important;
-  border-color: transparent !important;
-  ring-width: 0 !important;
-  ring-offset-width: 0 !important;
 }

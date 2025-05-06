@@ -1,7 +1,7 @@
 <template>
   <div class="config-tree" tabindex="0" @focus="treeHasFocus = true" @blur="treeHasFocus = false" @click="handleTreeClick">
-    <div v-if="loading" class="flex items-center justify-center p-4">
-      <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
+    <div v-if="loading" class="flex items-center justify-center p-4 text-muted-foreground">
+      <div class="animate-spin h-5 w-5 border-2 border-border border-t-primary rounded-full mr-2"></div>
       <span>加载中...</span>
     </div>
     <div v-else-if="!treeData || treeData.length === 0" class="p-4 text-muted-foreground">
@@ -525,11 +525,13 @@ const createNewSnippet = async () => {
   padding: 0;
   margin: 0;
   outline: none; /* 移除默认的焦点轮廓 */
+  @apply bg-background; /* Use theme background */
 }
 
 /* 树组件获得焦点时的样式 */
 .tree-has-focus {
-  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3); /* 添加内阴影作为焦点指示器 */
+  /* box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3); */ /* 改用 ring */
+  @apply ring-2 ring-ring ring-inset;
 }
 
 .tree-container {
@@ -541,19 +543,14 @@ const createNewSnippet = async () => {
 /* 拖拽样式 */
 .tree-ghost {
   opacity: 0.5;
-  background-color: #f1f5f9 !important;
-  border: 1px dashed #64748b !important;
+  /* background-color: #f1f5f9 !important; */
+  /* border: 1px dashed #64748b !important; */
+  @apply bg-accent/50 border border-dashed border-border !important;
 }
 
 .tree-drag {
-  /* 可以保留基本的拖拽样式，例如透明度 */
   opacity: 0.7;
   z-index: 10;
-  /* 移除强制高度和溢出隐藏 */
-  /* height: 28px !important; */
-  /* overflow: hidden !important; */
-  /* 移除背景色 */
-  /* background-color: rgba(230, 230, 230, 0.8) !important; */
 }
 
 /* 确保被拖拽节点的直接子元素（例如图标和名称的容器）不会破坏高度 */

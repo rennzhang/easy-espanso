@@ -12,7 +12,7 @@
             <label
               for="trigger"
               class="text-sm font-medium text-foreground mr-2"
-              >{{ t('snippets.form.trigger.label') }}</label
+              >{{ t("snippets.form.trigger.label") }}</label
             >
             <HelpTip :content="t('snippets.form.trigger.help')" />
           </div>
@@ -30,8 +30,10 @@
         <!-- 名称 -->
         <div class="w-full md:w-1/2 space-y-1.5">
           <div class="flex items-center">
-            <label for="label" class="text-sm font-medium text-foreground mr-2"
-              >{{ t('snippets.form.label.label') }}</label
+            <label
+              for="label"
+              class="text-sm font-medium text-foreground mr-2"
+              >{{ t("snippets.form.label.label") }}</label
             >
             <HelpTip :content="t('snippets.form.label.help')" />
           </div>
@@ -50,21 +52,19 @@
       <div class="space-y-2 flex-1 flex flex-col">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
-            <label class="text-sm font-medium leading-none mr-2"
-              >{{ t('snippets.form.content.label') }}</label
-            >
+            <label class="text-sm font-medium leading-none mr-2">{{
+              t("snippets.form.content.label")
+            }}</label>
             <HelpTip :content="t('snippets.form.content.help')" />
           </div>
 
-          <Menubar
-            class="flex py-1 cursor-pointer px-1 border-1 border border-gray-300 rounded-md"
-          >
+          <Menubar class="flex py-1 cursor-pointer px-1 border rounded-md">
             <MenubarMenu
               v-for="option in contentTypeOptions"
               :key="option.value"
             >
               <MenubarTrigger
-                class="rounded-md h-8 px-3 py-1 text-sm transition-colors duration-150 focus:outline-none"
+                class="rounded-md h-8 px-3 py-1 text-sm duration-150 focus:outline-none"
                 :class="{
                   'bg-primary text-primary-foreground hover:bg-primary/90':
                     currentContentType === option.value,
@@ -84,11 +84,12 @@
         <!-- Editor Container -->
         <div
           v-if="currentContentType !== 'image'"
-          class="shadow-xs border-1 border rounded-md overflow-hidden min-h-[300px] focus-within:border-gray-600 focus-within:shadow-xl focus:border-gray-600 focus:shadow-xl duration-150 border-gray-300 flex-1 flex flex-col"
+          class="shadow-xs border rounded-md overflow-hidden min-h-[300px] focus-within:border-primary focus-within:shadow-xl focus:border-primary focus:shadow-xl duration-150 flex-1 flex flex-col bg-card"
         >
           <!-- CodeMirror Editor (Replaces all previous textareas) -->
           <div class="h-full">
             <Codemirror
+              :border="false"
               :class="{
                 'hidden-line-numbers':
                   currentContentType !== 'html' &&
@@ -102,7 +103,7 @@
                   ? '输入表单定义 (YAML 格式)...'
                   : '输入替换内容...'
               "
-              class="h-full"
+              class="h-full codemirror-theme-enabled"
               @blur="autoSave"
             />
           </div>
@@ -129,7 +130,7 @@
                         box-shadow: none !important;
                       "
                     >
-                      <span>{{ t('snippets.form.insertButton.title') }}</span>
+                      <span>{{ t("snippets.form.insertButton.title") }}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -137,7 +138,9 @@
                       @click="insertCommonVariable('clipboard')"
                     >
                       <ClipboardIcon class="mr-2 h-4 w-4" />
-                      <span>{{ t('snippets.form.insertButton.clipboard') }}</span>
+                      <span>{{
+                        t("snippets.form.insertButton.clipboard")
+                      }}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       @click="
@@ -149,18 +152,23 @@
                       "
                     >
                       <MousePointerClickIcon class="mr-2 h-4 w-4" />
-                      <span>{{ t('snippets.form.insertButton.cursor') }}</span>
+                      <span>{{ t("snippets.form.insertButton.cursor") }}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem @click="insertCommonVariable('date')">
                       <CalendarIcon class="mr-2 h-4 w-4" />
-                      <span>{{ t('snippets.form.insertButton.date') }}</span>
+                      <span>{{ t("snippets.form.insertButton.date") }}</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem @click="variableSelectorRef?.showModal()">
                       <MoreHorizontalIcon class="mr-2 h-4 w-4" />
-                      <span>{{ t('snippets.form.insertButton.moreVariables') }}</span>
-                      <span class="ml-2 text-xs text-yellow-600 italic"
-                        >{{ t('snippets.form.insertButton.inDevelopment') }}</span
+                      <span>{{
+                        t("snippets.form.insertButton.moreVariables")
+                      }}</span>
+                      <span
+                        class="ml-2 text-xs text-warning-foreground italic"
+                        >{{
+                          t("snippets.form.insertButton.inDevelopment")
+                        }}</span
                       >
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -170,10 +178,10 @@
               <div class="flex items-center justify-between">
                 <!-- Replacement Mode Label and HelpTip (Moved Left & Renamed) -->
                 <div class="flex items-center mr-2">
-                  <Label class="text-xs font-medium mr-1">{{ t('snippets.form.replacementMode.title') }}</Label>
-                  <HelpTip
-                    :content="t('snippets.form.replacementMode.help')"
-                  />
+                  <Label class="text-xs font-medium mr-1">{{
+                    t("snippets.form.replacementMode.title")
+                  }}</Label>
+                  <HelpTip :content="t('snippets.form.replacementMode.help')" />
                 </div>
 
                 <!-- Insertion Mode Menubar (Moved Left) -->
@@ -206,7 +214,7 @@
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>
-                              {{ t('snippets.form.replacementMode.help') }}
+                              {{ t("snippets.form.replacementMode.help") }}
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -235,7 +243,7 @@
         <!-- Image Upload/Preview - REVISED -->
         <div
           v-else-if="currentContentType === 'image'"
-          class="p-4 flex flex-col items-center justify-center border border-dashed rounded-md min-h-[300px] text-muted-foreground hover:border-primary/50 transition-colors duration-150"
+          class="p-4 flex flex-col items-center justify-center border border-dashed rounded-md min-h-[300px] text-muted-foreground hover:border-primary/50 duration-150"
           @dragover.prevent="handleDragOver"
           @dragleave.prevent="handleDragLeave"
           @drop.prevent="handleDrop"
@@ -256,14 +264,18 @@
             v-if="formState.content && isImageUrl(formState.content)"
             class="text-center w-full"
           >
-            <p class="text-sm font-medium mb-2 text-foreground">{{ t('snippets.form.imageUpload.currentImage') }}</p>
+            <p class="text-sm font-medium mb-2 text-foreground">
+              {{ t("snippets.form.imageUpload.currentImage") }}
+            </p>
             <img
               :src="formState.content"
               alt="预览"
               class="max-w-full max-h-[200px] rounded-md mb-3 mx-auto border"
             />
             <div class="p-2 bg-muted/50 rounded mb-3 text-sm text-left">
-              <p class="font-medium text-foreground text-xs">{{ t('snippets.form.imageUpload.path') }}</p>
+              <p class="font-medium text-foreground text-xs">
+                {{ t("snippets.form.imageUpload.path") }}
+              </p>
               <p class="text-muted-foreground break-all text-xs">
                 {{ formState.content }}
               </p>
@@ -276,27 +288,29 @@
               class="h-8 px-3 text-xs"
             >
               <XIcon class="h-3 w-3 mr-1" />
-              {{ t('snippets.form.imageUpload.removeImage') }}
+              {{ t("snippets.form.imageUpload.removeImage") }}
             </Button>
           </div>
 
           <!-- State: No Image Selected -->
           <div v-else class="text-center cursor-pointer">
-            <UploadCloudIcon class="h-12 w-12 mx-auto mb-3 text-gray-400" />
+            <UploadCloudIcon
+              class="h-12 w-12 mx-auto mb-3 text-muted-foreground"
+            />
             <p class="text-sm font-medium mb-1 text-foreground">
-              {{ t('snippets.form.imageUpload.dragHere') }}
+              {{ t("snippets.form.imageUpload.dragHere") }}
             </p>
-            <p class="text-xs mb-2">{{ t('snippets.form.imageUpload.or') }}</p>
+            <p class="text-xs mb-2">{{ t("snippets.form.imageUpload.or") }}</p>
             <Button
               type="button"
               variant="outline"
               size="sm"
               class="h-8 px-3 text-xs pointer-events-none"
             >
-              {{ t('snippets.form.imageUpload.selectFile') }}
+              {{ t("snippets.form.imageUpload.selectFile") }}
             </Button>
-            <p class="text-xs mt-2 text-gray-500">
-              {{ t('snippets.form.imageUpload.supportedFormats') }}
+            <p class="text-xs mt-2 text-muted-foreground">
+              {{ t("snippets.form.imageUpload.supportedFormats") }}
             </p>
           </div>
         </div>
@@ -318,7 +332,7 @@
             class="h-9 px-3 focus:outline-none"
           >
             <SettingsIcon class="h-4 w-4 mr-2" />
-            <span>{{ t('snippets.form.advancedButton.title') }}</span>
+            <span>{{ t("snippets.form.advancedButton.title") }}</span>
           </Button>
         </div>
       </div>
@@ -343,7 +357,7 @@
           <h2 class="text-lg font-semibold">预览 "{{ formState.trigger }}"</h2>
           <button
             @click="showPreviewModal = false"
-            class="text-gray-500 hover:text-gray-700"
+            class="text-muted-foreground hover:text-foreground"
           >
             <XIcon class="h-5 w-5" />
           </button>
@@ -373,8 +387,6 @@
         </div>
       </div>
     </div>
-
-
   </form>
   <!-- VariableSelector Component moved inside TooltipProvider -->
   <VariableSelector ref="variableSelectorRef" @select="insertVariable" />
@@ -383,45 +395,41 @@
   <Dialog :open="showAdvancedDialog" @update:open="showAdvancedDialog = $event">
     <DialogContent class="sm:max-w-[800px]">
       <DialogHeader>
-        <DialogTitle>{{ t('snippets.form.advancedDialog.title') }}</DialogTitle>
+        <DialogTitle>{{ t("snippets.form.advancedDialog.title") }}</DialogTitle>
         <DialogDescription>
-          {{ t('snippets.form.advancedDialog.description') }}
+          {{ t("snippets.form.advancedDialog.description") }}
         </DialogDescription>
       </DialogHeader>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto py-4">
+      <div
+        class="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto py-4"
+      >
         <!-- 左侧列 -->
         <div class="space-y-6">
           <!-- 词边界设置 -->
           <div class="space-y-3">
             <div class="flex items-center">
-              <h3 class="text-base font-medium mr-2">{{ t('snippets.form.wordBoundary.title') }}</h3>
-              <HelpTip
-                :content="t('snippets.form.wordBoundary.help')"
-              />
+              <h3 class="text-base font-medium mr-2">
+                {{ t("snippets.form.wordBoundary.title") }}
+              </h3>
+              <HelpTip :content="t('snippets.form.wordBoundary.help')" />
             </div>
             <div class="space-y-3 pl-1">
               <div class="flex items-center space-x-2">
                 <Checkbox id="word" v-model="formState.word" />
                 <label for="word" class="text-sm font-medium leading-none">
-                  {{ t('snippets.form.wordBoundary.word') }}
+                  {{ t("snippets.form.wordBoundary.word") }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
                 <Checkbox id="leftWord" v-model="formState.leftWord" />
-                <label
-                  for="leftWord"
-                  class="text-sm font-medium leading-none"
-                >
-                  {{ t('snippets.form.wordBoundary.leftWord') }}
+                <label for="leftWord" class="text-sm font-medium leading-none">
+                  {{ t("snippets.form.wordBoundary.leftWord") }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
                 <Checkbox id="rightWord" v-model="formState.rightWord" />
-                <label
-                  for="rightWord"
-                  class="text-sm font-medium leading-none"
-                >
-                  {{ t('snippets.form.wordBoundary.rightWord') }}
+                <label for="rightWord" class="text-sm font-medium leading-none">
+                  {{ t("snippets.form.wordBoundary.rightWord") }}
                 </label>
               </div>
             </div>
@@ -430,7 +438,9 @@
           <!-- 大小写处理 -->
           <div class="space-y-3">
             <div class="flex items-center">
-              <h3 class="text-base font-medium mr-2">{{ t('snippets.form.caseHandling.title') }}</h3>
+              <h3 class="text-base font-medium mr-2">
+                {{ t("snippets.form.caseHandling.title") }}
+              </h3>
               <HelpTip :content="t('snippets.form.caseHandling.help')" />
             </div>
             <div class="space-y-3 pl-1">
@@ -443,7 +453,7 @@
                   for="propagateCase"
                   class="text-sm font-medium leading-none"
                 >
-                  {{ t('snippets.form.caseHandling.propagateCase') }}
+                  {{ t("snippets.form.caseHandling.propagateCase") }}
                 </label>
               </div>
               <div class="space-y-1.5">
@@ -451,11 +461,17 @@
                   for="uppercaseStyle"
                   class="text-sm font-medium leading-none"
                 >
-                  {{ t('snippets.form.caseHandling.uppercaseStyle.label') }}
+                  {{ t("snippets.form.caseHandling.uppercaseStyle.label") }}
                 </label>
                 <Select v-model="formState.uppercaseStyle">
                   <SelectTrigger id="uppercaseStyle" class="h-9">
-                    <SelectValue :placeholder="t('snippets.form.caseHandling.uppercaseStyle.placeholder')" />
+                    <SelectValue
+                      :placeholder="
+                        t(
+                          'snippets.form.caseHandling.uppercaseStyle.placeholder'
+                        )
+                      "
+                    />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem
@@ -474,7 +490,9 @@
           <!-- 其他设置 -->
           <div class="space-y-3">
             <div class="flex items-center">
-              <h3 class="text-base font-medium mr-2">{{ t('snippets.form.otherSettings.title') }}</h3>
+              <h3 class="text-base font-medium mr-2">
+                {{ t("snippets.form.otherSettings.title") }}
+              </h3>
             </div>
             <div class="grid grid-cols-1 gap-4 pl-1">
               <!-- 优先级 -->
@@ -484,7 +502,7 @@
                     for="priority"
                     class="text-sm font-medium leading-none mr-2"
                   >
-                    {{ t('snippets.form.otherSettings.priority.label') }}
+                    {{ t("snippets.form.otherSettings.priority.label") }}
                   </label>
                   <HelpTip
                     :content="t('snippets.form.otherSettings.priority.help')"
@@ -494,7 +512,9 @@
                   id="priority"
                   v-model.number="formState.priority"
                   type="number"
-                  :placeholder="t('snippets.form.otherSettings.priority.placeholder')"
+                  :placeholder="
+                    t('snippets.form.otherSettings.priority.placeholder')
+                  "
                   class="h-9 px-3 py-2"
                 />
               </div>
@@ -506,14 +526,18 @@
                     for="hotkey"
                     class="text-sm font-medium leading-none mr-2"
                   >
-                    {{ t('snippets.form.otherSettings.hotkey.label') }}
+                    {{ t("snippets.form.otherSettings.hotkey.label") }}
                   </label>
-                  <HelpTip :content="t('snippets.form.otherSettings.hotkey.help')" />
+                  <HelpTip
+                    :content="t('snippets.form.otherSettings.hotkey.help')"
+                  />
                 </div>
                 <Input
                   id="hotkey"
                   v-model="formState.hotkey"
-                  :placeholder="t('snippets.form.otherSettings.hotkey.placeholder')"
+                  :placeholder="
+                    t('snippets.form.otherSettings.hotkey.placeholder')
+                  "
                   class="h-9 px-3 py-2"
                 />
               </div>
@@ -526,17 +550,21 @@
           <!-- 搜索设置 -->
           <div class="space-y-3">
             <div class="flex items-center">
-              <h3 class="text-base font-medium mr-2">{{ t('snippets.form.searchSettings.title') }}</h3>
+              <h3 class="text-base font-medium mr-2">
+                {{ t("snippets.form.searchSettings.title") }}
+              </h3>
               <HelpTip :content="t('snippets.form.searchSettings.help')" />
             </div>
             <div class="space-y-1.5 pl-1">
               <label class="text-sm font-medium leading-none">
-                {{ t('snippets.form.searchSettings.searchTerms.label') }}
+                {{ t("snippets.form.searchSettings.searchTerms.label") }}
               </label>
               <TagInput
                 :modelValue="formState.search_terms || []"
                 @update:modelValue="(val: string[]) => formState.search_terms = val"
-                :placeholder="t('snippets.form.searchSettings.searchTerms.placeholder')"
+                :placeholder="
+                  t('snippets.form.searchSettings.searchTerms.placeholder')
+                "
                 class="py-1"
               />
             </div>
@@ -544,8 +572,12 @@
         </div>
       </div>
       <DialogFooter>
-        <Button type="button" variant="outline" @click="showAdvancedDialog = false">
-          {{ t('common.close') }}
+        <Button
+          type="button"
+          variant="outline"
+          @click="showAdvancedDialog = false"
+        >
+          {{ t("common.close") }}
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -564,7 +596,7 @@ import {
   defineProps,
   PropType,
 } from "vue";
-import { useI18n } from 'vue-i18n';
+import { useI18n } from "vue-i18n";
 import { useEspansoStore } from "../../store/useEspansoStore";
 import { useFormStore } from "../../store/useFormStore";
 import { toast } from "vue-sonner";
@@ -600,7 +632,6 @@ import {
   UploadCloudIcon,
 } from "lucide-vue-next";
 import type { Match } from "@/types/core/espanso.types";
-import { Transition } from "vue";
 import {
   Select,
   SelectContent,
@@ -616,6 +647,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
+import { useTheme } from "../../hooks/useTheme"; // 导入主题钩子
 
 // --- CodeMirror v5 Imports ---
 import Codemirror, { CmComponentRef } from "codemirror-editor-vue3";
@@ -626,6 +658,8 @@ import "codemirror/mode/htmlmixed/htmlmixed.js";
 import "codemirror/mode/javascript/javascript.js";
 import "codemirror/mode/yaml/yaml.js";
 import "codemirror/lib/codemirror.css"; // Base CSS
+import "codemirror/theme/dracula.css"; // 添加dracula主题
+import "codemirror/theme/elegant.css"; // 浅色主题
 import { Editor } from "codemirror";
 // Optional: Add a theme CSS
 // import 'codemirror/theme/material-darker.css';
@@ -644,9 +678,9 @@ const props = defineProps({
 
 // Define emits
 const emit = defineEmits<{
-  (e: 'modified', value: boolean): void;
+  (e: "modified", value: boolean): void;
   // 添加 save 事件定义，假设 rule.id 是字符串或数字
-  (e: 'save', ruleId: string | number | undefined, data: Partial<Match>): void;
+  (e: "save", ruleId: string | number | undefined, data: Partial<Match>): void;
 }>();
 
 // 获取 store
@@ -657,52 +691,74 @@ const mapRuleToFormData = (rule: Match | null): RuleFormState => {
   if (!rule) {
     // Return default RuleFormState
     return {
-      trigger: "", triggers: [], label: "", description: "",
-      content: "", contentType: "plain", word: false, leftWord: false, rightWord: false,
-      propagateCase: false, uppercaseStyle: "", forceMode: "", apps: [], exclude_apps: [],
-      search_terms: [], priority: 0, hotkey: "", image_path: "", vars: [],
+      trigger: "",
+      triggers: [],
+      label: "",
+      description: "",
+      content: "",
+      contentType: "plain",
+      word: false,
+      leftWord: false,
+      rightWord: false,
+      propagateCase: false,
+      uppercaseStyle: "",
+      forceMode: "",
+      apps: [],
+      exclude_apps: [],
+      search_terms: [],
+      priority: 0,
+      hotkey: "",
+      image_path: "",
+      vars: [],
     };
   }
 
   // 1. 确定实际的 contentType (如果缺失或无效，则默认为 'plain')
-  let contentType: ContentType = 'plain'; // 从默认开始
-  if (rule.contentType && ['plain', 'markdown', 'html', 'image', 'form'].includes(rule.contentType)) {
-      contentType = rule.contentType;
+  let contentType: ContentType = "plain"; // 从默认开始
+  if (
+    rule.contentType &&
+    ["plain", "markdown", "html", "image", "form"].includes(rule.contentType)
+  ) {
+    contentType = rule.contentType;
   } else {
-      // 如果 contentType 缺失或无效，尝试推断 (可选, 但有助于恢复)
-      if (rule.markdown !== undefined) contentType = 'markdown';
-      else if (rule.html !== undefined) contentType = 'html';
-      else if (rule.image_path !== undefined) contentType = 'image';
-      // 否则保持 'plain' (如果需要，可以根据 'form' 字段推断 'form')
+    // 如果 contentType 缺失或无效，尝试推断 (可选, 但有助于恢复)
+    if (rule.markdown !== undefined) contentType = "markdown";
+    else if (rule.html !== undefined) contentType = "html";
+    else if (rule.image_path !== undefined) contentType = "image";
+    // 否则保持 'plain' (如果需要，可以根据 'form' 字段推断 'form')
   }
 
   // 2. 根据确定的 contentType 获取内容
   let content = "";
   switch (contentType) {
-      case 'markdown':
-          content = rule.markdown ?? rule.replace ?? ""; // 如果 markdown 缺失，回退到 replace
-          break;
-      case 'html':
-          content = rule.html ?? rule.replace ?? ""; // 如果 html 缺失，回退到 replace
-          break;
-      case 'image':
-          content = rule.image_path ?? "";
-          break;
-      case 'form': // 假设 form 使用 'replace'
-          content = rule.replace ?? "";
-          break;
-      case 'plain':
-      default:
-          content = rule.replace ?? ""; // 默认使用 replace
-          break;
+    case "markdown":
+      content = rule.markdown ?? rule.replace ?? ""; // 如果 markdown 缺失，回退到 replace
+      break;
+    case "html":
+      content = rule.html ?? rule.replace ?? ""; // 如果 html 缺失，回退到 replace
+      break;
+    case "image":
+      content = rule.image_path ?? "";
+      break;
+    case "form": // 假设 form 使用 'replace'
+      content = rule.replace ?? "";
+      break;
+    case "plain":
+    default:
+      content = rule.replace ?? ""; // 默认使用 replace
+      break;
   }
 
   // 合并 trigger 和 triggers (用于显示)
   const triggers = rule.triggers || [];
   let singleTrigger = rule.trigger || "";
-  if (triggers.length > 0) { singleTrigger = triggers.join("\n"); } // 在 textarea 中使用 \n 显示
+  if (triggers.length > 0) {
+    singleTrigger = triggers.join("\n");
+  } // 在 textarea 中使用 \n 显示
   let uiForceMode = rule.force_mode || "";
-  if (uiForceMode === 'default') { uiForceMode = ''; }
+  if (uiForceMode === "default") {
+    uiForceMode = "";
+  }
 
   // 3. 返回完整的表单状态
   return {
@@ -737,12 +793,7 @@ const imageInputRef = ref<HTMLInputElement | null>(null);
 const isDragging = ref(false);
 
 // 定义内容类型 (Added ContentType definition)
-type ContentType =
-  | "plain"
-  | "markdown"
-  | "html"
-  | "image"
-  | "form"
+type ContentType = "plain" | "markdown" | "html" | "image" | "form";
 
 // 定义表单状态接口 - 基于 Match 的字段
 interface RuleFormState {
@@ -793,25 +844,28 @@ const { t } = useI18n();
 
 // 内容类型选项
 const contentTypeOptions = [
-  { label: t('snippets.contentTypes.plain'), value: "plain" },
-  { label: t('snippets.contentTypes.markdown'), value: "markdown" },
-  { label: t('snippets.contentTypes.html'), value: "html" },
-  { label: t('snippets.contentTypes.image'), value: "image" },
-  { label: t('snippets.contentTypes.form'), value: "form", disabled: true },
+  { label: t("snippets.contentTypes.plain"), value: "plain" },
+  { label: t("snippets.contentTypes.markdown"), value: "markdown" },
+  { label: t("snippets.contentTypes.html"), value: "html" },
+  { label: t("snippets.contentTypes.image"), value: "image" },
+  { label: t("snippets.contentTypes.form"), value: "form", disabled: true },
 ];
 
 // 大小写样式选项
 const uppercaseStyleOptions = [
-  { value: "uppercase", label: t('snippets.uppercaseStyles.uppercase') },
-  { value: "capitalize", label: t('snippets.uppercaseStyles.capitalize') },
-  { value: "capitalize_words", label: t('snippets.uppercaseStyles.capitalizeWords') },
+  { value: "uppercase", label: t("snippets.uppercaseStyles.uppercase") },
+  { value: "capitalize", label: t("snippets.uppercaseStyles.capitalize") },
+  {
+    value: "capitalize_words",
+    label: t("snippets.uppercaseStyles.capitalizeWords"),
+  },
 ];
 
 // Define insertion mode options for the button group
 const insertionModeOptions = [
-  { value: "default", label: t('snippets.insertionModes.auto') },
-  { value: "clipboard", label: t('snippets.insertionModes.clipboard') },
-  { value: "keys", label: t('snippets.insertionModes.keys') },
+  { value: "default", label: t("snippets.insertionModes.auto") },
+  { value: "clipboard", label: t("snippets.insertionModes.clipboard") },
+  { value: "keys", label: t("snippets.insertionModes.keys") },
 ];
 
 // 内容编辑器引用 - REMOVED
@@ -819,6 +873,10 @@ const insertionModeOptions = [
 
 // --- CodeMirror v5 Ref and Options ---
 const cmRef = ref<CmComponentRef>();
+
+// 获取主题状态
+const { theme, isDarkMode } = useTheme();
+
 const cmOptions = computed(() => {
   let mode = "text/plain";
   switch (currentContentType.value) {
@@ -839,20 +897,10 @@ const cmOptions = computed(() => {
   return {
     mode: mode,
     lineNumbers: false,
-    // lineNumbers:
-    //   currentContentType.value === "html" ||
-    //   currentContentType.value === "markdown"
-    //     ? true
-    //     : false,
     lineWrapping: true,
     tabSize: 2,
     styleActiveLine: false,
-    // styleActiveLine:
-    //   currentContentType.value === "html" ||
-    //   currentContentType.value === "markdown"
-    //     ? true
-    //     : false,
-    // theme: 'material-darker' // Optional theme
+    theme: isDarkMode.value ? "dracula" : "elegant", // 根据当前主题状态动态选择
   };
 });
 
@@ -900,13 +948,13 @@ const showPreview = () => {
     } else if (variableName.startsWith("date:")) {
       return new Date().toLocaleString();
     } else if (variableName === "clipboard") {
-      return t('snippets.form.preview.clipboardContent');
+      return t("snippets.form.preview.clipboardContent");
     } else if (variableName.startsWith("random")) {
-      return t('snippets.form.preview.randomNumber');
+      return t("snippets.form.preview.randomNumber");
     } else if (variableName.startsWith("shell:")) {
-      return t('snippets.form.preview.shellResult');
+      return t("snippets.form.preview.shellResult");
     } else if (variableName.startsWith("form:")) {
-      return t('snippets.form.preview.formInput');
+      return t("snippets.form.preview.formInput");
     } else {
       // 对于未知变量，保持原样
       return `{{${variableName}}}`;
@@ -916,7 +964,6 @@ const showPreview = () => {
   previewContent.value = content;
   showPreviewModal.value = true;
 };
-
 
 // 辅助函数：根据 Match 数据确定初始 contentType
 const determineInitialContentType = (
@@ -961,9 +1008,12 @@ const resetForm = (formData: Partial<Match>) => {
   // 确保设置正确的内容类型
   if (formData.contentType) {
     currentContentType.value = formData.contentType as ContentType;
-    console.log("[RuleEditForm] resetForm 设置内容类型:", currentContentType.value);
+    console.log(
+      "[RuleEditForm] resetForm 设置内容类型:",
+      currentContentType.value
+    );
   }
-}
+};
 
 // 初始化表单
 onMounted(() => {
@@ -986,7 +1036,7 @@ onMounted(() => {
     isFormModified.value = false;
     isInitialized.value = true;
     console.log("[RuleEditForm] Initial state and baseline set on mount.");
-     // Initial check for modification status (should be false)
+    // Initial check for modification status (should be false)
     checkFormModified();
   });
 });
@@ -1025,22 +1075,26 @@ watch(
 );
 
 // 监听 propagateCase 的变化
-watch(() => formState.value.propagateCase, (isPropagateCaseEnabled) => {
-  // 如果 propagate_case 被取消勾选 (变为 false)
-  if (!isPropagateCaseEnabled) {
-    // 自动将 uppercase_style 设置为 "无" (空字符串)
-    formState.value.uppercaseStyle = "";
-    console.log("传播大小写已禁用，自动清空大写样式。");
-    // checkFormModified() 会被 watch(formState) 自动触发，无需手动调用
+watch(
+  () => formState.value.propagateCase,
+  (isPropagateCaseEnabled) => {
+    // 如果 propagate_case 被取消勾选 (变为 false)
+    if (!isPropagateCaseEnabled) {
+      // 自动将 uppercase_style 设置为 "无" (空字符串)
+      formState.value.uppercaseStyle = "";
+      console.log("传播大小写已禁用，自动清空大写样式。");
+      // checkFormModified() 会被 watch(formState) 自动触发，无需手动调用
+    }
   }
-});
+);
 
 // 检查表单是否被修改
 const checkFormModified = () => {
   // 确保在初始化完成后再检查
-  if (!isInitialized.value) { // <--- 检查初始化标记
-      console.log("检查修改跳过：尚未初始化");
-      return;
+  if (!isInitialized.value) {
+    // <--- 检查初始化标记
+    console.log("检查修改跳过：尚未初始化");
+    return;
   }
 
   // 如果原始表单数据为空 (理论上初始化后不应为空)
@@ -1048,7 +1102,7 @@ const checkFormModified = () => {
     console.log("检查修改：原始数据为空");
     isFormModified.value = false;
     store.state.hasUnsavedChanges = false;
-    emit('modified', false);
+    emit("modified", false);
     return;
   }
 
@@ -1064,12 +1118,14 @@ const checkFormModified = () => {
   isFormModified.value = hasChanged;
   store.state.hasUnsavedChanges = hasChanged;
   // 触发 modified 事件，将修改状态传递给父组件
-  emit('modified', hasChanged);
+  emit("modified", hasChanged);
 
   // 如果有修改，保存到 FormStore
   if (hasChanged && props.rule?.id) {
     formStore.saveFormData(props.rule.id, formState.value);
-    console.log(`[RuleEditForm] 已保存修改后的表单数据到 FormStore: ${props.rule.id}`);
+    console.log(
+      `[RuleEditForm] 已保存修改后的表单数据到 FormStore: ${props.rule.id}`
+    );
   }
 
   console.log("表单初始化完成，修改状态:", hasChanged);
@@ -1322,7 +1378,8 @@ const onSubmit = async (): Promise<void> => {
       }
 
       // 准备要保存的数据
-      const dataToSave: Partial<Match> & { contentType?: ContentType } = { // <--- 明确包含 contentType
+      const dataToSave: Partial<Match> & { contentType?: ContentType } = {
+        // <--- 明确包含 contentType
         // Process trigger/triggers
         ...(formState.value.trigger.includes("\n") ||
         formState.value.trigger.includes(",")
@@ -1355,11 +1412,13 @@ const onSubmit = async (): Promise<void> => {
             ? formState.value.apps
             : undefined,
         exclude_apps:
-          formState.value.exclude_apps && formState.value.exclude_apps.length > 0
+          formState.value.exclude_apps &&
+          formState.value.exclude_apps.length > 0
             ? formState.value.exclude_apps
             : undefined,
         search_terms:
-          formState.value.search_terms && formState.value.search_terms.length > 0
+          formState.value.search_terms &&
+          formState.value.search_terms.length > 0
             ? formState.value.search_terms
             : undefined,
         priority: formState.value.priority || undefined,
@@ -1412,10 +1471,10 @@ const onSubmit = async (): Promise<void> => {
       }
 
       // 清理所有值为 undefined 的字段
-      Object.keys(dataToSave).forEach(key => {
-          if (dataToSave[key as keyof typeof dataToSave] === undefined) {
-              delete dataToSave[key as keyof typeof dataToSave];
-          }
+      Object.keys(dataToSave).forEach((key) => {
+        if (dataToSave[key as keyof typeof dataToSave] === undefined) {
+          delete dataToSave[key as keyof typeof dataToSave];
+        }
       });
 
       // 记录最终保存的数据结构
@@ -1424,7 +1483,8 @@ const onSubmit = async (): Promise<void> => {
       // 调用 emit 保存数据，并添加必要的检查
       if (props.rule && props.rule.id !== undefined && props.rule.id !== null) {
         // 调用 store 的 updateMatch 方法
-        store.updateMatch(props.rule.id, dataToSave)
+        store
+          .updateMatch(props.rule.id, dataToSave)
           .then(() => {
             // 注意：状态更新由调用方（autoSave）处理，这里只返回成功
             console.log("保存成功。");
@@ -1432,7 +1492,7 @@ const onSubmit = async (): Promise<void> => {
           })
           .catch((error) => {
             console.error("保存失败:", error);
-            toast.error(`保存失败: ${error.message || '未知错误'}`);
+            toast.error(`保存失败: ${error.message || "未知错误"}`);
             reject(error);
           });
       } else {
@@ -1443,7 +1503,7 @@ const onSubmit = async (): Promise<void> => {
       }
     } catch (error: any) {
       console.error("保存过程中发生错误:", error);
-      toast.error(`保存失败: ${error.message || '未知错误'}`);
+      toast.error(`保存失败: ${error.message || "未知错误"}`);
       reject(error);
     }
   });
@@ -1452,7 +1512,7 @@ const onSubmit = async (): Promise<void> => {
 // 取消编辑
 const onCancel = () => {
   if (isFormModified.value) {
-    if (confirm(t('snippets.form.autoSave.unsavedChanges'))) {
+    if (confirm(t("snippets.form.autoSave.unsavedChanges"))) {
       isFormModified.value = false;
       store.state.hasUnsavedChanges = false;
     }
@@ -1530,10 +1590,6 @@ const isImageUrl = (str: string): boolean => {
   return imageExtensions.some((ext) => str.toLowerCase().endsWith(ext));
 };
 
-
-
-
-
 // Detect changes on mount - Use RuleFormState here
 watch(
   () => props.rule,
@@ -1580,10 +1636,15 @@ const resetModifiedState = (savedData: Partial<Match>) => {
   // 确保设置正确的内容类型（防止undefined）
   if (newFormState.contentType) {
     currentContentType.value = newFormState.contentType;
-    console.log("[RuleEditForm] resetModifiedState 设置内容类型:", currentContentType.value);
+    console.log(
+      "[RuleEditForm] resetModifiedState 设置内容类型:",
+      currentContentType.value
+    );
   } else {
     currentContentType.value = "plain"; // 默认值
-    console.log("[RuleEditForm] resetModifiedState 未找到内容类型，使用默认值: plain");
+    console.log(
+      "[RuleEditForm] resetModifiedState 未找到内容类型，使用默认值: plain"
+    );
   }
 
   // 3. Update the baseline for modification checks using the NEW form state
@@ -1672,7 +1733,7 @@ const getFormData = (): Partial<Match> => {
   }
 
   // 清理多余字段
-  Object.keys(dataToSave).forEach(key => {
+  Object.keys(dataToSave).forEach((key) => {
     if (dataToSave[key as keyof typeof dataToSave] === undefined) {
       delete dataToSave[key as keyof typeof dataToSave];
     }
@@ -1684,7 +1745,7 @@ const getFormData = (): Partial<Match> => {
 
 // 自动保存状态
 const isSaving = ref(false);
-const saveState = ref<'idle' | 'success' | 'error'>('idle');
+const saveState = ref<"idle" | "success" | "error">("idle");
 let saveStateTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // 自动保存方法
@@ -1699,17 +1760,17 @@ const autoSave = async () => {
     }
 
     isSaving.value = true;
-    saveState.value = 'idle';
+    saveState.value = "idle";
 
     try {
       await onSubmit();
-      saveState.value = 'success';
-      toast.success(t('snippets.form.autoSave.success'));
+      saveState.value = "success";
+      toast.success(t("snippets.form.autoSave.success"));
 
       // 确保修改状态被重置
       isFormModified.value = false;
       store.state.hasUnsavedChanges = false;
-      emit('modified', false);
+      emit("modified", false);
 
       // 更新原始表单数据
       originalFormData.value = JSON.parse(JSON.stringify(formState.value));
@@ -1717,19 +1778,28 @@ const autoSave = async () => {
       // 从 FormStore 中删除保存的表单数据
       if (props.rule?.id) {
         formStore.deleteFormData(props.rule.id);
-        console.log(`[RuleEditForm] 自动保存成功，已从 FormStore 中删除表单数据: ${props.rule.id}`);
+        console.log(
+          `[RuleEditForm] 自动保存成功，已从 FormStore 中删除表单数据: ${props.rule.id}`
+        );
       }
 
       console.log("[RuleEditForm] 自动保存成功，状态已重置。");
     } catch (error: any) {
-      console.error('自动保存失败:', error);
-      saveState.value = 'error';
-      toast.error(t('snippets.form.autoSave.error', { error: error.message || t('common.error') }));
+      console.error("自动保存失败:", error);
+      saveState.value = "error";
+      toast.error(
+        t("snippets.form.autoSave.error", {
+          error: error.message || t("common.error"),
+        })
+      );
     } finally {
       isSaving.value = false;
-      saveStateTimeout = setTimeout(() => {
-        saveState.value = 'idle';
-      }, saveState.value === 'success' ? 1500 : 3000);
+      saveStateTimeout = setTimeout(
+        () => {
+          saveState.value = "idle";
+        },
+        saveState.value === "success" ? 1500 : 3000
+      );
     }
   }
 };
@@ -1748,13 +1818,15 @@ watch(
   () => props.rule?.id, // Watch only the ID for navigation changes
   (newId, oldId) => {
     if (newId === undefined || newId === oldId) {
-        // If ID is same or undefined, do nothing here.
-        // State updates for the *same* item are handled by resetModifiedState.
-        return;
+      // If ID is same or undefined, do nothing here.
+      // State updates for the *same* item are handled by resetModifiedState.
+      return;
     }
 
     // ID has changed, indicating navigation to a different rule
-    console.log("[RuleEditForm Watcher] Rule ID changed, resetting form state.");
+    console.log(
+      "[RuleEditForm Watcher] Rule ID changed, resetting form state."
+    );
     isInitialized.value = false;
     const newFormState = mapRuleToFormData(props.rule); // Use current props.rule
     formState.value = newFormState;
@@ -1762,7 +1834,10 @@ watch(
     // 确保设置正确的内容类型（防止undefined）
     if (newFormState.contentType) {
       currentContentType.value = newFormState.contentType;
-      console.log("[RuleEditForm] 切换规则，设置内容类型:", currentContentType.value);
+      console.log(
+        "[RuleEditForm] 切换规则，设置内容类型:",
+        currentContentType.value
+      );
     } else {
       currentContentType.value = "plain"; // 默认值
       console.log("[RuleEditForm] 切换规则，未找到内容类型，使用默认值: plain");
@@ -1773,7 +1848,9 @@ watch(
       isFormModified.value = false;
       store.state.hasUnsavedChanges = false; // Reset global state on item change
       isInitialized.value = true;
-      console.log("[RuleEditForm Watcher] Form reset complete after ID change.");
+      console.log(
+        "[RuleEditForm Watcher] Form reset complete after ID change."
+      );
     });
   }
   // No deep: true needed if only watching ID
@@ -1784,21 +1861,35 @@ onMounted(() => {
   console.log("[RuleEditForm] Mounted. Initializing state from props.");
   isInitialized.value = false;
 
+  // 初始化时设置适合当前主题的样式类
+  if (isDarkMode.value) {
+    document.body.classList.remove("light-theme");
+  } else {
+    document.body.classList.add("light-theme");
+  }
+
   // 检查 FormStore 中是否有保存的表单数据
   if (props.rule?.id && formStore.hasFormData(props.rule.id)) {
     // 从 FormStore 中恢复表单数据
     const savedFormData = formStore.getFormData(props.rule.id);
     if (savedFormData) {
-      console.log(`[RuleEditForm] 组件挂载，从 FormStore 恢复表单数据: ${props.rule.id}`);
+      console.log(
+        `[RuleEditForm] 组件挂载，从 FormStore 恢复表单数据: ${props.rule.id}`
+      );
       formState.value = savedFormData;
 
       // 确保设置正确的内容类型
       if (savedFormData.contentType) {
         currentContentType.value = savedFormData.contentType;
-        console.log("[RuleEditForm] 组件挂载，从 FormStore 恢复，设置内容类型:", currentContentType.value);
+        console.log(
+          "[RuleEditForm] 组件挂载，从 FormStore 恢复，设置内容类型:",
+          currentContentType.value
+        );
       } else {
         currentContentType.value = "plain"; // 默认值
-        console.log("[RuleEditForm] 组件挂载，从 FormStore 恢复，未找到内容类型，使用默认值: plain");
+        console.log(
+          "[RuleEditForm] 组件挂载，从 FormStore 恢复，未找到内容类型，使用默认值: plain"
+        );
       }
 
       nextTick(() => {
@@ -1807,7 +1898,10 @@ onMounted(() => {
         store.state.hasUnsavedChanges = true;
         isInitialized.value = true;
         console.log("[RuleEditForm] 组件挂载，从 FormStore 恢复表单数据完成。");
-        emit('modified', true); // 通知父组件表单已修改
+        emit("modified", true); // 通知父组件表单已修改
+
+        // 确保下一轮DOM更新后应用主题
+        nextTick(applyThemeToCodeMirror);
       });
       return;
     }
@@ -1822,17 +1916,62 @@ onMounted(() => {
     isFormModified.value = false;
     isInitialized.value = true;
     console.log("[RuleEditForm] Initial state and baseline set on mount.");
-     // Initial check for modification status (should be false)
+    // Initial check for modification status (should be false)
     checkFormModified();
+
+    // 确保下一轮DOM更新后应用主题
+    nextTick(applyThemeToCodeMirror);
   });
 });
 
 // 修改图片预览错误处理
 const onPreviewImageError = (e: Event) => {
   console.warn("Preview image failed to load:", previewContent.value);
-  if (e.target) (e.target as HTMLElement).style.display = 'none';
-  toast.error(t('snippets.form.preview.imageLoadError'));
+  if (e.target) (e.target as HTMLElement).style.display = "none";
+  toast.error(t("snippets.form.preview.imageLoadError"));
 };
+
+// 辅助函数：应用当前主题到CodeMirror编辑器
+const applyThemeToCodeMirror = () => {
+  console.log(
+    `[RuleEditForm] 应用主题到CodeMirror: ${isDarkMode.value ? "暗色" : "亮色"}`
+  );
+
+  // 获取当前CodeMirror实例
+  const editor = cmRef.value?.cminstance;
+  if (!editor) return;
+
+  // 根据isDarkMode切换CodeMirror主题
+  if (isDarkMode.value) {
+    editor.setOption("theme", "dracula");
+    document.body.classList.remove("light-theme");
+  } else {
+    editor.setOption("theme", "elegant"); // 使用elegant浅色主题
+    document.body.classList.add("light-theme"); // 为光标样式添加类
+  }
+};
+
+// 监听主题变化并更新CodeMirror主题
+watch(
+  isDarkMode,
+  () => {
+    applyThemeToCodeMirror();
+  },
+  { immediate: true }
+);
+
+// 监听CodeMirror实例的变化，确保主题正确应用
+watch(
+  () => cmRef.value?.cminstance,
+  (newInstance) => {
+    if (newInstance) {
+      // 延迟执行确保编辑器已完全初始化
+      setTimeout(() => {
+        applyThemeToCodeMirror();
+      }, 50);
+    }
+  }
+);
 </script>
 <style>
 /* .codemirror-container.hidden-line-numbers .CodeMirror-gutters {
@@ -1849,6 +1988,8 @@ const onPreviewImageError = (e: Event) => {
 .CodeMirror {
   /* 设置字体大小为14px */
   font-size: 14px !important;
+  border-radius: 0.3rem !important; /* 圆角边框 */
+  height: 100% !important; /* 确保编辑器占满父容器 */
 }
 .CodeMirror-cursors {
   visibility: visible !important;
@@ -1857,7 +1998,17 @@ const onPreviewImageError = (e: Event) => {
 .CodeMirror-cursor {
   /* Use an animation independent of focus state */
   animation: codemirror-blink 1.06s steps(1) infinite !important;
-  border-left-color: rgba(0, 0, 0, 0.7) !important; /* 使用固定的黑色 */
+  border-left-color: rgba(
+    255,
+    255,
+    255,
+    0.7
+  ) !important; /* 使用亮色光标适配暗色主题 */
+}
+
+/* 适配深色/浅色主题的光标颜色 */
+.light-theme .CodeMirror-cursor {
+  border-left-color: rgba(0, 0, 0, 0.7) !important; /* 浅色主题下使用深色光标 */
 }
 
 /* Define the blink animation if not already defined elsewhere */
@@ -1874,5 +2025,59 @@ const onPreviewImageError = (e: Event) => {
 }
 .CodeMirror-scroll {
   padding: 4px;
+}
+
+/* 确保背景和边框在暗色主题下更协调 */
+.dark .codemirror-container .CodeMirror {
+  background-color: hsl(var(--card)) !important; /* 使用卡片背景色 */
+  border-color: hsl(var(--border)) !important; /* 使用边框颜色 */
+}
+
+/* 调整滚动条样式 */
+.CodeMirror ::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.CodeMirror ::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.CodeMirror ::-webkit-scrollbar-thumb {
+  background: hsl(var(--border));
+  border-radius: 4px;
+}
+
+.CodeMirror ::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground));
+}
+
+/* 亮色主题下CodeMirror样式增强 */
+.CodeMirror {
+  transition: border-color 0.25s ease, box-shadow 0.25s ease !important;
+  background-color: hsl(var(--background)) !important;
+}
+
+/* 亮色主题下的焦点效果 */
+.CodeMirror:focus-within {
+  border-color: hsl(var(--ring)) !important;
+  box-shadow: 0 0 0 1px hsla(var(--ring) / 0.1) !important;
+}
+
+/* 亮色主题下的CodeMirror编辑器内容样式 */
+.CodeMirror-lines {
+  padding: 0.5rem 0 !important;
+}
+
+.CodeMirror pre.CodeMirror-line {
+  padding: 0 0.5rem !important;
+}
+
+/* 改进选中文本样式 */
+.CodeMirror-selected {
+  background-color: hsla(var(--primary) / 0.1) !important;
+}
+.dark .CodeMirror-selected {
+  background-color: hsla(var(--primary) / 0.25) !important;
 }
 </style>

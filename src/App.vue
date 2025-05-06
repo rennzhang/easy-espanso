@@ -1,33 +1,33 @@
 <template>
   <div class="app-container">
     <template v-if="store.state.loading">
-      <div class="fixed inset-0 flex items-center justify-center bg-background/80 z-50">
-        <div class="flex flex-col items-center">
-          <div class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
-          <div class="mt-4 text-primary font-medium">{{ store.state.statusMessage || '加载中...' }}</div>
+      <div class="fixed inset-0 flex items-center justify-center bg-background/95 backdrop-blur-[2px] z-50 transition-all duration-300">
+        <div class="flex flex-col items-center animate-scale-in">
+          <div class="w-14 h-14 rounded-full border-4 border-primary/20 border-t-primary animate-spin shadow-md"></div>
+          <div class="mt-5 text-primary font-medium">{{ store.state.statusMessage || '加载中...' }}</div>
         </div>
       </div>
     </template>
 
     <template v-else-if="needsConfigSelection">
       <div class="config-selector">
-        <Card class="max-w-md mx-auto">
-          <CardHeader>
-            <CardTitle class="text-center">欢迎使用 Easy Espanso</CardTitle>
-            <CardDescription class="text-center">
+        <Card class="max-w-md mx-auto shadow-lg dark:shadow-dark-md border-transparent dark:border-border/30 animate-scale-in">
+          <CardHeader class="pb-4">
+            <CardTitle class="text-center text-2xl">欢迎使用 Easy Espanso</CardTitle>
+            <CardDescription class="text-center mt-2">
               请选择您的 Espanso 配置文件夹以开始
-              <p v-if="store.state.error" class="text-destructive mt-2 text-sm">
+              <p v-if="store.state.error" class="text-destructive mt-3 text-sm font-medium">
                 加载失败: {{ store.state.error }}
               </p>
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div class="flex flex-col items-center gap-4">
-              <Button @click="selectConfigFolder" :disabled="isSelectingFolder">
+              <Button @click="selectConfigFolder" :disabled="isSelectingFolder" class="w-48 h-10">
                 <FolderIcon class="h-5 w-5 mr-2" />
                 {{ isSelectingFolder ? '处理中...' : '选择配置文件夹' }}
               </Button>
-              <p class="text-sm text-muted-foreground">
+              <p class="text-sm text-muted-foreground mt-2">
                 选择后将自动保存路径，方便下次使用。
               </p>
             </div>
@@ -52,6 +52,7 @@ import { Toaster, toast } from 'vue-sonner';
 import { PlatformAdapterFactory } from '@/services/platform/PlatformAdapterFactory';
 import * as platformService from '@/services/platformService'; // 引入重构后的 platformService
 import * as configService from '@/services/configService';     // 引入重构后的 configService
+import { useTheme } from './hooks/useTheme'; // 正确导入useTheme
 
 // 导入 UI 组件 (保持不变)
 import { Button } from './components/ui/button'; // 导入按钮组件
@@ -60,6 +61,9 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from './com
 const store = useEspansoStore();
 const adapter = PlatformAdapterFactory.getInstance();
 const isSelectingFolder = ref(false); // 用于禁用选择按钮
+// 使用useTheme并记录一下主题状态，以防linter报错
+const { theme, setTheme } = useTheme(); 
+console.log(`[App] Current theme: ${theme.value}`); // 使用theme变量，避免unused警告
 
 // --- 计算属性判断是否需要选择配置 ---
 // 当 Store 初始化完成 (!loading)，但没有有效的配置根目录 (configRootDir 为 null) 时，需要选择
@@ -70,6 +74,11 @@ const needsConfigSelection = computed(() => {
 
 // --- 初始化逻辑 ---
 onMounted(() => {
+  // Initialize theme
+  console.log('[App.vue] Initializing theme...'); // 日志
+  // useTheme 的 onMounted 钩子会自动处理主题的初始化和应用
+  // 所以这里不需要显式调用 setTheme 或 applyTheme
+
   // 使用适配器的 onIpcHandlersReady (如果存在)
   if (typeof adapter.onIpcHandlersReady === 'function') {
     console.log('[App] Waiting for IPC handlers...');
@@ -161,28 +170,37 @@ const selectConfigFolder = async () => {
 
 <style lang="postcss">
 .app-container {
-  @apply h-screen w-screen overflow-hidden;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: hsl(var(--background));
+  transition-property: background-color, border-color, color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .config-selector {
-  @apply h-full flex justify-center items-center p-5;
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.25rem;
 }
 
 /* Toast Transition Styles */
 .toast-fade-enter-active,
 .toast-fade-leave-active {
-  transition: opacity 0.5s ease, transform 0.5s ease;
+  transition: opacity 0.3s ease, transform 0.3s ease;
 }
 
 .toast-fade-enter-from,
 .toast-fade-leave-to {
   opacity: 0;
-  transform: translate(100%, 0); /* Start from the right */
+  transform: translate(20px, 0); /* 更微妙的位移 */
 }
 
 .toast-fade-enter-to,
 .toast-fade-leave-from {
   opacity: 1;
-  transform: translate(0, 0); /* End at final position */
+  transform: translate(0, 0);
 }
 </style>

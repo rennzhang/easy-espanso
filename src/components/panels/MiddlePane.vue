@@ -3,7 +3,7 @@
     <div class="flex flex-col py-2 px-4 border-b">
       <div class="flex items-center justify-between">
         <div class="flex items-center">
-          <h3 class="text-lg font-semibold text-foreground m-0">{{ $t('snippets.listTitle') }}</h3>
+          <h3 class="text-lg font-semibold text-foreground m-0">{{ t('snippets.listTitle') }}</h3>
           <Badge variant="outline" class="ml-2">
             {{ totalItemCount }} 项
           </Badge>
@@ -35,7 +35,7 @@
       <div v-show="showSearchBar" class="mt-2">
         <Input
           v-model="searchQuery"
-          :placeholder="$t('snippets.searchPlaceholder')"
+          :placeholder="t('snippets.searchPlaceholder')"
           class="w-full h-8 text-sm"
           ref="searchInputRef"
           id="search-input"
@@ -149,7 +149,7 @@
             v-for="item in filteredItems"
             :key="item.id"
             :class="{
-              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
+              'bg-primary-gradient text-primary-gradient-text':
                 selectedItemId === item.id,
             }"
             class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md rounded-none mb-2"
@@ -230,6 +230,9 @@ import {
   FolderTreeIcon,
 } from "lucide-vue-next";
 import { Match } from "@/types/core/espanso.types";
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const store = useEspansoStore();
 const searchQuery = ref("");

@@ -65,7 +65,7 @@
        <div class="relative bg-background rounded-none shadow-lg w-full max-w-xl max-h-[80vh] overflow-hidden border">
          <div class="flex items-center justify-between p-4 border-b">
            <h2 class="text-lg font-semibold">{{ t('snippets.previewTitle', { trigger: previewTrigger }) }}</h2>
-           <button @click="showPreviewModal = false" class="text-gray-500 hover:text-gray-700">
+           <button @click="showPreviewModal = false" class="text-muted-foreground hover:text-foreground">
              <XIcon class="h-5 w-5" />
            </button>
          </div>

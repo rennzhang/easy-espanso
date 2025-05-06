@@ -71,6 +71,8 @@ onErrorCaptured((err, instance, info) => {
   height: 100vh;
   width: 100vw;
   overflow: hidden;
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
 }
 
 .app-content {
@@ -92,10 +94,11 @@ onErrorCaptured((err, instance, info) => {
   justify-content: center;
   padding: 2rem;
   text-align: center;
+  animation: fade-in 0.5s ease-in-out;
 }
 
 .error-view {
-  color: #e53e3e;
+  color: hsl(var(--destructive));
   max-width: 80%;
   margin: 0 auto;
 }
@@ -104,21 +107,29 @@ onErrorCaptured((err, instance, info) => {
   font-size: 1.5rem;
   font-weight: 600;
   margin-bottom: 1rem;
+  color: hsl(var(--destructive-foreground));
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  border-top-color: #3182ce;
+  border: 4px solid;
+  border-color: hsl(var(--border) / 0.6);
+  border-radius: 9999px;
+  border-top-color: hsl(var(--primary));
   animation: spin 1s linear infinite;
   margin-bottom: 1rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
 @keyframes spin {
   to {
     transform: rotate(360deg);
   }
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>

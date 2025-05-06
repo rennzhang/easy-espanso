@@ -3,10 +3,10 @@
     <ContextMenuTrigger>
       <div
         :class="{
-          'outline outline-2 outline-offset-[-2px] outline-blue-700':
-            isContextMenuOpen && !props.isSelected,
-          'outline outline-2 outline-offset-[-2px] outline-blue-300':
-            isContextMenuOpen && props.isSelected,
+          /* 'outline outline-2 outline-offset-[-2px] outline-blue-700': isContextMenuOpen && !props.isSelected, */
+          /* 'outline outline-2 outline-offset-[-2px] outline-blue-300': isContextMenuOpen && props.isSelected, */
+          'outline outline-2 outline-offset-[-2px] outline-ring': isContextMenuOpen && !props.isSelected, /* Use theme ring color */
+          'outline outline-2 outline-offset-[-2px] outline-primary/50': isContextMenuOpen && props.isSelected, /* Use lighter primary for selected */
         }"
         class="w-full"
       >
