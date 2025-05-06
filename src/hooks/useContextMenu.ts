@@ -1,4 +1,4 @@
-import { computed, ref, nextTick } from 'vue';
+import { computed, nextTick } from 'vue';
 import { useEspansoStore } from '@/store/useEspansoStore'; // 引入重构后的 Store
 import { toast } from 'vue-sonner';
 import ClipboardManager from '@/utils/ClipboardManager';
@@ -23,11 +23,7 @@ interface MenuItem {
 export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode: () => TreeNodeItem | null }) {
   const store = useEspansoStore();
 
-  // --- 确认对话框状态 (保持不变) ---
-  const confirmDialogVisible = ref(false);
-  const confirmDialogTitle = ref('');
-  const confirmDialogMessage = ref('');
-  const pendingAction = ref<(() => Promise<void>) | null>(null);
+  // 不再需要确认对话框状态
 
   // --- 获取当前节点 (保持不变) ---
   const getCurrentNode = (): TreeNodeItem | null => {
@@ -183,7 +179,7 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
 
       // 使用工具函数确定新片段的位置
       const { targetParentNodeId, insertIndex } = determineSnippetPosition(
-          store.state.configTree, 
+          store.state.configTree,
           targetNode.id
       );
 
@@ -206,7 +202,7 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
           if (addedItem) {
               console.log('[ContextMenu] 成功创建新片段', addedItem.id);
               toast.success('新片段已创建，请编辑触发词');
-              
+
               // 在下一个 tick 中开始尝试聚焦
               nextTick(() => {
                   // 给UI一些时间来渲染
@@ -260,7 +256,8 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
   };
 
 
-  const prepareDelete = (type: 'match' | 'file' | 'folder') => {
+  // 使用系统级别的 confirm 对话框直接删除
+  const deleteItem = async (type: 'match' | 'file' | 'folder') => {
       const node = getCurrentNode();
       if (!node || node.type !== type) return;
 
@@ -270,67 +267,50 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
            name = node.match.trigger || node.match.label || '未知片段';
       }
 
-      let title = '';
       let message = '';
 
       if (type === 'match') {
-          title = '确认删除片段';
           message = `确定要删除片段 "${name}" 吗？`;
-          pendingAction.value = async () => {
-            await store.deleteItem(id, 'match');
-            toast.success(`已删除: ${name}`);
-          };
+          if (confirm(message)) {
+            try {
+              await store.deleteItem(id, 'match');
+              toast.success(`已删除: ${name}`);
+            } catch (err: any) {
+              console.error('删除操作失败:', err);
+              toast.error(`删除失败: ${err.message || '未知错误'}`);
+            }
+          }
       } else if (type === 'file') {
-           title = '确认删除文件';
            message = `确定要删除配置文件 "${name}" 吗？此操作会从文件系统中移除该文件，且不可撤销。`;
-            pendingAction.value = async () => {
-               await store.deleteFileNode(id);
-               toast.success(`已删除: ${name}`);
-            };
+           if (confirm(message)) {
+            try {
+              await store.deleteFileNode(id);
+              toast.success(`已删除: ${name}`);
+            } catch (err: any) {
+              console.error('删除操作失败:', err);
+              toast.error(`删除失败: ${err.message || '未知错误'}`);
+            }
+           }
       } else if (type === 'folder') {
-           title = '确认删除文件夹';
            message = `确定要删除文件夹 "${name}" 及其所有内容吗？此操作会从文件系统中移除该文件夹及其包含的所有文件和子文件夹，且不可撤销。`;
-           pendingAction.value = async () => {
+           if (confirm(message)) {
+            try {
               await store.deleteFolderNode(id);
               toast.success(`已删除: ${name}`);
-           };
-      } else {
-          return; // 未知类型
+            } catch (err: any) {
+              console.error('删除操作失败:', err);
+              toast.error(`删除失败: ${err.message || '未知错误'}`);
+            }
+           }
       }
-
-      confirmDialogTitle.value = title;
-      confirmDialogMessage.value = message;
-      confirmDialogVisible.value = true;
   };
 
-  const prepareDeleteMatch = () => prepareDelete('match');
-  const prepareDeleteFile = () => prepareDelete('file');
-  const prepareDeleteFolder = () => prepareDelete('folder');
-
-  // 确认删除
-  const handleConfirmDelete = async () => {
-    if (pendingAction.value) {
-      try {
-        await pendingAction.value(); // 执行之前准备好的删除操作
-      } catch (err: any) {
-        console.error('删除操作失败:', err);
-        toast.error(`删除失败: ${err.message || '未知错误'}`);
-      } finally {
-        pendingAction.value = null; // 清除待处理操作
-        confirmDialogVisible.value = false; // 关闭对话框
-      }
-    } else {
-        console.warn('handleConfirmDelete called without a pending action.');
-        confirmDialogVisible.value = false; // 即使没有操作也要关闭对话框
-    }
-  };
+  const prepareDeleteMatch = () => deleteItem('match');
+  const prepareDeleteFile = () => deleteItem('file');
+  const prepareDeleteFolder = () => deleteItem('folder');
 
   // --- 返回暴露给组件的接口 ---
   return {
-    confirmDialogVisible,
-    confirmDialogTitle,
-    confirmDialogMessage,
-
     // 计算属性
     isFolder: computed(() => getCurrentNode()?.type === 'folder'),
     isFile: computed(() => getCurrentNode()?.type === 'file'),
@@ -361,9 +341,9 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     handleExpandCurrentNode,
     handleCollapseCurrentNode,
 
+    // 删除操作
     prepareDeleteMatch,
     prepareDeleteFile,
     prepareDeleteFolder,
-    handleConfirmDelete,
   };
 }

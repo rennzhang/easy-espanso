@@ -39,14 +39,7 @@
     </ContextMenuContent>
   </ContextMenu>
 
-  <!-- 确认对话框 -->
-  <ConfirmDialog
-    v-model:visible="confirmDialogVisible"
-    :title="confirmDialogTitle"
-    :message="confirmDialogMessage"
-    @confirm="handleConfirmDelete"
-    @cancel="confirmDialogVisible = false"
-  />
+  <!-- 不再需要确认对话框 -->
 </template>
 
 <script setup lang="ts">
@@ -73,7 +66,7 @@ import { useContextMenu } from "@/hooks/useContextMenu";
 import { ref, defineProps, defineEmits, computed } from "vue";
 import ClipboardManager from "@/utils/ClipboardManager";
 import type { TreeNodeItem } from "./ConfigTree.vue";
-import ConfirmDialog from "@/components/common/ConfirmDialog.vue";
+
 
 // --- MenuItem Interface ---
 interface MenuItem {
@@ -111,9 +104,6 @@ const isContextMenuOpen = ref(false);
 
 // 使用共享的上下文菜单逻辑
 const {
-  confirmDialogVisible,
-  confirmDialogTitle,
-  confirmDialogMessage,
   handleCopyNodePath,
   handleCopyItem,
   handleCutItem,
@@ -125,7 +115,6 @@ const {
   prepareDeleteMatch,
   prepareDeleteFile,
   prepareDeleteFolder,
-  handleConfirmDelete,
   canPaste,
 } = useContextMenu({
   getNode: () => props.node,

@@ -1,5 +1,5 @@
 <template>
-  <div class="config-tree" :class="{ 'tree-has-focus': treeHasFocus }" tabindex="0" @focus="treeHasFocus = true" @blur="treeHasFocus = false" @click="handleTreeClick">
+  <div class="config-tree" tabindex="0" @focus="treeHasFocus = true" @blur="treeHasFocus = false" @click="handleTreeClick">
     <div v-if="loading" class="flex items-center justify-center p-4">
       <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
       <span>加载中...</span>
