@@ -1,5 +1,5 @@
 <template>
-  <div class="config-tree" tabindex="0" @focus="treeHasFocus = true" @blur="treeHasFocus = false" @click="handleTreeClick">
+  <div class="config-tree" :class="{ 'tree-has-focus': treeHasFocus }" tabindex="0" @focus="treeHasFocus = true" @blur="treeHasFocus = false" @click="handleTreeClick">
     <div v-if="loading" class="flex items-center justify-center p-4">
       <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
       <span>加载中...</span>
@@ -33,6 +33,7 @@ import { useEspansoStore } from '../store/useEspansoStore';
 import TreeNode from './TreeNode.vue';
 import type { Match } from '@/types/core/espanso.types';
 import Sortable from 'sortablejs';
+import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
 
 // 定义树节点类型
 export interface TreeNodeItem {
@@ -298,15 +299,17 @@ watch(() => props.selectedId, (newId) => {
   }
 });
 
-// 在组件挂载后输出树结构
+// 在组件挂载后输出树结构并设置键盘事件监听
 onMounted(() => {
   // console.log('ConfigTree组件挂载完成');
   // console.log('当前树结构:', treeData.value);
   document.addEventListener('click', handleDocumentClick);
+  document.addEventListener('keydown', handleKeyDown);
 });
 
 onUnmounted(() => {
   document.removeEventListener('click', handleDocumentClick);
+  document.removeEventListener('keydown', handleKeyDown);
 });
 
 const handleRequestRename = (item: TreeNodeItem) => {
@@ -356,6 +359,106 @@ const handleDocumentClick = (event: MouseEvent) => {
   }
 };
 
+// 获取所有可见且可选择的节点（扁平化树结构）
+const getAllSelectableNodes = (): { node: TreeNodeItem, element: HTMLElement }[] => {
+  const result: { node: TreeNodeItem, element: HTMLElement }[] = [];
+
+  // 递归函数，用于遍历树结构
+  const traverseTree = (nodes: TreeNodeItem[]) => {
+    for (const node of nodes) {
+      // 获取节点对应的DOM元素
+      const nodeElement = document.getElementById(`tree-node-${node.id}`);
+
+      // 只处理可见的节点（DOM元素存在）
+      if (nodeElement) {
+        // 文件和匹配项是可选择的
+        if (node.type === 'file' || node.type === 'match') {
+          result.push({ node, element: nodeElement });
+        }
+
+        // 检查节点是否展开
+        const nodeInfo = TreeNodeRegistry.get(node.id);
+        const isNodeOpen = nodeInfo?.isOpen?.value === true;
+
+        // 如果节点有子节点且是展开的，则递归处理子节点
+        if (isNodeOpen && node.children && node.children.length > 0) {
+          traverseTree(node.children);
+        }
+      }
+    }
+  };
+
+  // 从根节点开始遍历
+  traverseTree(treeData.value);
+  return result;
+};
+
+// 处理键盘导航
+const handleKeyDown = (event: KeyboardEvent) => {
+  // 只有当树组件有焦点时才处理键盘事件
+  if (!treeHasFocus.value) {
+    // console.log('键盘导航: 树组件没有焦点，忽略键盘事件');
+    return;
+  }
+
+  // 只处理上下箭头键
+  if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
+
+  // 阻止默认行为（例如页面滚动）
+  event.preventDefault();
+
+  console.log(`键盘导航: 检测到 ${event.key} 按键`);
+
+  // 获取所有可选择的节点
+  const selectableNodes = getAllSelectableNodes();
+  if (selectableNodes.length === 0) {
+    console.log('键盘导航: 没有找到可选择的节点');
+    return;
+  }
+
+  console.log(`键盘导航: 找到 ${selectableNodes.length} 个可选择的节点`);
+
+  // 找到当前选中节点的索引
+  const currentIndex = selectableNodes.findIndex(item => item.node.id === props.selectedId);
+  console.log(`键盘导航: 当前选中节点索引: ${currentIndex}, ID: ${props.selectedId || '无'}`);
+
+  // 计算下一个要选择的节点索引
+  let nextIndex = currentIndex;
+  if (event.key === 'ArrowDown') {
+    // 向下移动一行
+    nextIndex = currentIndex < selectableNodes.length - 1 ? currentIndex + 1 : currentIndex;
+  } else if (event.key === 'ArrowUp') {
+    // 向上移动一行
+    nextIndex = currentIndex > 0 ? currentIndex - 1 : 0;
+  }
+
+  console.log(`键盘导航: 下一个节点索引: ${nextIndex}`);
+
+  // 如果索引没有变化，则不需要进一步处理
+  if (nextIndex === currentIndex && currentIndex !== -1) {
+    console.log('键盘导航: 索引未变化，不进行选择');
+    return;
+  }
+
+  // 如果没有选中项，则选择第一个节点
+  if (currentIndex === -1) {
+    console.log('键盘导航: 没有当前选中项，选择第一个节点');
+    nextIndex = 0;
+  }
+
+  // 获取下一个要选择的节点
+  const nextNode = selectableNodes[nextIndex].node;
+  const nextElement = selectableNodes[nextIndex].element;
+
+  console.log(`键盘导航: 选择节点 ${nextNode.id} (${nextNode.type}: ${nextNode.name})`);
+
+  // 选择节点
+  handleSelect(nextNode);
+
+  // 确保选中的节点在视图中可见
+  nextElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+};
+
 </script>
 
 <style scoped>
@@ -366,6 +469,12 @@ const handleDocumentClick = (event: MouseEvent) => {
   overflow-x: hidden; /* 隐藏横向滚动条 */
   padding: 0;
   margin: 0;
+  outline: none; /* 移除默认的焦点轮廓 */
+}
+
+/* 树组件获得焦点时的样式 */
+.tree-has-focus {
+  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3); /* 添加内阴影作为焦点指示器 */
 }
 
 .tree-container {
