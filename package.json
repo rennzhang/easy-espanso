@@ -4,8 +4,6 @@
   "private": true,
   "main": "dist/electron/main/index.js",
   "scripts": {
-    "vite-dev": "vite",
-    "vite-build": "vite build",
     "dev": "node node_modules/electron/install.js && electron-vite dev",
     "build": "node node_modules/electron/install.js && electron-vite build && bash scripts/play-build-sound.sh",
     "build:quiet": "node node_modules/electron/install.js && electron-vite build",

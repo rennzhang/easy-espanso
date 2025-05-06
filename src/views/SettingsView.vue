@@ -163,7 +163,7 @@
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <Select v-model="locale">
+              <Select v-model="localConfig.language">
                 <SelectTrigger id="language" class="w-full">
                   <SelectValue :placeholder="t('settings.selectLanguagePlaceholder')" />
                 </SelectTrigger>
@@ -900,6 +900,7 @@ const localConfig = reactive<any>({
   search_shortcut: "",
   backend: "Auto",
   auto_restart: true,
+  language: "zh-CN",
 
   // 通知配置默认值
   enable_notifications: true,
@@ -972,6 +973,8 @@ const getCategoryName = (categoryId: string) => {
 // 钩子函数和调试
 onMounted(() => {
   console.log('SettingsView 已挂载');
+  console.log(`[SettingsView] 初始语言: ${locale.value}, 可用语言: ${availableLocales.join(', ')}`);
+  console.log(`[SettingsView] localStorage中的语言设置: ${localStorage.getItem('espanso-language')}`);
   loadConfig();
 });
 
@@ -982,27 +985,72 @@ onErrorCaptured((err, instance, info) => {
   return false; // 阻止错误继续传播
 });
 
-// 加载配置数据
+// 修改loadConfig函数
 const loadConfig = async () => {
   try {
     isConfigLoaded.value = false;
     loadError.value = null;
     console.log('开始加载全局配置');
     
-    // 如果store还没有准备好或globalConfig为null，使用默认配置
     if (!store.state.globalConfig) {
       console.log('全局配置不可用，使用默认值');
-      // 复制默认配置到原始配置引用
+      
+      // 尝试从localStorage读取语言设置
+      try {
+        const storedLanguage = localStorage.getItem('espanso-language');
+        if (storedLanguage && availableLocales.includes(storedLanguage)) {
+          localConfig.language = storedLanguage;
+          locale.value = storedLanguage;
+          console.log(`[SettingsView] 从localStorage加载语言设置: ${storedLanguage}`);
+        }
+      } catch (e) {
+        console.warn('[SettingsView] 读取localStorage语言设置失败:', e);
+      }
+      
       originalConfig.value = cloneDeep(localConfig);
       isConfigLoaded.value = true;
       return;
     }
     
-    // 按照store的API正确调用加载方法
-    // 成功加载后，复制配置到本地状态
     const config = store.state.globalConfig;
     if (config) {
       Object.assign(localConfig, config);
+      
+      // 优先级：
+      // 1. 配置文件中的language值
+      // 2. localStorage中的language值
+      // 3. 当前locale值
+      
+      // 先检查配置文件中是否有language设置
+      let languageSet = false;
+      if (config.language) {
+        locale.value = config.language;
+        localConfig.language = config.language;
+        languageSet = true;
+        console.log(`[SettingsView] 从配置文件加载语言设置: ${config.language}`);
+      }
+      
+      // 如果配置文件中没有language设置，尝试从localStorage读取
+      if (!languageSet) {
+        try {
+          const storedLanguage = localStorage.getItem('espanso-language');
+          if (storedLanguage && availableLocales.includes(storedLanguage)) {
+            localConfig.language = storedLanguage;
+            locale.value = storedLanguage;
+            languageSet = true;
+            console.log(`[SettingsView] 从localStorage加载语言设置: ${storedLanguage}`);
+          }
+        } catch (e) {
+          console.warn('[SettingsView] 读取localStorage语言设置失败:', e);
+        }
+      }
+      
+      // 如果都没有设置，使用当前locale
+      if (!languageSet) {
+        localConfig.language = locale.value;
+        console.log(`[SettingsView] 使用当前locale作为语言设置: ${locale.value}`);
+      }
+      
       console.log('全局配置加载成功:', localConfig);
       originalConfig.value = cloneDeep(localConfig);
     }
@@ -1037,6 +1085,16 @@ const saveSettings = async () => {
     
     // 使用store的正确方法保存全局配置
     await store.updateGlobalConfig(localConfig);
+    
+    // 保存时应用语言设置
+    if (localConfig.language && localConfig.language !== locale.value) {
+      // 先更新localStorage中的语言设置，确保下次加载时能正确读取
+      localStorage.setItem('espanso-language', localConfig.language);
+      console.log(`[SettingsView] 语言设置已保存到localStorage: ${localConfig.language}`);
+      
+      // 然后更新当前的locale值
+      locale.value = localConfig.language;
+    }
     
     // 更新原始配置，重置修改状态
     originalConfig.value = cloneDeep(localConfig);

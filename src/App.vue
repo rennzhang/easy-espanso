@@ -38,7 +38,7 @@
 
     <template v-else>
       <AppLayout />
-      <Toaster position="top-right" richColors :duration="2500" />
+      <Toaster position="top-center" richColors :duration="2500" />
     </template>
   </div>
 </template>
