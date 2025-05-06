@@ -3,24 +3,24 @@
     <!-- 加载状态 -->
     <div v-if="!isConfigLoaded && !loadError" class="loading-view">
       <div class="spinner"></div>
-      <p class="mt-4 text-primary font-medium">加载配置中...</p>
+      <p class="mt-4 text-primary font-medium">{{ t('settings.loadingConfig') }}</p>
     </div>
 
     <!-- 错误状态 -->
     <div v-else-if="loadError" class="error-view">
       <div class="alert-icon">❌</div>
       <p class="error-message">{{ loadError }}</p>
-      <Button @click="tryReload" class="mt-4">重试加载</Button>
+      <Button @click="tryReload" class="mt-4">{{ t('settings.retryLoad') }}</Button>
     </div>
 
     <!-- 正常设置内容 -->
     <div v-else class="content-view flex flex-col">
       <div class="flex justify-between items-center mb-3">
-        <h1 class="text-2xl font-bold">全局设置</h1>
+        <h1 class="text-2xl font-bold">{{ t('settings.title') }}</h1>
         <Button @click="saveSettings" :disabled="!hasChanges">
           <Save v-if="!isSaving" class="w-4 h-4 mr-2" />
           <span v-if="isSaving" class="loader mr-2"></span>
-          {{ isSaving ? "保存中..." : "保存设置" }}
+          {{ isSaving ? t('settings.savingSettings') : t('settings.saveSettings') }}
         </Button>
       </div>
       
@@ -37,19 +37,19 @@
             :class="{ active: activeCategory === category.id }"
           >
             <component :is="icons[category.icon]" class="w-5 h-5 mr-2" />
-            <span>{{ category.name }}</span>
+            <span>{{ t(`settings.sections.${category.id}`) }}</span>
           </div>
         </div>
         
         <!-- 设置内容区域 -->
         <div class="settings-content">
-          <h2 class="text-xl font-semibold mb-4">{{ getCategoryName(activeCategory) }}</h2>
+          <h2 class="text-xl font-semibold mb-4">{{ t(`settings.sections.${activeCategory}`) }}</h2>
           
           <!-- 基本设置 -->
           <div v-if="activeCategory === 'basic'" class="grid grid-cols-2 gap-4">
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="toggle_key">开关热键</Label>
+                <Label for="toggle_key">{{ t('settings.basicSettings.toggleKey') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -58,28 +58,28 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">用于开启或关闭 Espanso 功能的快捷键。设置为"OFF"将禁用此功能。</p>
+                      <p class="max-w-xs">{{ t('settings.basicSettings.toggleKeyTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Select v-model="localConfig.toggle_key">
                 <SelectTrigger id="toggle_key" class="w-full">
-                  <SelectValue placeholder="选择热键" />
+                  <SelectValue :placeholder="t('settings.selectLanguagePlaceholder')" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ALT">ALT</SelectItem>
                   <SelectItem value="CTRL">CTRL</SelectItem>
                   <SelectItem value="CMD">CMD</SelectItem>
                   <SelectItem value="SHIFT">SHIFT</SelectItem>
-                  <SelectItem value="OFF">禁用</SelectItem>
+                  <SelectItem value="OFF">{{ t('settings.selectOptions.disabled') }}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="backend">后端类型</Label>
+                <Label for="backend">{{ t('settings.basicSettings.backendType') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -88,26 +88,26 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">Espanso 使用的文本插入方法。"自动"将根据操作系统自动选择最佳方式，"注入"直接模拟键盘输入，"剪贴板"使用剪贴板进行文本替换。</p>
+                      <p class="max-w-xs">{{ t('settings.basicSettings.backendTypeTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Select v-model="localConfig.backend">
                 <SelectTrigger id="backend" class="w-full">
-                  <SelectValue placeholder="选择后端" />
+                  <SelectValue :placeholder="t('settings.selectLanguagePlaceholder')" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Auto">自动</SelectItem>
-                  <SelectItem value="Inject">注入</SelectItem>
-                  <SelectItem value="Clipboard">剪贴板</SelectItem>
+                  <SelectItem value="Auto">{{ t('settings.selectOptions.auto') }}</SelectItem>
+                  <SelectItem value="Inject">{{ t('settings.selectOptions.inject') }}</SelectItem>
+                  <SelectItem value="Clipboard">{{ t('settings.selectOptions.clipboard') }}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="search_shortcut">搜索快捷键</Label>
+                <Label for="search_shortcut">{{ t('settings.basicSettings.searchShortcut') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -116,7 +116,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">打开 Espanso 搜索窗口的快捷键，例如"ALT+SPACE"。留空表示不使用快捷键。</p>
+                      <p class="max-w-xs">{{ t('settings.basicSettings.searchShortcutTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -128,7 +128,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="auto_restart" v-model="localConfig.auto_restart" />
-                  <Label for="auto_restart">自动重启</Label>
+                  <Label for="auto_restart">{{ t('settings.basicSettings.autoRestart') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -138,12 +138,12 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">当配置文件修改后自动重启 Espanso 服务，使更改立即生效。</p>
+                      <p class="max-w-xs">{{ t('settings.basicSettings.autoRestartTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <p class="text-xs text-gray-500 mt-1">配置修改后自动重启服务</p>
+              <p class="text-xs text-gray-500 mt-1">{{ t('settings.basicSettings.autoRestartHint') }}</p>
             </div>
 
             <!-- 语言选择器 -->
@@ -169,7 +169,7 @@
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem v-for="loc in availableLocales" :key="loc" :value="loc">
-                    {{ loc === 'zh-CN' ? '简体中文' : 'English' }} <!-- 简单的语言名称映射 -->
+                    {{ t(`settings.languageNames.${loc.replace('-', '')}`) }}
                   </SelectItem>
                 </SelectContent>
               </Select>
@@ -182,7 +182,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="enable_notifications" v-model="localConfig.enable_notifications" />
-                  <Label for="enable_notifications">启用通知</Label>
+                  <Label for="enable_notifications">{{ t('settings.notificationSettings.enableNotifications') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -192,7 +192,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">显示 Espanso 操作的系统通知，帮助了解扩展何时被触发。</p>
+                      <p class="max-w-xs">{{ t('settings.notificationSettings.enableNotificationsTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -203,7 +203,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="show_icon" v-model="localConfig.show_icon" />
-                  <Label for="show_icon">显示图标</Label>
+                  <Label for="show_icon">{{ t('settings.notificationSettings.showIcon') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -213,7 +213,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">在系统托盘中显示 Espanso 图标，方便查看程序状态和访问快捷菜单。</p>
+                      <p class="max-w-xs">{{ t('settings.notificationSettings.showIconTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -222,7 +222,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="notification_icon">通知图标路径</Label>
+                <Label for="notification_icon">{{ t('settings.notificationSettings.notificationIcon') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -231,7 +231,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">自定义通知图标的文件路径。留空将使用默认图标。支持 PNG、ICO 等格式。</p>
+                      <p class="max-w-xs">{{ t('settings.notificationSettings.notificationIconTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -241,7 +241,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="notification_sound">通知声音路径</Label>
+                <Label for="notification_sound">{{ t('settings.notificationSettings.notificationSound') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -250,7 +250,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">触发扩展时播放的声音文件路径。留空表示不播放声音。支持 WAV、MP3 等格式。</p>
+                      <p class="max-w-xs">{{ t('settings.notificationSettings.notificationSoundTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -265,7 +265,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="prefer_clipboard" v-model="localConfig.prefer_clipboard" />
-                  <Label for="prefer_clipboard">优先使用剪贴板</Label>
+                  <Label for="prefer_clipboard">{{ t('settings.pasteSettings.preferClipboard') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -275,16 +275,17 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">优先使用剪贴板方式插入文本，适用于某些键盘输入方式不兼容的应用程序。</p>
+                      <p class="max-w-xs">{{ t('settings.pasteSettings.preferClipboardTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
             </div>
             
+            <!-- 剪贴板阈值 -->
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="clipboard_threshold">剪贴板阈值</Label>
+                <Label for="clipboard_threshold">{{ t('settings.pasteSettings.clipboardThreshold') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -293,7 +294,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">当替换文本长度超过此值时，自动使用剪贴板方式而非键盘输入。单位为字符数。</p>
+                      <p class="max-w-xs">{{ t('settings.pasteSettings.clipboardThresholdTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -301,9 +302,10 @@
               <Input id="clipboard_threshold" type="number" v-model="localConfig.clipboard_threshold" />
             </div>
             
+            <!-- 粘贴快捷键 -->
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="paste_shortcut">粘贴快捷键</Label>
+                <Label for="paste_shortcut">{{ t('settings.pasteSettings.pasteShortcut') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -312,7 +314,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">自定义用于粘贴的快捷键，例如"CTRL+V"。如留空，将使用系统默认粘贴快捷键。</p>
+                      <p class="max-w-xs">{{ t('settings.pasteSettings.pasteShortcutTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -320,11 +322,12 @@
               <Input id="paste_shortcut" v-model="localConfig.paste_shortcut" />
             </div>
             
+            <!-- 快速注入 -->
             <div class="form-item">
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="fast_inject" v-model="localConfig.fast_inject" />
-                  <Label for="fast_inject">快速注入</Label>
+                  <Label for="fast_inject">{{ t('settings.pasteSettings.fastInject') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -334,7 +337,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用更快的文本输入方式，在某些应用中可能提高速度，但可能降低兼容性。</p>
+                      <p class="max-w-xs">{{ t('settings.pasteSettings.fastInjectTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -343,7 +346,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="pre_paste_delay">粘贴前延迟 (ms)</Label>
+                <Label for="pre_paste_delay">{{ t('settings.pasteSettings.prePasteDelay') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -362,7 +365,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="post_paste_delay">粘贴后延迟 (ms)</Label>
+                <Label for="post_paste_delay">{{ t('settings.pasteSettings.postPasteDelay') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -858,22 +861,22 @@ const isLinux = computed(() => !isMacOS.value && !isWindows.value);
 
 // 设置分类
 const categories = [
-  { id: "basic", name: "基本设置", icon: "Settings" },
-  { id: "paste", name: "粘贴行为", icon: "Clock" },
-  { id: "notification", name: "通知设置", icon: "Bell" },
-  { id: "advanced", name: "高级设置", icon: "AlertTriangle" },
-  { id: "logging", name: "日志设置", icon: "LineChart" },
+  { id: "basic", name: t('settings.sections.basic'), icon: "Settings" },
+  { id: "paste", name: t('settings.sections.paste'), icon: "Clock" },
+  { id: "notification", name: t('settings.sections.notification'), icon: "Bell" },
+  { id: "advanced", name: t('settings.sections.advanced'), icon: "AlertTriangle" },
+  { id: "logging", name: t('settings.sections.logging'), icon: "LineChart" },
 ];
 
 // 添加平台特定设置
 if (isMacOS.value) {
-  categories.push({ id: "mac", name: "macOS设置", icon: "Laptop" });
+  categories.push({ id: "mac", name: t('settings.sections.mac'), icon: "Laptop" });
 }
 if (isWindows.value) {
-  categories.push({ id: "windows", name: "Windows设置", icon: "Monitor" });
+  categories.push({ id: "windows", name: t('settings.sections.windows'), icon: "Monitor" });
 }
 if (isLinux.value) {
-  categories.push({ id: "linux", name: "Linux设置", icon: "Server" });
+  categories.push({ id: "linux", name: t('settings.sections.linux'), icon: "Server" });
 }
 
 // 图标映射（修复类型问题）
@@ -963,8 +966,7 @@ const hasChanges = computed(() => {
 
 // 获取分类名称
 const getCategoryName = (categoryId: string) => {
-  const category = categories.find((c) => c.id === categoryId);
-  return category ? category.name : "设置";
+  return t(`settings.sections.${categoryId}`);
 };
 
 // 钩子函数和调试
@@ -1039,10 +1041,10 @@ const saveSettings = async () => {
     // 更新原始配置，重置修改状态
     originalConfig.value = cloneDeep(localConfig);
     console.log('设置保存成功');
-    toast.success('设置已保存');
+    toast.success(t('settings.settingsSaved'));
   } catch (error: any) {
     console.error('保存设置失败:', error);
-    toast.error(`保存设置失败: ${error.message || String(error)}`);
+    toast.error(t('settings.settingsSaveFailed', { error: error.message || String(error) }));
   } finally {
     isSaving.value = false;
   }
@@ -1052,7 +1054,7 @@ const saveSettings = async () => {
 const resetToDefault = () => {
   if (originalConfig.value) {
     Object.assign(localConfig, cloneDeep(originalConfig.value));
-    toast.info("已恢复到上次保存的设置");
+    toast.info(t('settings.restoredToLastSave'));
   }
 };
 </script>

@@ -173,6 +173,13 @@ export default {
   "settings": {
     "title": "全局设置",
     "saveSettings": "保存设置",
+    "savingSettings": "保存中...",
+    "loadingConfig": "加载配置中...",
+    "retryLoad": "重试加载",
+    "loadError": "加载配置失败: {error}",
+    "settingsSaved": "设置已保存",
+    "settingsSaveFailed": "保存设置失败: {error}",
+    "restoredToLastSave": "已恢复到上次保存的设置",
     "language": "界面语言",
     "languageTooltip": "选择应用程序的显示语言。",
     "selectLanguagePlaceholder": "选择语言",
@@ -185,6 +192,52 @@ export default {
       "mac": "macOS设置",
       "windows": "Windows设置",
       "linux": "Linux设置"
+    },
+    "basicSettings": {
+      "toggleKey": "开关热键",
+      "toggleKeyTooltip": "用于开启或关闭 Espanso 功能的快捷键。设置为OFF将禁用此功能。",
+      "searchShortcut": "搜索快捷键",
+      "searchShortcutTooltip": "打开 Espanso 搜索窗口的快捷键，例如ALT+SPACE。留空表示不使用快捷键。",
+      "backendType": "后端类型",
+      "backendTypeTooltip": "Espanso 使用的文本插入方法。自动将根据操作系统自动选择最佳方式，注入直接模拟键盘输入，剪贴板使用剪贴板进行文本替换。",
+      "autoRestart": "自动重启",
+      "autoRestartTooltip": "配置变更时自动重启 Espanso 服务。",
+      "autoRestartHint": "配置修改后自动重启服务"
+    },
+    "pasteSettings": {
+      "preferClipboard": "优先使用剪贴板",
+      "preferClipboardTooltip": "优先使用剪贴板方式插入文本，适用于某些键盘输入方式不兼容的应用程序。",
+      "clipboardThreshold": "剪贴板阈值",
+      "clipboardThresholdTooltip": "当替换文本长度超过此值时，自动使用剪贴板方式而非键盘输入。单位为字符数。",
+      "pasteShortcut": "粘贴快捷键",
+      "pasteShortcutTooltip": "自定义用于粘贴的快捷键，例如CTRL+V。如留空，将使用系统默认粘贴快捷键。",
+      "fastInject": "快速注入",
+      "fastInjectTooltip": "使用更快的文本输入方式，在某些应用中可能提高速度，但可能降低兼容性。",
+      "prePasteDelay": "粘贴前延迟 (ms)",
+      "prePasteDelayTooltip": "执行粘贴操作前的等待时间，单位为毫秒。增加此值可提高在慢速应用中的兼容性。",
+      "postPasteDelay": "粘贴后延迟 (ms)",
+      "postPasteDelayTooltip": "执行粘贴操作后的等待时间，单位为毫秒。增加此值可避免在某些应用中出现文本截断的问题。"
+    },
+    "languageNames": {
+      "zhCN": "简体中文",
+      "en": "English"
+    },
+    "notificationSettings": {
+      "enableNotifications": "启用通知",
+      "enableNotificationsTooltip": "显示 Espanso 操作的系统通知，帮助了解扩展何时被触发。",
+      "showIcon": "显示图标",
+      "showIconTooltip": "在系统托盘中显示 Espanso 图标，方便查看程序状态和访问快捷菜单。",
+      "notificationIcon": "通知图标路径",
+      "notificationIconTooltip": "自定义通知图标的文件路径。留空将使用默认图标。支持 PNG、ICO 等格式。",
+      "notificationSound": "通知声音路径",
+      "notificationSoundTooltip": "触发扩展时播放的声音文件路径。留空表示不播放声音。支持 WAV、MP3 等格式。"
+    },
+    "selectOptions": {
+      "disabled": "禁用",
+      "auto": "自动",
+      "inject": "注入",
+      "clipboard": "剪贴板",
+      "keyboard": "键盘"
     }
   },
   "contextMenu": {

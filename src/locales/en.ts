@@ -172,6 +172,13 @@ export default {
   "settings": {
     "title": "Global Settings",
     "saveSettings": "Save Settings",
+    "savingSettings": "Saving...",
+    "loadingConfig": "Loading Configuration...",
+    "retryLoad": "Retry Loading",
+    "loadError": "Failed to load config: {error}",
+    "settingsSaved": "Settings saved",
+    "settingsSaveFailed": "Failed to save settings: {error}",
+    "restoredToLastSave": "Restored to last saved settings",
     "language": "Language",
     "languageTooltip": "Select the display language for the application.",
     "selectLanguagePlaceholder": "Select Language",
@@ -184,6 +191,52 @@ export default {
       "mac": "macOS Settings",
       "windows": "Windows Settings",
       "linux": "Linux Settings"
+    },
+    "basicSettings": {
+      "toggleKey": "Toggle Key",
+      "toggleKeyTooltip": "Hotkey to enable or disable Espanso functionality. Set to OFF to disable.",
+      "searchShortcut": "Search Shortcut",
+      "searchShortcutTooltip": "Shortcut to open Espanso search window, e.g., ALT+SPACE. Leave empty to disable.",
+      "backendType": "Backend Type",
+      "backendTypeTooltip": "Text insertion method used by Espanso. Auto selects the best method based on OS, Inject simulates keyboard input, Clipboard uses clipboard for text replacement.",
+      "autoRestart": "Auto Restart",
+      "autoRestartTooltip": "Automatically restart Espanso service when configuration changes.",
+      "autoRestartHint": "Automatically restart service after config changes"
+    },
+    "pasteSettings": {
+      "preferClipboard": "Prefer Clipboard",
+      "preferClipboardTooltip": "Prioritize clipboard method for text insertion, useful for apps incompatible with keyboard input.",
+      "clipboardThreshold": "Clipboard Threshold",
+      "clipboardThresholdTooltip": "Automatically use clipboard method when replacement text exceeds this length (in characters).",
+      "pasteShortcut": "Paste Shortcut",
+      "pasteShortcutTooltip": "Custom shortcut for pasting, e.g., CTRL+V. Leave empty to use system default.",
+      "fastInject": "Fast Inject",
+      "fastInjectTooltip": "Use faster text input method, may improve speed in some apps but reduce compatibility.",
+      "prePasteDelay": "Pre-paste Delay (ms)",
+      "prePasteDelayTooltip": "Wait time before paste operation in milliseconds. Increasing this may improve compatibility with slow apps.",
+      "postPasteDelay": "Post-paste Delay (ms)",
+      "postPasteDelayTooltip": "Wait time after paste operation in milliseconds. Increasing this may prevent text truncation in some apps."
+    },
+    "languageNames": {
+      "zhCN": "Simplified Chinese",
+      "en": "English"
+    },
+    "notificationSettings": {
+      "enableNotifications": "Enable Notifications",
+      "enableNotificationsTooltip": "Show system notifications for Espanso actions to understand when expansions are triggered.",
+      "showIcon": "Show Icon",
+      "showIconTooltip": "Display Espanso icon in system tray for easy access to status and menu.",
+      "notificationIcon": "Notification Icon Path",
+      "notificationIconTooltip": "Custom file path for notification icon. Leave empty to use default. Supports PNG, ICO formats.",
+      "notificationSound": "Notification Sound Path",
+      "notificationSoundTooltip": "Sound file to play when expansions trigger. Leave empty for no sound. Supports WAV, MP3 formats."
+    },
+    "selectOptions": {
+      "disabled": "Disabled",
+      "auto": "Auto",
+      "inject": "Inject",
+      "clipboard": "Clipboard",
+      "keyboard": "Keyboard"
     }
   },
   "contextMenu": {
