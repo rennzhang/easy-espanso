@@ -27,7 +27,7 @@ export const findDefaultFileNodeId = (nodes: ConfigTreeNode[]): string | null =>
       if (node.name === 'base.yml') {
         return node.id;
       }
-      
+
       // 备选：第一个找到的文件节点
       return node.id;
     } else if (node.type === 'folder' && node.children && node.children.length > 0) {
@@ -53,31 +53,25 @@ export const determineSnippetPosition = (
 ): PositionInfo => {
   let targetParentNodeId: string | null = null;
   let insertIndex: number = -1;
-  
+
   if (selectedNodeId) {
     // 查找选中节点
     const selectedNode = findItemInTreeById(configTree, selectedNodeId);
-    
+
     if (selectedNode) {
       console.log(`确定位置: 当前选中节点 ${selectedNodeId} (${selectedNode.type})`);
-      
+
       if (selectedNode.type === 'file') {
-        // 如果选中的是文件节点，则在该文件下创建新片段
+        // 如果选中的是文件节点，则在该文件下创建新片段，放在最上面
         targetParentNodeId = selectedNode.id;
+        insertIndex = 0; // 插入到文件的最上面
       } else if (selectedNode.type === 'match') {
         // 如果选中的是匹配项，则在同一文件下创建新片段
         // 查找父节点
         const parentNode = findParentNodeInTree(configTree, selectedNodeId);
         if (parentNode && parentNode.type === 'file') {
           targetParentNodeId = parentNode.id;
-          
-          // 查找选中项在父节点中的索引，并在其后插入新片段
-          if (parentNode.matches) {
-            const matchIndex = parentNode.matches.findIndex((m: Match) => m.id === selectedNodeId);
-            if (matchIndex !== -1) {
-              insertIndex = matchIndex + 1;
-            }
-          }
+          insertIndex = 0; // 插入到文件的最上面
         }
       } else if (selectedNode.type === 'folder') {
         // 如果选中的是文件夹，尝试找到文件夹中的第一个文件
@@ -85,18 +79,20 @@ export const determineSnippetPosition = (
           const firstFileNode = selectedNode.children.find((child: ConfigTreeNode) => child.type === 'file');
           if (firstFileNode) {
             targetParentNodeId = firstFileNode.id;
+            insertIndex = 0; // 插入到文件的最上面
           }
         }
       }
     }
   }
-  
+
   // 如果没有找到目标父节点，则使用默认逻辑
   if (!targetParentNodeId) {
     console.log('确定位置: 未找到目标父节点，使用默认逻辑');
     targetParentNodeId = findDefaultFileNodeId(configTree);
+    insertIndex = 0; // 默认情况下也插入到文件的最上面
   }
-  
+
   return { targetParentNodeId, insertIndex };
 };
 
@@ -109,17 +105,17 @@ export const focusTriggerInput = (attempts = 0) => {
     console.log('聚焦触发词输入框失败，已达到最大尝试次数');
     return;
   }
-  
+
   // 尝试获取触发词输入框
   const triggerInput = document.getElementById('trigger');
   if (triggerInput) {
     console.log(`聚焦触发词输入框 (尝试 ${attempts + 1})`);
-    
+
     // 尝试多种方式聚焦
     try {
       // 方法1: 直接聚焦
       triggerInput.focus();
-      
+
       // 方法2: 模拟点击然后聚焦
       setTimeout(() => {
         try {
@@ -129,7 +125,7 @@ export const focusTriggerInput = (attempts = 0) => {
           console.error('模拟点击聚焦失败', e);
         }
       }, 10);
-      
+
       // 方法3: 选择文本内容
       if (triggerInput instanceof HTMLInputElement || triggerInput instanceof HTMLTextAreaElement) {
         setTimeout(() => {

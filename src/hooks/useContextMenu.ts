@@ -118,7 +118,7 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     // 目标只能是 File 或 Folder (或者 Match 的父 File)
     if (targetNode.type === 'file') {
         targetParentId = targetNode.id;
-        currentIndex = 0; // 默认添加到文件顶部
+        currentIndex = 0; // 添加到文件顶部
     } else if (targetNode.type === 'folder') {
          // **重要:** 直接粘贴到文件夹的行为需要明确定义
          // 通常不允许直接将 Match 粘贴到文件夹，应粘贴到其下的某个文件
@@ -138,14 +138,7 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
         const parentNode = findParentNodeInTree(store.state.configTree, targetNode.id);
         if (parentNode && parentNode.type === 'file') { // 确保父节点是 File
             targetParentId = parentNode.id;
-            // 查找索引
-            const siblings = parentNode.matches || [];
-            currentIndex = siblings.findIndex((item: Match) => item.id === targetNode.id);
-            if (currentIndex !== -1) {
-                currentIndex += 1; // 插入到后面
-            } else {
-                currentIndex = -1; // 附加到末尾
-            }
+            currentIndex = 0; // 添加到文件顶部
         } else {
              console.error(`[ContextMenu] 无法找到片段 ${targetNode.id} 的父文件节点`);
              toast.error("无法确定粘贴位置");

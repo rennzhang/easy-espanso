@@ -171,8 +171,19 @@ const computedMenuItems = computed((): MenuItem[] => {
     separator: true,
   });
 
-  // 只在文件夹类型下添加"新建配置文件"菜单项
-  if (type === "folder") {
+  // 检查是否是 Packages 相关节点
+  const isPackageNode = props.node.name === "Packages" ||
+                        (props.node.path && props.node.path.includes("/packages/")) ||
+                        (props.node.path && props.node.path.includes("packages/"));
+
+  // 只在 Packages 根节点时移除"新建片段"菜单项
+  if (props.node.name === "Packages") {
+    // 移除"新建片段"菜单项
+    items.pop();
+  }
+
+  // 只在文件夹类型下且不是 Packages 相关节点时添加"新建配置文件"菜单项
+  if (type === "folder" && !isPackageNode) {
     items.push({
       label: "新建配置文件",
       icon: FileIcon,
@@ -195,110 +206,164 @@ const computedMenuItems = computed((): MenuItem[] => {
 
   if (type === "file") {
     // 文件类型的菜单项
-    items.push(
-      { label: "重命名文件", icon: PencilIcon, action: handleRequestRename },
-      {
-        label: "复制路径",
-        icon: ClipboardCopyIcon,
-        action: handleCopyNodePath,
-        separator: true,
-      },
-      { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
-      {
-        label: "收起全部",
-        icon: ChevronsUpDownIcon,
-        action: handleCollapseAll,
-        separator: true,
-      },
-      {
-        label: "删除文件",
-        icon: Trash2Icon,
-        action: prepareDeleteFile,
-        variant: "destructive",
-        shortcut: deleteShortcut,
-      }
-    );
-
-    // 如果是 Packages 相关节点，添加打开官方包网站的选项
-    if (
-      props.node.name === "Packages" ||
-      (props.node.path && props.node.path.includes("/packages/"))
-    ) {
-      // 插入在删除文件选项之前
-      items.splice(items.length - 1, 0, {
-        label: "浏览官方包库",
-        icon: ExternalLinkIcon,
-        action: handleOpenPackageHub,
-        separator: true,
-      });
+    if (isPackageNode) {
+      // Packages 相关节点的文件菜单项
+      items.push(
+        {
+          label: "复制路径",
+          icon: ClipboardCopyIcon,
+          action: handleCopyNodePath,
+          separator: true,
+        },
+        { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
+        {
+          label: "收起全部",
+          icon: ChevronsUpDownIcon,
+          action: handleCollapseAll,
+          separator: true,
+        },
+        {
+          label: "浏览官方包库",
+          icon: ExternalLinkIcon,
+          action: handleOpenPackageHub,
+          separator: true,
+        }
+      );
+    } else {
+      // 普通文件的菜单项
+      items.push(
+        { label: "重命名文件", icon: PencilIcon, action: handleRequestRename },
+        {
+          label: "复制路径",
+          icon: ClipboardCopyIcon,
+          action: handleCopyNodePath,
+          separator: true,
+        },
+        { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
+        {
+          label: "收起全部",
+          icon: ChevronsUpDownIcon,
+          action: handleCollapseAll,
+          separator: true,
+        },
+        {
+          label: "删除文件",
+          icon: Trash2Icon,
+          action: prepareDeleteFile,
+          variant: "destructive",
+          shortcut: deleteShortcut,
+        }
+      );
     }
   } else if (type === "folder") {
     // 文件夹类型的菜单项
-    items.push(
-      { label: "重命名文件夹", icon: PencilIcon, action: handleRequestRename },
-      {
-        label: "复制路径",
-        icon: ClipboardCopyIcon,
-        action: handleCopyNodePath,
-        separator: true,
-      },
-      { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
-      {
-        label: "收起全部",
-        icon: ChevronsUpDownIcon,
-        action: handleCollapseAll,
-        separator: true,
-      },
-      {
-        label: "删除文件夹",
-        icon: Trash2Icon,
-        action: prepareDeleteFolder,
-        variant: "destructive",
-        shortcut: deleteShortcut,
-      }
-    );
+    if (isPackageNode) {
+      // Packages 相关节点的菜单项
+      items.push(
+        {
+          label: "复制路径",
+          icon: ClipboardCopyIcon,
+          action: handleCopyNodePath,
+          separator: true,
+        },
+        { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
+        {
+          label: "收起全部",
+          icon: ChevronsUpDownIcon,
+          action: handleCollapseAll,
+          separator: true,
+        },
+        {
+          label: "浏览官方包库",
+          icon: ExternalLinkIcon,
+          action: handleOpenPackageHub,
+          separator: true,
+        }
+      );
 
-    // 如果是 Packages 相关节点，添加打开官方包网站的选项
-    if (
-      props.node.name === "Packages" ||
-      (props.node.path && props.node.path.includes("/packages/"))
-    ) {
-      // 插入在删除文件夹选项之前
-      items.splice(items.length - 1, 0, {
-        label: "浏览官方包库",
-        icon: ExternalLinkIcon,
-        action: handleOpenPackageHub,
-        separator: true,
-      });
+      // 只有不是根 Packages 文件夹时才显示卸载选项
+      if (props.node.name !== "Packages") {
+        items.push({
+          label: "卸载此包",
+          icon: Trash2Icon,
+          action: prepareDeleteFolder,
+          variant: "destructive",
+          shortcut: deleteShortcut,
+        });
+      }
+    } else {
+      // 普通文件夹的菜单项
+      items.push(
+        { label: "重命名文件夹", icon: PencilIcon, action: handleRequestRename },
+        {
+          label: "复制路径",
+          icon: ClipboardCopyIcon,
+          action: handleCopyNodePath,
+          separator: true,
+        },
+        { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
+        {
+          label: "收起全部",
+          icon: ChevronsUpDownIcon,
+          action: handleCollapseAll,
+          separator: true,
+        },
+        {
+          label: "删除文件夹",
+          icon: Trash2Icon,
+          action: prepareDeleteFolder,
+          variant: "destructive",
+          shortcut: deleteShortcut,
+        }
+      );
     }
   } else if (type === "match") {
-    items.push(
-      {
-        label: "复制路径",
-        icon: ClipboardCopyIcon,
-        action: handleCopyNodePath,
-      },
-      {
-        label: "复制片段",
-        icon: ClipboardCopyIcon,
-        action: handleCopyItem,
-        shortcut: `${platformKey}+C`,
-      },
-      {
-        label: "剪切片段",
-        icon: ScissorsIcon,
-        action: handleCutItem,
-        shortcut: `${platformKey}+X`,
-        separator: true,
-      },
-      {
-        label: "删除片段",
-        icon: Trash2Icon,
-        action: prepareDeleteMatch,
-        variant: "destructive",
-        shortcut: deleteShortcut,
-      }
-    );
+    // 片段类型的菜单项
+    if (isPackageNode) {
+      // Packages 相关节点的片段菜单项
+      items.push(
+        {
+          label: "复制路径",
+          icon: ClipboardCopyIcon,
+          action: handleCopyNodePath,
+        },
+        {
+          label: "复制片段",
+          icon: ClipboardCopyIcon,
+          action: handleCopyItem,
+          shortcut: `${platformKey}+C`,
+        },
+      );
+    } else {
+      // 普通片段的菜单项
+      items.push(
+        {
+          label: "复制路径",
+          icon: ClipboardCopyIcon,
+          action: handleCopyNodePath,
+        },
+        {
+          label: "复制片段",
+          icon: ClipboardCopyIcon,
+          action: handleCopyItem,
+          shortcut: `${platformKey}+C`,
+        },
+        {
+          label: "剪切片段",
+          icon: ScissorsIcon,
+          action: handleCutItem,
+          shortcut: `${platformKey}+X`,
+          separator: true,
+        },
+        {
+          label: "删除片段",
+          icon: Trash2Icon,
+          action: prepareDeleteMatch,
+          variant: "destructive",
+          shortcut: deleteShortcut,
+        }
+      );
+    }
   }
 
   return items;
