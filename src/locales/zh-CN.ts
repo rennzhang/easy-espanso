@@ -10,7 +10,17 @@ export default {
     "loading": "加载中...",
     "error": "错误",
     "success": "成功",
-    "pageNotFound": "页面不存在"
+    "pageNotFound": "页面不存在",
+    "confirm": "确认",
+    "rename": "重命名",
+    "warning": "警告",
+    "information": "信息",
+    "select": "选择",
+    "close": "关闭",
+    "add": "添加",
+    "remove": "移除",
+    "yes": "是",
+    "no": "否"
   },
   "sidebar": {
     "snippets": "片段管理",
@@ -42,5 +52,22 @@ export default {
       "windows": "Windows设置",
       "linux": "Linux设置"
     }
+  },
+  "contextMenu": {
+    "newSnippet": "新建片段",
+    "newConfigFile": "新建配置文件",
+    "paste": "粘贴",
+    "copyPath": "复制路径",
+    "expandAll": "展开全部",
+    "collapseAll": "收起全部",
+    "browseOfficialPackages": "浏览官方包库",
+    "renameFile": "重命名文件",
+    "deleteFile": "删除文件",
+    "renameFolder": "重命名文件夹",
+    "uninstallPackage": "卸载此包",
+    "deleteFolder": "删除文件夹",
+    "copySnippet": "复制片段",
+    "cutSnippet": "剪切片段",
+    "deleteSnippet": "删除片段"
   }
 } 

@@ -66,6 +66,7 @@ import { useContextMenu } from "@/hooks/useContextMenu";
 import { ref, defineProps, defineEmits, computed } from "vue";
 import ClipboardManager from "@/utils/ClipboardManager";
 import type { TreeNodeItem } from "./ConfigTree.vue";
+import { useI18n } from "vue-i18n";
 
 
 // --- MenuItem Interface ---
@@ -163,9 +164,11 @@ const computedMenuItems = computed((): MenuItem[] => {
   const type = props.node.type;
   let items: MenuItem[] = [];
 
+  const t = useI18n().t;
+
   // --- Common Items (Top) ---
   items.push({
-    label: "新建片段",
+    label: t('contextMenu.newSnippet'),
     icon: PlusIcon,
     action: handleCreateMatch,
     separator: true,
@@ -185,7 +188,7 @@ const computedMenuItems = computed((): MenuItem[] => {
   // 只在文件夹类型下且不是 Packages 相关节点时添加"新建配置文件"菜单项
   if (type === "folder" && !isPackageNode) {
     items.push({
-      label: "新建配置文件",
+      label: t('contextMenu.newConfigFile'),
       icon: FileIcon,
       action: handleCreateConfigFile,
       separator: true,
@@ -195,7 +198,7 @@ const computedMenuItems = computed((): MenuItem[] => {
   // --- Paste (仅在非文件夹类型节点可用) ---
   if (type !== "folder") {
     items.push({
-      label: "粘贴",
+      label: t('contextMenu.paste'),
       icon: ClipboardPasteIcon,
       action: handlePasteItem,
       disabled: !canPaste.value,
@@ -210,20 +213,20 @@ const computedMenuItems = computed((): MenuItem[] => {
       // Packages 相关节点的文件菜单项
       items.push(
         {
-          label: "复制路径",
+          label: t('contextMenu.copyPath'),
           icon: ClipboardCopyIcon,
           action: handleCopyNodePath,
           separator: true,
         },
-        { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
+        { label: t('contextMenu.expandAll'), icon: ChevronsUpDownIcon, action: handleExpandAll },
         {
-          label: "收起全部",
+          label: t('contextMenu.collapseAll'),
           icon: ChevronsUpDownIcon,
           action: handleCollapseAll,
           separator: true,
         },
         {
-          label: "浏览官方包库",
+          label: t('contextMenu.browseOfficialPackages'),
           icon: ExternalLinkIcon,
           action: handleOpenPackageHub,
           separator: true,
@@ -232,22 +235,22 @@ const computedMenuItems = computed((): MenuItem[] => {
     } else {
       // 普通文件的菜单项
       items.push(
-        { label: "重命名文件", icon: PencilIcon, action: handleRequestRename },
+        { label: t('contextMenu.renameFile'), icon: PencilIcon, action: handleRequestRename },
         {
-          label: "复制路径",
+          label: t('contextMenu.copyPath'),
           icon: ClipboardCopyIcon,
           action: handleCopyNodePath,
           separator: true,
         },
-        { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
+        { label: t('contextMenu.expandAll'), icon: ChevronsUpDownIcon, action: handleExpandAll },
         {
-          label: "收起全部",
+          label: t('contextMenu.collapseAll'),
           icon: ChevronsUpDownIcon,
           action: handleCollapseAll,
           separator: true,
         },
         {
-          label: "删除文件",
+          label: t('contextMenu.deleteFile'),
           icon: Trash2Icon,
           action: prepareDeleteFile,
           variant: "destructive",
@@ -261,20 +264,20 @@ const computedMenuItems = computed((): MenuItem[] => {
       // Packages 相关节点的菜单项
       items.push(
         {
-          label: "复制路径",
+          label: t('contextMenu.copyPath'),
           icon: ClipboardCopyIcon,
           action: handleCopyNodePath,
           separator: true,
         },
-        { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
+        { label: t('contextMenu.expandAll'), icon: ChevronsUpDownIcon, action: handleExpandAll },
         {
-          label: "收起全部",
+          label: t('contextMenu.collapseAll'),
           icon: ChevronsUpDownIcon,
           action: handleCollapseAll,
           separator: true,
         },
         {
-          label: "浏览官方包库",
+          label: t('contextMenu.browseOfficialPackages'),
           icon: ExternalLinkIcon,
           action: handleOpenPackageHub,
           separator: true,
@@ -284,7 +287,7 @@ const computedMenuItems = computed((): MenuItem[] => {
       // 只有不是根 Packages 文件夹时才显示卸载选项
       if (props.node.name !== "Packages") {
         items.push({
-          label: "卸载此包",
+          label: t('contextMenu.uninstallPackage'),
           icon: Trash2Icon,
           action: prepareDeleteFolder,
           variant: "destructive",
@@ -294,22 +297,22 @@ const computedMenuItems = computed((): MenuItem[] => {
     } else {
       // 普通文件夹的菜单项
       items.push(
-        { label: "重命名文件夹", icon: PencilIcon, action: handleRequestRename },
+        { label: t('contextMenu.renameFolder'), icon: PencilIcon, action: handleRequestRename },
         {
-          label: "复制路径",
+          label: t('contextMenu.copyPath'),
           icon: ClipboardCopyIcon,
           action: handleCopyNodePath,
           separator: true,
         },
-        { label: "展开全部", icon: ChevronsUpDownIcon, action: handleExpandAll },
+        { label: t('contextMenu.expandAll'), icon: ChevronsUpDownIcon, action: handleExpandAll },
         {
-          label: "收起全部",
+          label: t('contextMenu.collapseAll'),
           icon: ChevronsUpDownIcon,
           action: handleCollapseAll,
           separator: true,
         },
         {
-          label: "删除文件夹",
+          label: t('contextMenu.deleteFolder'),
           icon: Trash2Icon,
           action: prepareDeleteFolder,
           variant: "destructive",
@@ -323,12 +326,12 @@ const computedMenuItems = computed((): MenuItem[] => {
       // Packages 相关节点的片段菜单项
       items.push(
         {
-          label: "复制路径",
+          label: t('contextMenu.copyPath'),
           icon: ClipboardCopyIcon,
           action: handleCopyNodePath,
         },
         {
-          label: "复制片段",
+          label: t('contextMenu.copySnippet'),
           icon: ClipboardCopyIcon,
           action: handleCopyItem,
           shortcut: `${platformKey}+C`,
@@ -338,25 +341,25 @@ const computedMenuItems = computed((): MenuItem[] => {
       // 普通片段的菜单项
       items.push(
         {
-          label: "复制路径",
+          label: t('contextMenu.copyPath'),
           icon: ClipboardCopyIcon,
           action: handleCopyNodePath,
         },
         {
-          label: "复制片段",
+          label: t('contextMenu.copySnippet'),
           icon: ClipboardCopyIcon,
           action: handleCopyItem,
           shortcut: `${platformKey}+C`,
         },
         {
-          label: "剪切片段",
+          label: t('contextMenu.cutSnippet'),
           icon: ScissorsIcon,
           action: handleCutItem,
           shortcut: `${platformKey}+X`,
           separator: true,
         },
         {
-          label: "删除片段",
+          label: t('contextMenu.deleteSnippet'),
           icon: Trash2Icon,
           action: prepareDeleteMatch,
           variant: "destructive",

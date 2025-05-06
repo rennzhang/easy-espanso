@@ -9,7 +9,17 @@ export default {
     "search": "Search",
     "loading": "Loading...",
     "error": "Error",
-    "success": "Success"
+    "success": "Success",
+    "confirm": "Confirm",
+    "rename": "Rename",
+    "warning": "Warning",
+    "information": "Information",
+    "select": "Select",
+    "close": "Close",
+    "add": "Add",
+    "remove": "Remove",
+    "yes": "Yes",
+    "no": "No"
   },
   "sidebar": {
     "snippets": "Snippets",
@@ -41,5 +51,22 @@ export default {
       "windows": "Windows Settings",
       "linux": "Linux Settings"
     }
+  },
+  "contextMenu": {
+    "newSnippet": "New Snippet",
+    "newConfigFile": "New Config File",
+    "paste": "Paste",
+    "copyPath": "Copy Path",
+    "expandAll": "Expand All",
+    "collapseAll": "Collapse All",
+    "browseOfficialPackages": "Browse Official Packages",
+    "renameFile": "Rename File",
+    "deleteFile": "Delete File",
+    "renameFolder": "Rename Folder",
+    "uninstallPackage": "Uninstall Package",
+    "deleteFolder": "Delete Folder",
+    "copySnippet": "Copy Snippet",
+    "cutSnippet": "Cut Snippet",
+    "deleteSnippet": "Delete Snippet"
   }
 } 
