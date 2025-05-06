@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue';
+import { computed, ref, nextTick } from 'vue';
 import { useEspansoStore } from '@/store/useEspansoStore'; // 引入重构后的 Store
 import { toast } from 'vue-sonner';
 import ClipboardManager from '@/utils/ClipboardManager';
@@ -6,6 +6,7 @@ import TreeNodeRegistry from '@/utils/TreeNodeRegistry'; // 假设这个注册�
 import type { TreeNodeItem } from '@/components/ConfigTree.vue'; // 假设 TreeNodeItem 类型不变 (需要确认或调整)
 import { findParentNodeInTree } from '@/utils/configTreeUtils'; // 引入查找父节点工具函数
 import { Match } from '@/types/core/espanso.types';
+import { determineSnippetPosition, focusTriggerInput } from '@/utils/snippetPositionUtils';
 
 // --- MenuItem Interface (保持不变) ---
 interface MenuItem {
@@ -180,48 +181,43 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
           return;
       }
 
-      let targetParentId: string | null = null;
+      // 使用工具函数确定新片段的位置
+      const { targetParentNodeId, insertIndex } = determineSnippetPosition(
+          store.state.configTree, 
+          targetNode.id
+      );
 
-      if (targetNode.type === 'file') { // 只能在文件下创建
-          targetParentId = targetNode.id;
-      } else if (targetNode.type === 'match') { // 在相同文件下创建
-           const parentNode = findParentNodeInTree(store.state.configTree, targetNode.id);
-           if (parentNode && parentNode.type === 'file') {
-                targetParentId = parentNode.id;
-           }
-      } else if (targetNode.type === 'folder') {
-           // **重要:** 需要定义在文件夹上“新建片段”的行为
-           // 例如：自动在文件夹下创建/选择一个默认文件（如 base.yml），然后添加
-           toast.warning("请在目标文件内创建片段，或先创建配置文件。");
-           console.warn("[ContextMenu] 尝试在文件夹下创建片段，操作被阻止或需要默认文件逻辑。");
-           // 示例：查找或创建默认文件 (需要 config/platform service 配合)
-           // const defaultFilePath = await findOrCreateDefaultFileInFolder(targetNode.path);
-           // targetParentId = defaultFilePath ? `file-${defaultFilePath}` : null;
-           return; // 暂时阻止
+      if (!targetParentNodeId) {
+          console.error('[ContextMenu] 无法确定目标父节点');
+          toast.error("无法确定创建新片段的位置");
+          return;
       }
 
-      if (!targetParentId) {
-           toast.error("无法确定创建片段的文件目标");
-           return;
-      }
-
-      console.log(`[ContextMenu] 准备在父文件节点 ${targetParentId} 下创建新片段`);
+      console.log(`[ContextMenu] 准备在父文件节点 ${targetParentNodeId}, 位置 ${insertIndex} 创建新片段`);
 
       const newMatchData = {
           trigger: ':new',
           replace: '新片段内容',
-          label: '新片段标签',
+          label: '新片段',
       };
 
       try {
-          const addedItem = await store.addItem(newMatchData, 'match', targetParentId);
+          const addedItem = await store.addItem(newMatchData, 'match', targetParentNodeId, insertIndex);
           if (addedItem) {
-              toast.success('新片段已创建');
+              console.log('[ContextMenu] 成功创建新片段', addedItem.id);
+              toast.success('新片段已创建，请编辑触发词');
+              
+              // 在下一个 tick 中开始尝试聚焦
+              nextTick(() => {
+                  // 给UI一些时间来渲染
+                  setTimeout(() => focusTriggerInput(), 100);
+              });
           } else {
-               toast.error('创建新片段失败');
+              console.error('[ContextMenu] 创建新片段失败');
+              toast.error('创建新片段失败');
           }
       } catch (error: any) {
-          console.error("创建片段失败:", error);
+          console.error("[ContextMenu] 创建片段失败:", error);
           toast.error(`创建片段失败: ${error.message || '未知错误'}`);
       }
   };
@@ -279,21 +275,21 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
 
       if (type === 'match') {
           title = '确认删除片段';
-          message = `确定要删除片段 “${name}” 吗？`;
+          message = `确定要删除片段 "${name}" 吗？`;
           pendingAction.value = async () => {
             await store.deleteItem(id, 'match');
             toast.success(`已删除: ${name}`);
           };
       } else if (type === 'file') {
            title = '确认删除文件';
-           message = `确定要删除配置文件 “${name}” 吗？此操作会从文件系统中移除该文件，且不可撤销。`;
+           message = `确定要删除配置文件 "${name}" 吗？此操作会从文件系统中移除该文件，且不可撤销。`;
             pendingAction.value = async () => {
                await store.deleteFileNode(id);
                toast.success(`已删除: ${name}`);
             };
       } else if (type === 'folder') {
            title = '确认删除文件夹';
-           message = `确定要删除文件夹 “${name}” 及其所有内容吗？此操作会从文件系统中移除该文件夹及其包含的所有文件和子文件夹，且不可撤销。`;
+           message = `确定要删除文件夹 "${name}" 及其所有内容吗？此操作会从文件系统中移除该文件夹及其包含的所有文件和子文件夹，且不可撤销。`;
            pendingAction.value = async () => {
               await store.deleteFolderNode(id);
               toast.success(`已删除: ${name}`);

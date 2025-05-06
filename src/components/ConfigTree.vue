@@ -28,12 +28,15 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineProps, defineEmits, onMounted, watch, onUnmounted, PropType } from 'vue';
+import { ref, computed, defineProps, defineEmits, onMounted, watch, onUnmounted, PropType, nextTick } from 'vue';
 import { useEspansoStore } from '../store/useEspansoStore';
 import TreeNode from './TreeNode.vue';
 import type { Match } from '@/types/core/espanso.types';
+import type { ConfigTreeNode } from '@/types/core/ui.types';
 import Sortable from 'sortablejs';
 import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
+import { toast } from 'vue-sonner';
+import { determineSnippetPosition, focusTriggerInput } from '@/utils/snippetPositionUtils';
 
 // 定义树节点类型
 export interface TreeNodeItem {
@@ -401,7 +404,14 @@ const handleKeyDown = (event: KeyboardEvent) => {
     return;
   }
 
-  // 只处理上下箭头键
+  // 处理Tab键快速创建新片段
+  if (event.key === 'Tab' && !event.shiftKey) {
+    event.preventDefault(); // 阻止默认的Tab行为
+    createNewSnippet();
+    return;
+  }
+
+  // 处理上下箭头键
   if (event.key !== 'ArrowUp' && event.key !== 'ArrowDown') return;
 
   // 阻止默认行为（例如页面滚动）
@@ -457,6 +467,51 @@ const handleKeyDown = (event: KeyboardEvent) => {
 
   // 确保选中的节点在视图中可见
   nextElement.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+};
+
+// 创建新片段
+const createNewSnippet = async () => {
+  console.log('创建新片段: 使用Tab键');
+
+  // 使用工具函数确定新片段的位置
+  const { targetParentNodeId, insertIndex } = determineSnippetPosition(store.state.configTree, props.selectedId || null);
+
+  if (!targetParentNodeId) {
+    console.error('创建新片段: 无法确定目标父节点');
+    toast.error('无法确定创建新片段的位置');
+    return;
+  }
+
+  console.log(`创建新片段: 目标父节点 ${targetParentNodeId}, 插入索引 ${insertIndex}`);
+
+  // 创建新片段数据
+  const newMatchData = {
+    trigger: ':new',
+    replace: '新片段内容',
+    label: '新片段',
+  };
+
+  try {
+    // 调用 store 的 addItem 方法创建新片段
+    const addedItem = await store.addItem(newMatchData, 'match', targetParentNodeId, insertIndex);
+
+    if (addedItem) {
+      console.log('创建新片段: 成功创建新片段', addedItem.id);
+      toast.success('新片段已创建，请编辑触发词');
+
+      // 在下一个 tick 中开始尝试聚焦
+      nextTick(() => {
+        // 给UI一些时间来渲染
+        setTimeout(() => focusTriggerInput(), 100);
+      });
+    } else {
+      console.error('创建新片段: 创建失败');
+      toast.error('创建新片段失败');
+    }
+  } catch (error: any) {
+    console.error('创建新片段: 错误', error);
+    toast.error(`创建新片段失败: ${error.message || '未知错误'}`);
+  }
 };
 
 </script>
