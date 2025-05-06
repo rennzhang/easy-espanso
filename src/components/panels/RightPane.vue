@@ -10,11 +10,11 @@
               <Tooltip>
                 <TooltipTrigger as-child>
                   <div class="flex items-center">
-                    <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse-slow" title="内容已修改"></div>
+                    <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse-slow" :title="t('common.modified')"></div>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent side="bottom">
-                   <p>内容已修改</p>
+                   <p>{{ t('common.modified') }}</p>
                    </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -28,15 +28,13 @@
             variant="outline"
             class="h-8 px-2 py-0 justify-center"
             @click="previewRule"
-            title="预览片段"
+            :title="t('snippets.preview')"
           >
             <div class="flex items-center justify-center w-full">
               <EyeIcon class="h-4 w-4 mr-1" />
-              <span>预览</span>
+              <span>{{ t('snippets.preview') }}</span>
             </div>
           </Button>
-
-          <!-- 保存按钮已隐藏，改为自动保存 -->
         </div>
       </div>
     </div>
@@ -44,12 +42,12 @@
     <div class="flex-1 overflow-y-auto p-4 h-full">
        <div v-if="store.state.loading" class="flex flex-col justify-center items-center h-full gap-4">
         <div class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"></div>
-        <div class="text-primary font-medium">{{ store.state.statusMessage || '加载中...' }}</div>
+        <div class="text-primary font-medium">{{ store.state.statusMessage || t('common.loading') }}</div>
       </div>
       <div v-else-if="!selectedItem" class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8">
         <div class="text-5xl mb-4">👈</div>
-        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">未选择项目</h4>
-        <p class="m-0 max-w-md">请从左侧列表选择一个规则或分组进行编辑</p>
+        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">{{ t('snippets.noSelection') }}</h4>
+        <p class="m-0 max-w-md">{{ t('snippets.selectFromList') }}</p>
       </div>
       <div v-else-if="selectedItem.type === 'match'" class="flex flex-col h-full">
         <RuleEditForm
@@ -60,14 +58,13 @@
           @delete="deleteRule(selectedItem.id)"
         />
       </div>
-
     </div>
 
      <div v-if="showPreviewModal" class="fixed inset-0 z-[9999] flex items-center justify-center">
        <div class="absolute inset-0 bg-black/50" @click="showPreviewModal = false"></div>
        <div class="relative bg-background rounded-none shadow-lg w-full max-w-xl max-h-[80vh] overflow-hidden border">
          <div class="flex items-center justify-between p-4 border-b">
-           <h2 class="text-lg font-semibold">预览 "{{ previewTrigger }}"</h2>
+           <h2 class="text-lg font-semibold">{{ t('snippets.previewTitle', { trigger: previewTrigger }) }}</h2>
            <button @click="showPreviewModal = false" class="text-gray-500 hover:text-gray-700">
              <XIcon class="h-5 w-5" />
            </button>
@@ -78,7 +75,7 @@
                <p class="text-sm font-mono break-all">{{ previewContent }}</p>
              </div>
              <div class="flex justify-center">
-               <img :src="previewContent" alt="图片预览" class="max-w-full max-h-[400px] object-contain border" @error="onPreviewImageError" />
+               <img :src="previewContent" :alt="t('snippets.imagePreview')" class="max-w-full max-h-[400px] object-contain border" @error="onPreviewImageError" />
              </div>
            </div>
            <div v-else class="p-3 border rounded-md bg-muted/10">
@@ -87,16 +84,16 @@
          </div>
        </div>
      </div>
-
   </div>
 </template>
 
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
-import { useEspansoStore } from '../../store/useEspansoStore'; // 使用重构后的 Store
-import { useUserPreferences } from '../../store/useUserPreferences'; // 用户偏好设置 Store
-import { useContextMenu } from '@/hooks/useContextMenu'; // 上下文菜单 Hook
-import ClipboardManager from '@/utils/ClipboardManager'; // 剪贴板管理器
+import { useEspansoStore } from '../../store/useEspansoStore';
+import { useUserPreferences } from '../../store/useUserPreferences';
+import { useContextMenu } from '@/hooks/useContextMenu';
+import { useI18n } from 'vue-i18n'; // 导入 useI18n
+import ClipboardManager from '@/utils/ClipboardManager';
 import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
 import { findItemInTreeById, findParentNodeInTree } from '@/utils/configTreeUtils'; // 导入 findParentNodeInTree
 import type { Match } from '@/types/core/espanso.types'; // 导入类型
@@ -117,6 +114,7 @@ import RuleEditForm from '../forms/RuleEditForm.vue';   // 规则编辑表单
 import GroupEditForm from '../forms/GroupEditForm.vue'; // 分组编辑表单
 
 // --- Refs 和 Store 实例 ---
+const { t } = useI18n(); // 使用 useI18n hook
 const ruleFormRef = ref<InstanceType<typeof RuleEditForm> | null>(null);
 const store = useEspansoStore();
 const userPreferences = useUserPreferences();
@@ -140,12 +138,12 @@ const selectedId = computed(() => store.state.selectedItemId);
 // 根据选中项动态生成标题
 const headerTitle = computed(() => {
   const item = selectedItem.value;
-  if (!item) return '详情';
+  if (!item) return t('common.details');
   if (item.type === 'match') {
-    let displayTrigger = item.trigger || (item.triggers && item.triggers.length > 0 ? `${item.triggers[0]}...` : '[无触发词]');
-    return `编辑片段 <span class="ml-2 text-sm text-muted-foreground">${displayTrigger}</span>`;
+    let displayTrigger = item.trigger || (item.triggers && item.triggers.length > 0 ? `${item.triggers[0]}...` : t('snippets.noTrigger'));
+    return t('snippets.editSnippet') + ` <span class="ml-2 text-sm text-muted-foreground">${displayTrigger}</span>`;
   }
-  return '详情';
+  return t('common.details');
 });
 
 // --- 方法 ---
@@ -186,7 +184,7 @@ watch(()=>store.state.selectedItemId, async (newId, oldId) => {
 // 预览规则
 const previewRule = () => {
   if (selectedItem.value?.type === 'match' && ruleFormRef.value) {
-    const formData = ruleFormRef.value.getFormData(); // 获取当前表单数据用于预览
+    const formData = ruleFormRef.value.getFormData();
     console.log('[RightPane] Preview form data:', formData);
 
     previewTrigger.value = formData.trigger || (formData.triggers ? formData.triggers[0] + '...' : '');
@@ -201,7 +199,6 @@ const previewRule = () => {
     } else if (formData.contentType === 'image') {
       previewContent.value = formData.image_path || '';
     } else {
-      // 默认使用 replace 字段
       previewContent.value = formData.replace || '';
     }
 
@@ -213,8 +210,8 @@ const previewRule = () => {
 // 处理预览图片加载错误
 const onPreviewImageError = (e: Event) => {
     console.warn("Preview image failed to load:", previewContent.value);
-    if (e.target) (e.target as HTMLElement).style.display = 'none'; // Hide broken image
-     toast.error("图片预览加载失败，请检查路径是否正确。");
+    if (e.target) (e.target as HTMLElement).style.display = 'none';
+    toast.error(t('snippets.imagePreviewError'));
 };
 
 // 保存项目
@@ -456,9 +453,8 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
 // --- 删除操作 ---
 // 这两个方法由表单的 @delete 事件触发，或由快捷键触发
 const deleteRule = (id: string) => {
-  if (confirm('确定要删除这个规则吗？此操作无法撤销。')) {
-    store.deleteItem(id, 'match'); // 调用新的 Store Action
-    // store action 应该处理后续状态，例如清除选中项
+  if (confirm(t('snippets.confirmDelete'))) {
+    store.deleteItem(id, 'match');
   }
 };
 

@@ -19,7 +19,9 @@ export default {
     "add": "Add",
     "remove": "Remove",
     "yes": "Yes",
-    "no": "No"
+    "no": "No",
+    "modified": "Content Modified",
+    "details": "Details"
   },
   "sidebar": {
     "snippets": "Snippets",
@@ -33,7 +35,15 @@ export default {
     "editSnippet": "Edit Snippet",
     "trigger": "Trigger",
     "label": "Label",
-    "content": "Content"
+    "content": "Content",
+    "preview": "Preview",
+    "previewTitle": "Preview \"{trigger}\"",
+    "imagePreview": "Image Preview",
+    "imagePreviewError": "Failed to load image preview. Please check the path.",
+    "noSelection": "No Item Selected",
+    "selectFromList": "Please select a rule or group from the list on the left to edit",
+    "noTrigger": "[No Trigger]",
+    "confirmDelete": "Are you sure you want to delete this rule? This action cannot be undone."
   },
   "settings": {
     "title": "Global Settings",

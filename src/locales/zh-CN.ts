@@ -20,7 +20,9 @@ export default {
     "add": "添加",
     "remove": "移除",
     "yes": "是",
-    "no": "否"
+    "no": "否",
+    "modified": "内容已修改",
+    "details": "详情"
   },
   "sidebar": {
     "snippets": "片段管理",
@@ -34,7 +36,15 @@ export default {
     "editSnippet": "编辑片段",
     "trigger": "触发词",
     "label": "标签",
-    "content": "内容"
+    "content": "内容",
+    "preview": "预览",
+    "previewTitle": "预览 \"{trigger}\"",
+    "imagePreview": "图片预览",
+    "imagePreviewError": "图片预览加载失败，请检查路径是否正确。",
+    "noSelection": "未选择项目",
+    "selectFromList": "请从左侧列表选择一个规则或分组进行编辑",
+    "noTrigger": "[无触发词]",
+    "confirmDelete": "确定要删除这个规则吗？此操作无法撤销。"
   },
   "settings": {
     "title": "全局设置",
