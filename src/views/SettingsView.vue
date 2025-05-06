@@ -355,7 +355,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">执行粘贴操作前的等待时间，单位为毫秒。增加此值可提高在慢速应用中的兼容性。</p>
+                      <p class="max-w-xs">{{ t('settings.pasteSettings.prePasteDelayTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -374,7 +374,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">执行粘贴操作后的等待时间，单位为毫秒。增加此值可避免在某些应用中出现文本截断的问题。</p>
+                      <p class="max-w-xs">{{ t('settings.pasteSettings.postPasteDelayTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -389,7 +389,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="mac_use_applescript_backend" v-model="localConfig.mac_use_applescript_backend" />
-                  <Label for="mac_use_applescript_backend">使用 AppleScript 后端</Label>
+                  <Label for="mac_use_applescript_backend">{{ t('settings.macSettings.useAppleScriptBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -399,7 +399,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 AppleScript 执行文本替换，在某些 macOS 应用中兼容性更好，但可能较慢。</p>
+                      <p class="max-w-xs">{{ t('settings.macSettings.useAppleScriptBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -410,7 +410,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="mac_use_events_backend" v-model="localConfig.mac_use_events_backend" />
-                  <Label for="mac_use_events_backend">使用 Events 后端</Label>
+                  <Label for="mac_use_events_backend">{{ t('settings.macSettings.useEventsBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -420,7 +420,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 macOS 原生事件系统模拟键盘输入，速度较快但在某些安全应用中可能受限。</p>
+                      <p class="max-w-xs">{{ t('settings.macSettings.useEventsBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -431,7 +431,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="mac_experimental_accessibility" v-model="localConfig.mac_experimental_accessibility" />
-                  <Label for="mac_experimental_accessibility">实验性辅助功能</Label>
+                  <Label for="mac_experimental_accessibility">{{ t('settings.macSettings.experimentalAccessibility') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -441,7 +441,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 macOS 辅助功能 API 增强文本输入兼容性，可能需要额外的系统权限。试验功能，可能不稳定。</p>
+                      <p class="max-w-xs">{{ t('settings.macSettings.experimentalAccessibilityTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -455,7 +455,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="win_use_legacy_inject" v-model="localConfig.win_use_legacy_inject" />
-                  <Label for="win_use_legacy_inject">使用传统注入</Label>
+                  <Label for="win_use_legacy_inject">{{ t('settings.windowsSettings.useLegacyInject') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -465,7 +465,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用较旧的文本注入方法，在新版 Windows 上可能提高某些应用的兼容性。</p>
+                      <p class="max-w-xs">{{ t('settings.windowsSettings.useLegacyInjectTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -476,7 +476,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="win_use_send_input_backend" v-model="localConfig.win_use_send_input_backend" />
-                  <Label for="win_use_send_input_backend">使用 SendInput 后端</Label>
+                  <Label for="win_use_send_input_backend">{{ t('settings.windowsSettings.useSendInputBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -486,7 +486,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 Windows SendInput API 进行文本输入，通常更快且兼容性更好。</p>
+                      <p class="max-w-xs">{{ t('settings.windowsSettings.useSendInputBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -500,7 +500,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="x11_use_xdotool_backend" v-model="localConfig.x11_use_xdotool_backend" />
-                  <Label for="x11_use_xdotool_backend">使用 xdotool 后端 (X11)</Label>
+                  <Label for="x11_use_xdotool_backend">{{ t('settings.linuxSettings.useXdotoolBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -510,7 +510,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 xdotool 实用工具模拟键盘输入，通常在 X11 环境中有较好兼容性，但需要安装 xdotool。</p>
+                      <p class="max-w-xs">{{ t('settings.linuxSettings.useXdotoolBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -521,7 +521,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="x11_use_xsel_backend" v-model="localConfig.x11_use_xsel_backend" />
-                  <Label for="x11_use_xsel_backend">使用 xsel 后端 (X11)</Label>
+                  <Label for="x11_use_xsel_backend">{{ t('settings.linuxSettings.useXselBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -531,7 +531,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 xsel 工具管理剪贴板操作，有助于提高 X11 环境中的文本替换可靠性，但需要安装 xsel。</p>
+                      <p class="max-w-xs">{{ t('settings.linuxSettings.useXselBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -540,7 +540,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="x11_key_delay">X11 按键延迟 (ms)</Label>
+                <Label for="x11_key_delay">{{ t('settings.linuxSettings.x11KeyDelay') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -549,7 +549,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">X11 环境中键盘按键之间的延迟时间，单位为毫秒。增加此值可提高在某些 Linux 应用中的稳定性。</p>
+                      <p class="max-w-xs">{{ t('settings.linuxSettings.x11KeyDelayTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -559,7 +559,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="wayland_paste_method">Wayland 粘贴方法</Label>
+                <Label for="wayland_paste_method">{{ t('settings.linuxSettings.waylandPasteMethod') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -568,18 +568,18 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">在 Wayland 环境中使用的粘贴方法。"剪贴板"使用系统剪贴板，"键盘"通过模拟键盘输入文本。</p>
+                      <p class="max-w-xs">{{ t('settings.linuxSettings.waylandPasteMethodTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Select v-model="localConfig.wayland_paste_method">
                 <SelectTrigger id="wayland_paste_method" class="w-full">
-                  <SelectValue placeholder="选择方法" />
+                  <SelectValue :placeholder="t('settings.selectLanguagePlaceholder')" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="clipboard">剪贴板</SelectItem>
-                  <SelectItem value="keyboard">键盘</SelectItem>
+                  <SelectItem value="clipboard">{{ t('settings.selectOptions.clipboard') }}</SelectItem>
+                  <SelectItem value="keyboard">{{ t('settings.selectOptions.keyboard') }}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -589,7 +589,7 @@
           <div v-if="activeCategory === 'advanced'" class="grid grid-cols-2 gap-4">
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="inject_delay">注入延迟 (ms)</Label>
+                <Label for="inject_delay">{{ t('settings.advancedSettings.injectDelay') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -598,7 +598,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">文本注入过程中每个字符之间的延迟时间，单位为毫秒。增加此值可提高在响应慢的应用中的稳定性。</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.injectDelayTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -608,7 +608,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="abort_key">中止键</Label>
+                <Label for="abort_key">{{ t('settings.advancedSettings.abortKey') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -617,14 +617,14 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">用于取消当前进行中的文本替换操作的快捷键。按下此键将停止替换并恢复原始输入。</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.abortKeyTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Select v-model="localConfig.abort_key">
                 <SelectTrigger id="abort_key" class="w-full">
-                  <SelectValue placeholder="选择中止键" />
+                  <SelectValue :placeholder="t('settings.advancedSettings.selectAbortKey')" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ESC">ESC</SelectItem>
@@ -636,7 +636,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="filter_class">过滤窗口类</Label>
+                <Label for="filter_class">{{ t('settings.advancedSettings.filterClass') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -645,7 +645,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">指定禁用 Espanso 的窗口类名，使用正则表达式。多个值用逗号分隔。例如：".*password.*,.*secret.*"</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.filterClassTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -655,7 +655,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="filter_title">过滤窗口标题</Label>
+                <Label for="filter_title">{{ t('settings.advancedSettings.filterTitle') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -664,7 +664,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">指定禁用 Espanso 的窗口标题，使用正则表达式。多个值用逗号分隔。例如：".*敏感信息.*,.*密码.*"</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.filterTitleTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -674,7 +674,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="config_path">配置路径</Label>
+                <Label for="config_path">{{ t('settings.advancedSettings.configPath') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -683,7 +683,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">自定义 Espanso 配置文件的存储路径。留空使用默认路径。修改此项需重启 Espanso。</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.configPathTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -693,7 +693,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="packages_path">包路径</Label>
+                <Label for="packages_path">{{ t('settings.advancedSettings.packagesPath') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -702,7 +702,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">自定义 Espanso 包的存储路径。留空使用默认路径。修改此项需重启 Espanso。</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.packagesPathTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -717,7 +717,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="verbose" v-model="localConfig.verbose" />
-                  <Label for="verbose">详细日志</Label>
+                  <Label for="verbose">{{ t('settings.loggingSettings.verbose') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -727,7 +727,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">启用更详细的日志记录，包含更多调试信息。对排查问题很有帮助，但会增加日志文件大小。</p>
+                      <p class="max-w-xs">{{ t('settings.loggingSettings.verboseTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -736,7 +736,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="log_level">日志级别</Label>
+                <Label for="log_level">{{ t('settings.loggingSettings.logLevel') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -745,14 +745,14 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">日志记录的详细程度。Trace 最详细，Error 最简略。通常使用 Info 即可，排查问题时使用 Debug。</p>
+                      <p class="max-w-xs">{{ t('settings.loggingSettings.logLevelTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Select v-model="localConfig.log_level">
                 <SelectTrigger id="log_level" class="w-full">
-                  <SelectValue placeholder="选择日志级别" />
+                  <SelectValue :placeholder="t('settings.loggingSettings.selectLogLevel')" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="trace">Trace</SelectItem>
@@ -766,7 +766,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="log_file">日志文件路径</Label>
+                <Label for="log_file">{{ t('settings.loggingSettings.logFile') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -775,7 +775,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">自定义日志文件的存储路径。留空使用默认路径。可使用绝对路径或相对于配置目录的路径。</p>
+                      <p class="max-w-xs">{{ t('settings.loggingSettings.logFileTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -785,7 +785,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="log_filter">日志过滤器</Label>
+                <Label for="log_filter">{{ t('settings.loggingSettings.logFilter') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -794,7 +794,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">用于过滤日志输出的规则，遵循 env_logger 语法。例如："espanso=debug,X11=info"表示显示espanso的调试日志和X11的信息日志。</p>
+                      <p class="max-w-xs">{{ t('settings.loggingSettings.logFilterTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>

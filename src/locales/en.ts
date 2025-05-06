@@ -237,6 +237,56 @@ export default {
       "inject": "Inject",
       "clipboard": "Clipboard",
       "keyboard": "Keyboard"
+    },
+    "macSettings": {
+      "useAppleScriptBackend": "Use AppleScript Backend",
+      "useAppleScriptBackendTooltip": "Use AppleScript for text replacement, better compatibility with some macOS apps but may be slower.",
+      "useEventsBackend": "Use Events Backend",
+      "useEventsBackendTooltip": "Use macOS native event system to simulate keyboard input, faster but limited in some secure apps.",
+      "experimentalAccessibility": "Experimental Accessibility",
+      "experimentalAccessibilityTooltip": "Use macOS Accessibility API to enhance text input compatibility, may require additional system permissions. Experimental feature, may be unstable."
+    },
+    "windowsSettings": {
+      "useLegacyInject": "Use Legacy Inject",
+      "useLegacyInjectTooltip": "Use older text injection method, may improve compatibility with some apps on newer Windows versions.",
+      "useSendInputBackend": "Use SendInput Backend",
+      "useSendInputBackendTooltip": "Use Windows SendInput API for text input, typically faster and more compatible."
+    },
+    "linuxSettings": {
+      "useXdotoolBackend": "Use xdotool Backend (X11)",
+      "useXdotoolBackendTooltip": "Use xdotool utility to simulate keyboard input, usually has good compatibility in X11 environments but requires xdotool installation.",
+      "useXselBackend": "Use xsel Backend (X11)",
+      "useXselBackendTooltip": "Use xsel tool to manage clipboard operations, helps improve text replacement reliability in X11 environments but requires xsel installation.",
+      "x11KeyDelay": "X11 Key Delay (ms)",
+      "x11KeyDelayTooltip": "Delay time between keyboard keypresses in X11 environment, in milliseconds. Increasing this value may improve stability in some Linux applications.",
+      "waylandPasteMethod": "Wayland Paste Method",
+      "waylandPasteMethodTooltip": "Paste method used in Wayland environment. 'Clipboard' uses system clipboard, 'Keyboard' inputs text by simulating keyboard."
+    },
+    "advancedSettings": {
+      "injectDelay": "Inject Delay (ms)",
+      "injectDelayTooltip": "Delay time between each character during text injection, in milliseconds. Increasing this value may improve stability in slow-responding applications.",
+      "abortKey": "Abort Key",
+      "abortKeyTooltip": "Hotkey used to cancel an ongoing text replacement operation. Pressing this key will stop the replacement and restore the original input.",
+      "selectAbortKey": "Select Abort Key",
+      "filterClass": "Filter Window Class",
+      "filterClassTooltip": "Specify window class names to disable Espanso in, using regular expressions. Separate multiple values with commas. Example: \".*password.*,.*secret.*\"",
+      "filterTitle": "Filter Window Title",
+      "filterTitleTooltip": "Specify window titles to disable Espanso in, using regular expressions. Separate multiple values with commas. Example: \".*sensitive.*,.*password.*\"",
+      "configPath": "Config Path",
+      "configPathTooltip": "Custom storage path for Espanso configuration files. Leave empty to use default path. Changing this requires restarting Espanso.",
+      "packagesPath": "Packages Path",
+      "packagesPathTooltip": "Custom storage path for Espanso packages. Leave empty to use default path. Changing this requires restarting Espanso."
+    },
+    "loggingSettings": {
+      "verbose": "Verbose Logging",
+      "verboseTooltip": "Enable more detailed logging with additional debug information. Helpful for troubleshooting but increases log file size.",
+      "logLevel": "Log Level",
+      "logLevelTooltip": "Detail level of logging. Trace is most detailed, Error is least. Info is usually sufficient, use Debug when troubleshooting.",
+      "selectLogLevel": "Select Log Level",
+      "logFile": "Log File Path",
+      "logFileTooltip": "Custom path for log file storage. Leave empty to use default path. Can use absolute path or relative to config directory.",
+      "logFilter": "Log Filter",
+      "logFilterTooltip": "Rules for filtering log output, following env_logger syntax. Example: \"espanso=debug,X11=info\" shows debug logs for espanso and info logs for X11."
     }
   },
   "contextMenu": {

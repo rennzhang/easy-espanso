@@ -238,6 +238,56 @@ export default {
       "inject": "注入",
       "clipboard": "剪贴板",
       "keyboard": "键盘"
+    },
+    "macSettings": {
+      "useAppleScriptBackend": "使用 AppleScript 后端",
+      "useAppleScriptBackendTooltip": "使用 AppleScript 执行文本替换，在某些 macOS 应用中兼容性更好，但可能较慢。",
+      "useEventsBackend": "使用 Events 后端",
+      "useEventsBackendTooltip": "使用 macOS 原生事件系统模拟键盘输入，速度较快但在某些安全应用中可能受限。",
+      "experimentalAccessibility": "实验性辅助功能",
+      "experimentalAccessibilityTooltip": "使用 macOS 辅助功能 API 增强文本输入兼容性，可能需要额外的系统权限。试验功能，可能不稳定。"
+    },
+    "windowsSettings": {
+      "useLegacyInject": "使用传统注入",
+      "useLegacyInjectTooltip": "使用较旧的文本注入方法，在新版 Windows 上可能提高某些应用的兼容性。",
+      "useSendInputBackend": "使用 SendInput 后端",
+      "useSendInputBackendTooltip": "使用 Windows SendInput API 进行文本输入，通常更快且兼容性更好。"
+    },
+    "linuxSettings": {
+      "useXdotoolBackend": "使用 xdotool 后端 (X11)",
+      "useXdotoolBackendTooltip": "使用 xdotool 实用工具模拟键盘输入，通常在 X11 环境中有较好兼容性，但需要安装 xdotool。",
+      "useXselBackend": "使用 xsel 后端 (X11)",
+      "useXselBackendTooltip": "使用 xsel 工具管理剪贴板操作，有助于提高 X11 环境中的文本替换可靠性，但需要安装 xsel。",
+      "x11KeyDelay": "X11 按键延迟 (ms)",
+      "x11KeyDelayTooltip": "X11 环境中键盘按键之间的延迟时间，单位为毫秒。增加此值可提高在某些 Linux 应用中的稳定性。",
+      "waylandPasteMethod": "Wayland 粘贴方法",
+      "waylandPasteMethodTooltip": "在 Wayland 环境中使用的粘贴方法。剪贴板使用系统剪贴板，键盘通过模拟键盘输入文本。"
+    },
+    "advancedSettings": {
+      "injectDelay": "注入延迟 (ms)",
+      "injectDelayTooltip": "文本注入过程中每个字符之间的延迟时间，单位为毫秒。增加此值可提高在响应慢的应用中的稳定性。",
+      "abortKey": "中止键",
+      "abortKeyTooltip": "用于取消当前进行中的文本替换操作的快捷键。按下此键将停止替换并恢复原始输入。",
+      "selectAbortKey": "选择中止键",
+      "filterClass": "过滤窗口类",
+      "filterClassTooltip": "指定禁用 Espanso 的窗口类名，使用正则表达式。多个值用逗号分隔。例如：\".*password.*,.*secret.*\"",
+      "filterTitle": "过滤窗口标题",
+      "filterTitleTooltip": "指定禁用 Espanso 的窗口标题，使用正则表达式。多个值用逗号分隔。例如：\".*敏感信息.*,.*密码.*\"",
+      "configPath": "配置路径",
+      "configPathTooltip": "自定义 Espanso 配置文件的存储路径。留空使用默认路径。修改此项需重启 Espanso。",
+      "packagesPath": "包路径",
+      "packagesPathTooltip": "自定义 Espanso 包的存储路径。留空使用默认路径。修改此项需重启 Espanso。"
+    },
+    "loggingSettings": {
+      "verbose": "详细日志",
+      "verboseTooltip": "启用更详细的日志记录，包含更多调试信息。对排查问题很有帮助，但会增加日志文件大小。",
+      "logLevel": "日志级别",
+      "logLevelTooltip": "日志记录的详细程度。Trace 最详细，Error 最简略。通常使用 Info 即可，排查问题时使用 Debug。",
+      "selectLogLevel": "选择日志级别",
+      "logFile": "日志文件路径",
+      "logFileTooltip": "自定义日志文件的存储路径。留空使用默认路径。可使用绝对路径或相对于配置目录的路径。",
+      "logFilter": "日志过滤器",
+      "logFilterTooltip": "用于过滤日志输出的规则，遵循 env_logger 语法。例如：\"espanso=debug,X11=info\"表示显示espanso的调试日志和X11的信息日志。"
     }
   },
   "contextMenu": {
