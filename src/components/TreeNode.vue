@@ -23,10 +23,10 @@
           <div
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
-              'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-primary-foreground selected':
+              'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-primary-gradient-text selected':
                 (node.type === 'file' || node.type === 'folder') && isSelected,
-              'hover:text-accent-foreground': !isSelected,
-              'bg-gray-50':
+              'hover:bg-accent hover:text-accent-foreground': !isSelected,
+              'bg-card':
                 (node.type === 'file' || node.type === 'folder') && !isSelected,
             }"
             :style="{
@@ -43,7 +43,7 @@
 
             <span
               class="mr-1 ml-4 text-muted-foreground cursor-pointer"
-              :class="{ 'text-white': isSelected }"
+              :class="{ 'text-primary-gradient-text': isSelected }"
               @click.stop="toggleFolder"
             >
               <ChevronRightIcon v-if="hasChildren && !isOpen" class="h-4 w-4" />
@@ -55,12 +55,12 @@
             </span>
             <!-- 文件夹图标放在名称前面 -->
             <span v-if="node.type === 'folder'" class="mr-1.5">
-              <VSCodeFolderIcon v-if="!isOpen" class="h-5 w-5" />
-              <VSCodeFolderOpenIcon v-else class="h-5 w-5" />
+              <VSCodeFolderIcon v-if="!isOpen" class="h-5 w-5 text-primary" />
+              <VSCodeFolderOpenIcon v-else class="h-5 w-5 text-primary" />
             </span>
             <!-- 文件图标放在名称前面 -->
             <span v-if="node.type === 'file'" class="mr-1.5">
-              <VSCodeYmlIcon class="h-5 w-5" />
+              <VSCodeYmlIcon class="h-5 w-5 text-muted-foreground" />
             </span>
             <span
               v-if="
@@ -72,7 +72,7 @@
               <input
                 ref="editNameInput"
                 v-model="editingName"
-                class="w-full px-1 py-0.5 border border-primary rounded focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                class="w-full px-1 py-0.5 border border-primary rounded focus:outline-none focus:ring-1 focus:ring-primary text-foreground bg-background"
                 @keydown.enter="saveNodeName"
                 @blur="saveNodeName"
                 @click.stop
@@ -80,7 +80,7 @@
             </span>
             <span
               v-else
-              class="text-sm font-medium flex-grow cursor-pointer"
+              class="text-sm font-medium flex-grow cursor-pointer text-foreground"
               @click.stop="selectNode"
               @dblclick.stop="startEditing"
             >
@@ -96,7 +96,7 @@
               class="mx-2 text-xs px-1.5 py-0.5 rounded-full"
               :class="
                 isSelected
-                  ? 'bg-white/20 text-white'
+                  ? 'bg-primary-gradient-text/20 text-primary-gradient-text'
                   : 'bg-muted text-muted-foreground'
               "
             >
@@ -112,9 +112,9 @@
           <div
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
-              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground selected':
+              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-gradient-text selected':
                 isSelected,
-              'hover:text-accent-foreground bg-gray-50': !isSelected,
+              'hover:bg-accent hover:text-accent-foreground bg-card': !isSelected,
             }"
             :style="{
               paddingLeft: nodeLevel * 12 + 8 + 'px',
@@ -133,10 +133,10 @@
             <ZapIcon
               :class="[
                 'h-4 w-4 mr-1',
-                isSelected ? 'text-white' : 'text-blue-500',
+                isSelected ? 'text-primary-gradient-text' : 'text-primary',
               ]"
             />
-            <span class="text-sm cursor-grab flex-grow">
+            <span class="text-sm cursor-grab flex-grow text-foreground">
               <HighlightText
                 v-if="searchQuery"
                 :text="node.name"
@@ -172,7 +172,7 @@
         v-model="node.children"
         class="children w-full drop-zone"
         :class="{
-          'shadow-[inset_0_6px_6px_-6px_rgba(0,0,0,0.21),_inset_0_-6px_6px_-6px_rgba(0,0,0,0.21)]':
+          'shadow-[inset_0_6px_6px_-6px_hsl(var(--shadow)/0.21),_inset_0_-6px_6px_-6px_hsl(var(--shadow)/0.21)]':
             node.type === 'file',
         }"
         :group="{ name: 'configTreeGroup', pull: true, put: true }"
@@ -869,6 +869,7 @@ const shouldShowCount = computed(() => {
   margin-top: 0; /* 移除顶部间距，使节点更紧凑 */
   width: 100%;
   padding-left: 0; /* 移除整体缩进 */
+  background-color: hsl(var(--accent)/5); /* 使用主题强调色，非常淡的背景用于文件子项 */
 }
 
 .folder-node,
@@ -879,11 +880,11 @@ const shouldShowCount = computed(() => {
 
 /* 为文件和文件夹节点添加区分背景色 */
 .file-folder-node {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: hsl(var(--background)/3); /* 使用主题背景色，带轻微透明度 */
 }
 
 .match-node {
-  background-color: rgba(79, 79, 79, 0.03);
+  background-color: hsl(var(--secondary)/3); /* 使用主题次要颜色，带轻微透明度 */
 }
 
 .node-row {
@@ -891,6 +892,7 @@ const shouldShowCount = computed(() => {
   box-sizing: border-box;
   width: 100%;
   position: relative; /* 确保绝对定位的子元素相对于此元素定位 */
+  transition: background-color 0.1s ease-out; /* 统一过渡效果 */
 }
 
 /* 新增样式：确保左侧点击区域在最上层 */
@@ -911,7 +913,7 @@ const shouldShowCount = computed(() => {
 }
 
 .drag-handle:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: hsl(var(--muted)/5); /* 使用主题静音色，带轻微透明度 */
   border-radius: 3px;
 }
 
@@ -940,8 +942,8 @@ const shouldShowCount = computed(() => {
 
 /* Hover effect when context menu is active */
 .node-row.context-menu-active:hover {
-  background-color: hsl(var(--muted));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  background-color: hsl(var(--muted)); /* 使用主题静音颜色 */
+  box-shadow: inset 0 0 0 1px hsl(var(--border)/20); /* 使用主题边框色，带透明度 */
 }
 
 /* Ensure node content (icons, text) is above the absolute positioned click area */
@@ -986,9 +988,9 @@ const shouldShowCount = computed(() => {
   height: 3px; /* Make the line thicker */
   background-image: linear-gradient(
     to right,
-    #5aceff,
-    #ee38ff
-  ); /* Example gradient */
+    hsl(var(--primary)), /* 使用主题主色 */
+    hsl(var(--secondary)) /* 使用主题次要颜色 */
+  ); 
   /* position: absolute; */
   /* top: 0; */
   /* left: 0; */
