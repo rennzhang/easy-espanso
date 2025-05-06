@@ -1,6 +1,6 @@
 {
   "appId": "com.espanso.gui",
-  "productName": "Espanso GUI",
+  "productName": "Easy Espanso",
   "electronVersion": "28.0.0",
   "directories": {
     "output": "dist_electron"

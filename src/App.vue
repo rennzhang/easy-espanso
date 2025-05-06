@@ -13,7 +13,7 @@
       <div class="config-selector">
         <Card class="max-w-md mx-auto">
           <CardHeader>
-            <CardTitle class="text-center">欢迎使用 Espanso GUI</CardTitle>
+            <CardTitle class="text-center">欢迎使用 Easy Espanso</CardTitle>
             <CardDescription class="text-center">
               请选择您的 Espanso 配置文件夹以开始
               <p v-if="store.state.error" class="text-destructive mt-2 text-sm">

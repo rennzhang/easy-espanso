@@ -1,4 +1,4 @@
-// Espanso GUI Preload Script
+// Easy Espanso Preload Script
 // 这个脚本提供了与操作系统交互的功能，包括文件读写、对话框显示等
 // TODO: 在实际的Electron环境中测试这个脚本，确保所有功能正常工作
 // TODO: 这个任务将在任务6.4（最终测试与代码审查）中完成

@@ -457,7 +457,7 @@ function createWindow() {
         show: false, // 先不显示窗口
         backgroundColor: '#f8f9fa',
         icon: appIconPath,
-        title: 'Espanso GUI',
+        title: 'Easy Espanso',
         webPreferences: {
             nodeIntegration: false,
             contextIsolation: true,

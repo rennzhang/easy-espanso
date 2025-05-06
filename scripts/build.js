@@ -70,7 +70,7 @@ try {
     
     if (os === 'darwin') { // macOS
       // 使用 AppleScript 显示通知并播放提示音
-      execSync(`osascript -e 'display notification "构建成功！用时: ${buildTime.toFixed(2)}秒" with title "Espanso GUI - ${buildType}" sound name "Glass"'`);
+      execSync(`osascript -e 'display notification "构建成功！用时: ${buildTime.toFixed(2)}秒" with title "Easy Espanso - ${buildType}" sound name "Glass"'`);
     } else if (os === 'win32') { // Windows
       // 使用 PowerShell 显示通知
       const psCommand = `
@@ -78,7 +78,7 @@ try {
         [System.Windows.Forms.SystemSounds]::Asterisk.Play()
         $notification = New-Object System.Windows.Forms.NotifyIcon
         $notification.Icon = [System.Drawing.SystemIcons]::Information
-        $notification.BalloonTipTitle = "Espanso GUI - ${buildType}"
+        $notification.BalloonTipTitle = "Easy Espanso - ${buildType}"
         $notification.BalloonTipText = "构建成功！用时: ${buildTime.toFixed(2)}秒"
         $notification.Visible = $true
         $notification.ShowBalloonTip(5000)
@@ -87,7 +87,7 @@ try {
     } else if (os === 'linux') { // Linux
       // 使用 notify-send 显示通知
       try {
-        execSync(`notify-send "Espanso GUI - ${buildType}" "构建成功！用时: ${buildTime.toFixed(2)}秒" -i dialog-information`);
+        execSync(`notify-send "Easy Espanso - ${buildType}" "构建成功！用时: ${buildTime.toFixed(2)}秒" -i dialog-information`);
         // 尝试播放系统提示音
         execSync('paplay /usr/share/sounds/freedesktop/stereo/complete.oga || aplay /usr/share/sounds/freedesktop/stereo/complete.oga || true');
       } catch (error) {
@@ -114,14 +114,14 @@ try {
     const os = platform();
     
     if (os === 'darwin') { // macOS
-      execSync(`osascript -e 'display notification "构建失败！用时: ${buildTime.toFixed(2)}秒" with title "Espanso GUI - ${buildType}" sound name "Basso"'`);
+      execSync(`osascript -e 'display notification "构建失败！用时: ${buildTime.toFixed(2)}秒" with title "Easy Espanso - ${buildType}" sound name "Basso"'`);
     } else if (os === 'win32') { // Windows
       const psCommand = `
         [System.Reflection.Assembly]::LoadWithPartialName('System.Windows.Forms')
         [System.Windows.Forms.SystemSounds]::Hand.Play()
         $notification = New-Object System.Windows.Forms.NotifyIcon
         $notification.Icon = [System.Drawing.SystemIcons]::Error
-        $notification.BalloonTipTitle = "Espanso GUI - ${buildType}"
+        $notification.BalloonTipTitle = "Easy Espanso - ${buildType}"
         $notification.BalloonTipText = "构建失败！用时: ${buildTime.toFixed(2)}秒"
         $notification.Visible = $true
         $notification.ShowBalloonTip(5000)
@@ -129,7 +129,7 @@ try {
       execSync(`powershell -Command "${psCommand}"`);
     } else if (os === 'linux') { // Linux
       try {
-        execSync(`notify-send "Espanso GUI - ${buildType}" "构建失败！用时: ${buildTime.toFixed(2)}秒" -i dialog-error`);
+        execSync(`notify-send "Easy Espanso - ${buildType}" "构建失败！用时: ${buildTime.toFixed(2)}秒" -i dialog-error`);
         execSync('paplay /usr/share/sounds/freedesktop/stereo/dialog-error.oga || aplay /usr/share/sounds/freedesktop/stereo/dialog-error.oga || true');
       } catch (error) {
         // 忽略通知错误

@@ -196,7 +196,7 @@ export const loadConfiguration = async (configDir: string): Promise<{
                 const counter = { count: 0 };
                 const defaultMatch = processMatch({
                     trigger: ':hello',
-                    replace: 'Hello from Espanso GUI! 👋',
+                    replace: 'Hello from Easy Espanso! 👋',
                     label: '示例片段'
                 }, defaultBasePath, counter);
 
