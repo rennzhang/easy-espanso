@@ -23,7 +23,7 @@
           <div
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
-              'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-primary-gradient-text selected':
+              'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-white selected':
                 (node.type === 'file' || node.type === 'folder') && isSelected,
               'hover:bg-accent hover:text-accent-foreground': !isSelected,
               'bg-card':
@@ -81,6 +81,7 @@
             <span
               v-else
               class="text-sm font-medium flex-grow cursor-pointer text-foreground"
+              :class="{ 'text-white': isSelected }"
               @click.stop="selectNode"
               @dblclick.stop="startEditing"
             >
@@ -112,7 +113,7 @@
           <div
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
-              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-gradient-text selected':
+              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-white selected':
                 isSelected,
               'hover:bg-accent hover:text-accent-foreground bg-card': !isSelected,
             }"
@@ -133,10 +134,10 @@
             <ZapIcon
               :class="[
                 'h-4 w-4 mr-1',
-                isSelected ? 'text-primary-gradient-text' : 'text-primary',
+                isSelected ? 'text-white' : 'text-primary',
               ]"
             />
-            <span class="text-sm cursor-grab flex-grow text-foreground">
+            <span class="text-sm cursor-grab flex-grow text-foreground" :class="{ 'text-white': isSelected }">
               <HighlightText
                 v-if="searchQuery"
                 :text="node.name"
