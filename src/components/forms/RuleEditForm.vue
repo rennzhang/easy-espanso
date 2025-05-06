@@ -12,14 +12,14 @@
             <label
               for="trigger"
               class="text-sm font-medium text-foreground mr-2"
-              >触发词</label
+              >{{ t('snippets.form.trigger.label') }}</label
             >
-            <HelpTip content="输入规则的触发词，多个请用英文逗号或换行分隔" />
+            <HelpTip :content="t('snippets.form.trigger.help')" />
           </div>
           <Textarea
             id="trigger"
             v-model="formState.trigger"
-            placeholder="例如: :hello, :你好&#10;:hi"
+            :placeholder="t('snippets.form.trigger.placeholder')"
             required
             rows="2"
             spellcheck="false"
@@ -31,14 +31,14 @@
         <div class="w-full md:w-1/2 space-y-1.5">
           <div class="flex items-center">
             <label for="label" class="text-sm font-medium text-foreground mr-2"
-              >名称</label
+              >{{ t('snippets.form.label.label') }}</label
             >
-            <HelpTip content="为规则添加简短描述，方便识别和管理" />
+            <HelpTip :content="t('snippets.form.label.help')" />
           </div>
           <Textarea
             id="label"
             v-model="formState.label"
-            placeholder="输入规则名称..."
+            :placeholder="t('snippets.form.label.placeholder')"
             rows="2"
             spellcheck="false"
             @blur="autoSave"
@@ -51,9 +51,9 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center">
             <label class="text-sm font-medium leading-none mr-2"
-              >替换内容</label
+              >{{ t('snippets.form.content.label') }}</label
             >
-            <HelpTip content="触发词最终替换的内容" />
+            <HelpTip :content="t('snippets.form.content.help')" />
           </div>
 
           <Menubar
@@ -129,7 +129,7 @@
                         box-shadow: none !important;
                       "
                     >
-                      <span>插入</span>
+                      <span>{{ t('snippets.form.insertButton.title') }}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
@@ -137,30 +137,30 @@
                       @click="insertCommonVariable('clipboard')"
                     >
                       <ClipboardIcon class="mr-2 h-4 w-4" />
-                      <span>插入剪贴板</span>
+                      <span>{{ t('snippets.form.insertButton.clipboard') }}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
                       @click="
                         insertVariable({
                           id: '$|$',
-                          name: '光标',
-                          description: '插入光标位置',
+                          name: t('snippets.form.variables.cursor'),
+                          description: t('snippets.form.variables.cursor'),
                         })
                       "
                     >
                       <MousePointerClickIcon class="mr-2 h-4 w-4" />
-                      <span>插入光标</span>
+                      <span>{{ t('snippets.form.insertButton.cursor') }}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem @click="insertCommonVariable('date')">
                       <CalendarIcon class="mr-2 h-4 w-4" />
-                      <span>插入日期</span>
+                      <span>{{ t('snippets.form.insertButton.date') }}</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem @click="variableSelectorRef?.showModal()">
                       <MoreHorizontalIcon class="mr-2 h-4 w-4" />
-                      <span>更多变量</span>
+                      <span>{{ t('snippets.form.insertButton.moreVariables') }}</span>
                       <span class="ml-2 text-xs text-yellow-600 italic"
-                        >(开发中)</span
+                        >{{ t('snippets.form.insertButton.inDevelopment') }}</span
                       >
                     </DropdownMenuItem>
                   </DropdownMenuContent>
@@ -170,9 +170,9 @@
               <div class="flex items-center justify-between">
                 <!-- Replacement Mode Label and HelpTip (Moved Left & Renamed) -->
                 <div class="flex items-center mr-2">
-                  <Label class="text-xs font-medium mr-1">替换模式</Label>
+                  <Label class="text-xs font-medium mr-1">{{ t('snippets.form.replacementMode.title') }}</Label>
                   <HelpTip
-                    content="控制内容如何替换触发词，通过剪贴板或模拟按键"
+                    :content="t('snippets.form.replacementMode.help')"
                   />
                 </div>
 
@@ -206,8 +206,7 @@
                           </TooltipTrigger>
                           <TooltipContent>
                             <p>
-                              自动模式: Espanso 会根据内容长度 (阈值默认100字符)
-                              自动选择插入方式 (按键或剪贴板)。
+                              {{ t('snippets.form.replacementMode.help') }}
                             </p>
                           </TooltipContent>
                         </Tooltip>
@@ -257,14 +256,14 @@
             v-if="formState.content && isImageUrl(formState.content)"
             class="text-center w-full"
           >
-            <p class="text-sm font-medium mb-2 text-foreground">当前图片:</p>
+            <p class="text-sm font-medium mb-2 text-foreground">{{ t('snippets.form.imageUpload.currentImage') }}</p>
             <img
               :src="formState.content"
               alt="预览"
               class="max-w-full max-h-[200px] rounded-md mb-3 mx-auto border"
             />
             <div class="p-2 bg-muted/50 rounded mb-3 text-sm text-left">
-              <p class="font-medium text-foreground text-xs">路径:</p>
+              <p class="font-medium text-foreground text-xs">{{ t('snippets.form.imageUpload.path') }}</p>
               <p class="text-muted-foreground break-all text-xs">
                 {{ formState.content }}
               </p>
@@ -277,7 +276,7 @@
               class="h-8 px-3 text-xs"
             >
               <XIcon class="h-3 w-3 mr-1" />
-              移除图片
+              {{ t('snippets.form.imageUpload.removeImage') }}
             </Button>
           </div>
 
@@ -285,19 +284,19 @@
           <div v-else class="text-center cursor-pointer">
             <UploadCloudIcon class="h-12 w-12 mx-auto mb-3 text-gray-400" />
             <p class="text-sm font-medium mb-1 text-foreground">
-              拖拽图片到此处
+              {{ t('snippets.form.imageUpload.dragHere') }}
             </p>
-            <p class="text-xs mb-2">或</p>
+            <p class="text-xs mb-2">{{ t('snippets.form.imageUpload.or') }}</p>
             <Button
               type="button"
               variant="outline"
               size="sm"
               class="h-8 px-3 text-xs pointer-events-none"
             >
-              点击选择文件
+              {{ t('snippets.form.imageUpload.selectFile') }}
             </Button>
             <p class="text-xs mt-2 text-gray-500">
-              (支持 JPG, PNG, GIF, WEBP 等)
+              {{ t('snippets.form.imageUpload.supportedFormats') }}
             </p>
           </div>
         </div>
@@ -319,7 +318,7 @@
             class="h-9 px-3 focus:outline-none"
           >
             <SettingsIcon class="h-4 w-4 mr-2" />
-            <span>高级设置</span>
+            <span>{{ t('snippets.form.advancedButton.title') }}</span>
           </Button>
         </div>
       </div>
@@ -363,7 +362,7 @@
                 :src="previewContent"
                 alt="图片预览"
                 class="max-w-full max-h-[400px] object-contain border"
-                @error="(e) => { if (e.target) (e.target as HTMLElement).style.display = 'none' }"
+                @error="onPreviewImageError"
               />
             </div>
           </div>
@@ -384,9 +383,9 @@
   <Dialog :open="showAdvancedDialog" @update:open="showAdvancedDialog = $event">
     <DialogContent class="sm:max-w-[800px]">
       <DialogHeader>
-        <DialogTitle>高级设置</DialogTitle>
+        <DialogTitle>{{ t('snippets.form.advancedDialog.title') }}</DialogTitle>
         <DialogDescription>
-          配置片段的高级选项和行为
+          {{ t('snippets.form.advancedDialog.description') }}
         </DialogDescription>
       </DialogHeader>
       <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto py-4">
@@ -395,16 +394,16 @@
           <!-- 词边界设置 -->
           <div class="space-y-3">
             <div class="flex items-center">
-              <h3 class="text-base font-medium mr-2">词边界设置</h3>
+              <h3 class="text-base font-medium mr-2">{{ t('snippets.form.wordBoundary.title') }}</h3>
               <HelpTip
-                content="控制触发词在什么情况下被识别，例如是否需要在单词边界处"
+                :content="t('snippets.form.wordBoundary.help')"
               />
             </div>
             <div class="space-y-3 pl-1">
               <div class="flex items-center space-x-2">
                 <Checkbox id="word" v-model="formState.word" />
                 <label for="word" class="text-sm font-medium leading-none">
-                  仅在词边界触发 (word)
+                  {{ t('snippets.form.wordBoundary.word') }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
@@ -413,7 +412,7 @@
                   for="leftWord"
                   class="text-sm font-medium leading-none"
                 >
-                  左侧词边界 (left_word)
+                  {{ t('snippets.form.wordBoundary.leftWord') }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
@@ -422,7 +421,7 @@
                   for="rightWord"
                   class="text-sm font-medium leading-none"
                 >
-                  右侧词边界 (right_word)
+                  {{ t('snippets.form.wordBoundary.rightWord') }}
                 </label>
               </div>
             </div>
@@ -431,8 +430,8 @@
           <!-- 大小写处理 -->
           <div class="space-y-3">
             <div class="flex items-center">
-              <h3 class="text-base font-medium mr-2">大小写处理</h3>
-              <HelpTip content="控制替换内容的大小写处理方式" />
+              <h3 class="text-base font-medium mr-2">{{ t('snippets.form.caseHandling.title') }}</h3>
+              <HelpTip :content="t('snippets.form.caseHandling.help')" />
             </div>
             <div class="space-y-3 pl-1">
               <div class="flex items-center space-x-2">
@@ -444,7 +443,7 @@
                   for="propagateCase"
                   class="text-sm font-medium leading-none"
                 >
-                  传播大小写 (propagate_case)
+                  {{ t('snippets.form.caseHandling.propagateCase') }}
                 </label>
               </div>
               <div class="space-y-1.5">
@@ -452,11 +451,11 @@
                   for="uppercaseStyle"
                   class="text-sm font-medium leading-none"
                 >
-                  大写样式 (uppercase_style)
+                  {{ t('snippets.form.caseHandling.uppercaseStyle.label') }}
                 </label>
                 <Select v-model="formState.uppercaseStyle">
                   <SelectTrigger id="uppercaseStyle" class="h-9">
-                    <SelectValue placeholder="选择样式..." />
+                    <SelectValue :placeholder="t('snippets.form.caseHandling.uppercaseStyle.placeholder')" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem
@@ -475,7 +474,7 @@
           <!-- 其他设置 -->
           <div class="space-y-3">
             <div class="flex items-center">
-              <h3 class="text-base font-medium mr-2">其他设置</h3>
+              <h3 class="text-base font-medium mr-2">{{ t('snippets.form.otherSettings.title') }}</h3>
             </div>
             <div class="grid grid-cols-1 gap-4 pl-1">
               <!-- 优先级 -->
@@ -485,17 +484,17 @@
                     for="priority"
                     class="text-sm font-medium leading-none mr-2"
                   >
-                    优先级 (priority)
+                    {{ t('snippets.form.otherSettings.priority.label') }}
                   </label>
                   <HelpTip
-                    content="当多个片段可能匹配时，优先级高的会被优先使用"
+                    :content="t('snippets.form.otherSettings.priority.help')"
                   />
                 </div>
                 <Input
                   id="priority"
                   v-model.number="formState.priority"
                   type="number"
-                  placeholder="0"
+                  :placeholder="t('snippets.form.otherSettings.priority.placeholder')"
                   class="h-9 px-3 py-2"
                 />
               </div>
@@ -507,14 +506,14 @@
                     for="hotkey"
                     class="text-sm font-medium leading-none mr-2"
                   >
-                    快捷键 (hotkey)
+                    {{ t('snippets.form.otherSettings.hotkey.label') }}
                   </label>
-                  <HelpTip content="设置快捷键来触发此片段，例如 alt+h" />
+                  <HelpTip :content="t('snippets.form.otherSettings.hotkey.help')" />
                 </div>
                 <Input
                   id="hotkey"
                   v-model="formState.hotkey"
-                  placeholder="例如: alt+h"
+                  :placeholder="t('snippets.form.otherSettings.hotkey.placeholder')"
                   class="h-9 px-3 py-2"
                 />
               </div>
@@ -524,53 +523,20 @@
 
         <!-- 右侧列 -->
         <div class="space-y-6">
-          <!-- 应用限制 -->
-          <!-- <div class="space-y-3">
-            <div class="flex items-center">
-              <h3 class="text-base font-medium mr-2">应用限制</h3>
-              <HelpTip content="限制片段在哪些应用中生效或不生效" />
-            </div>
-            <div class="space-y-4 pl-1">
-              <div class="space-y-1.5">
-                <label class="text-sm font-medium leading-none">
-                  生效的应用 (apps)
-                </label>
-                <TagInput
-                  :modelValue="formState.apps || []"
-                  @update:modelValue="(val: string[]) => formState.apps = val"
-                  placeholder="添加应用名称，回车确认"
-                  class="py-1"
-                />
-              </div>
-
-              <div class="space-y-1.5">
-                <label class="text-sm font-medium leading-none">
-                  排除的应用 (exclude_apps)
-                </label>
-                <TagInput
-                  :modelValue="formState.exclude_apps || []"
-                  @update:modelValue="(val: string[]) => formState.exclude_apps = val"
-                  placeholder="添加应用名称，回车确认"
-                  class="py-1"
-                />
-              </div>
-            </div>
-          </div> -->
-
           <!-- 搜索设置 -->
           <div class="space-y-3">
             <div class="flex items-center">
-              <h3 class="text-base font-medium mr-2">搜索设置</h3>
-              <HelpTip content="添加额外的关键词，用于在搜索时匹配此片段" />
+              <h3 class="text-base font-medium mr-2">{{ t('snippets.form.searchSettings.title') }}</h3>
+              <HelpTip :content="t('snippets.form.searchSettings.help')" />
             </div>
             <div class="space-y-1.5 pl-1">
               <label class="text-sm font-medium leading-none">
-                额外搜索词 (search_terms)
+                {{ t('snippets.form.searchSettings.searchTerms.label') }}
               </label>
               <TagInput
                 :modelValue="formState.search_terms || []"
                 @update:modelValue="(val: string[]) => formState.search_terms = val"
-                placeholder="添加搜索词，回车确认"
+                :placeholder="t('snippets.form.searchSettings.searchTerms.placeholder')"
                 class="py-1"
               />
             </div>
@@ -579,7 +545,7 @@
       </div>
       <DialogFooter>
         <Button type="button" variant="outline" @click="showAdvancedDialog = false">
-          关闭
+          {{ t('common.close') }}
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -598,6 +564,7 @@ import {
   defineProps,
   PropType,
 } from "vue";
+import { useI18n } from 'vue-i18n';
 import { useEspansoStore } from "../../store/useEspansoStore";
 import { useFormStore } from "../../store/useFormStore";
 import { toast } from "vue-sonner";
@@ -821,27 +788,30 @@ const formState = ref<RuleFormState>({
   hotkey: "",
 });
 
-// Define insertion mode options for the button group
-const insertionModeOptions = [
-  { value: "default", label: "自动" },
-  { value: "clipboard", label: "剪贴板" },
-  { value: "keys", label: "按键" },
-];
+// 在 setup 中获取 t 函数
+const { t } = useI18n();
 
 // 内容类型选项
 const contentTypeOptions = [
-  { label: "纯文本", value: "plain" },
-  { label: "Markdown", value: "markdown" },
-  { label: "HTML", value: "html" },
-  { label: "图片", value: "image" },
-  { label: "表单 (开发中)", value: "form", disabled: true },
+  { label: t('snippets.contentTypes.plain'), value: "plain" },
+  { label: t('snippets.contentTypes.markdown'), value: "markdown" },
+  { label: t('snippets.contentTypes.html'), value: "html" },
+  { label: t('snippets.contentTypes.image'), value: "image" },
+  { label: t('snippets.contentTypes.form'), value: "form", disabled: true },
 ];
 
 // 大小写样式选项
 const uppercaseStyleOptions = [
-  { value: "uppercase", label: "全部大写" },
-  { value: "capitalize", label: "首字母大写" },
-  { value: "capitalize_words", label: "单词首字母大写" },
+  { value: "uppercase", label: t('snippets.uppercaseStyles.uppercase') },
+  { value: "capitalize", label: t('snippets.uppercaseStyles.capitalize') },
+  { value: "capitalize_words", label: t('snippets.uppercaseStyles.capitalizeWords') },
+];
+
+// Define insertion mode options for the button group
+const insertionModeOptions = [
+  { value: "default", label: t('snippets.insertionModes.auto') },
+  { value: "clipboard", label: t('snippets.insertionModes.clipboard') },
+  { value: "keys", label: t('snippets.insertionModes.keys') },
 ];
 
 // 内容编辑器引用 - REMOVED
@@ -919,7 +889,7 @@ const showPreview = () => {
 
   // 处理变量
   let content = formState.value.content;
-  const variableRegex = /\{\{([^}]+)\}\}/g; // Corrected Regex
+  const variableRegex = /\{\{([^}]+)\}\}/g;
 
   content = content.replace(variableRegex, (_match, variableName) => {
     // 根据变量类型生成预览
@@ -930,13 +900,13 @@ const showPreview = () => {
     } else if (variableName.startsWith("date:")) {
       return new Date().toLocaleString();
     } else if (variableName === "clipboard") {
-      return "[剪贴板内容]";
+      return t('snippets.form.preview.clipboardContent');
     } else if (variableName.startsWith("random")) {
-      return Math.floor(Math.random() * 100).toString();
+      return t('snippets.form.preview.randomNumber');
     } else if (variableName.startsWith("shell:")) {
-      return "[Shell 命令结果]";
+      return t('snippets.form.preview.shellResult');
     } else if (variableName.startsWith("form:")) {
-      return "[表单输入]";
+      return t('snippets.form.preview.formInput');
     } else {
       // 对于未知变量，保持原样
       return `{{${variableName}}}`;
@@ -1482,13 +1452,10 @@ const onSubmit = async (): Promise<void> => {
 // 取消编辑
 const onCancel = () => {
   if (isFormModified.value) {
-    if (confirm("您有未保存的修改，确定要放弃这些修改吗？")) {
+    if (confirm(t('snippets.form.autoSave.unsavedChanges'))) {
       isFormModified.value = false;
       store.state.hasUnsavedChanges = false;
-      // REMOVED: emit('cancel');
     }
-  } else {
-    // REMOVED: emit('cancel');
   }
 };
 
@@ -1737,7 +1704,7 @@ const autoSave = async () => {
     try {
       await onSubmit();
       saveState.value = 'success';
-      toast.success("自动保存成功！");
+      toast.success(t('snippets.form.autoSave.success'));
 
       // 确保修改状态被重置
       isFormModified.value = false;
@@ -1757,7 +1724,7 @@ const autoSave = async () => {
     } catch (error: any) {
       console.error('自动保存失败:', error);
       saveState.value = 'error';
-      toast.error(`自动保存失败: ${error.message || '未知错误'}`);
+      toast.error(t('snippets.form.autoSave.error', { error: error.message || t('common.error') }));
     } finally {
       isSaving.value = false;
       saveStateTimeout = setTimeout(() => {
@@ -1859,6 +1826,13 @@ onMounted(() => {
     checkFormModified();
   });
 });
+
+// 修改图片预览错误处理
+const onPreviewImageError = (e: Event) => {
+  console.warn("Preview image failed to load:", previewContent.value);
+  if (e.target) (e.target as HTMLElement).style.display = 'none';
+  toast.error(t('snippets.form.preview.imageLoadError'));
+};
 </script>
 <style>
 /* .codemirror-container.hidden-line-numbers .CodeMirror-gutters {

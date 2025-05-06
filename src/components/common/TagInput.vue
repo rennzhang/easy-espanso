@@ -13,7 +13,7 @@
           class="inline-flex items-center justify-center rounded-none text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-4 w-4"
           @click="removeTag(index)"
         >
-          <span class="sr-only">Remove</span>
+          <span class="sr-only">{{ t('components.tagInput.screenReaderRemove') }}</span>
           <XIcon class="h-3 w-3" />
         </button>
       </Badge>
@@ -26,18 +26,22 @@
         :placeholder="placeholder"
         class="flex-1"
       />
-      <Button @click="addTag" size="sm">添加</Button>
+      <Button @click="addTag" size="sm">{{ t('components.tagInput.add') }}</Button>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { XIcon } from 'lucide-vue-next';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
 import { cn } from '@/lib/utils';
+
+// 获取翻译函数
+const { t } = useI18n();
 
 // 定义props
 const props = defineProps<{
