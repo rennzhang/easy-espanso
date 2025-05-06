@@ -176,6 +176,7 @@ export default {
     "loadingConfig": "Loading Configuration...",
     "retryLoad": "Retry Loading",
     "loadError": "Failed to load config: {error}",
+    "loadErrorGeneric": "Error loading settings: {error}",
     "settingsSaved": "Settings saved",
     "settingsSaveFailed": "Failed to save settings: {error}",
     "restoredToLastSave": "Restored to last saved settings",

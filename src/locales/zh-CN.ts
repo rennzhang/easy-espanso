@@ -177,6 +177,7 @@ export default {
     "loadingConfig": "加载配置中...",
     "retryLoad": "重试加载",
     "loadError": "加载配置失败: {error}",
+    "loadErrorGeneric": "加载设置出错: {error}",
     "settingsSaved": "设置已保存",
     "settingsSaveFailed": "保存设置失败: {error}",
     "restoredToLastSave": "已恢复到上次保存的设置",
