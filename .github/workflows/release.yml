@@ -1,10 +1,17 @@
 name: Build and Release
 
+# on:
+#   push:
+#     tags:
+#       - 'v*.*.*' # 当一个 v 开头的 tag 被推送时触发，例如 v1.0.0
 on:
+  # 临时修改：任何提交都触发工作流，测试成功后将恢复为仅标签触发
   push:
-    tags:
-      - 'v*.*.*' # 当一个 v 开头的 tag 被推送时触发，例如 v1.0.0
-
+    branches:
+      - "**" # 任何分支的提交都会触发
+    # tags:
+    #   - 'v*.*.*' # 当一个 v 开头的 tag 被推送时触发，例如 v1.0.0
+    
 jobs:
   release:
     runs-on: ${{ matrix.os }} # 根据 matrix 中的 os 运行在不同的操作系统上
@@ -27,7 +34,7 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm' # 如果你使用 pnpm，可以缓存依赖
+          cache: "pnpm" # 如果你使用 pnpm，可以缓存依赖
 
       - name: Install dependencies
         run: pnpm install # 或者 npm install / yarn install
@@ -52,13 +59,6 @@ jobs:
           upload_url: ${{ github.event.release.upload_url }} # 获取 Release 的上传 URL
           asset_path: | # 这里需要根据 electron-builder 的输出路径和文件名来调整
             dist_electron/**/*.dmg
-            dist_electron/**/*.exe
-            dist_electron/**/*.AppImage
-            dist_electron/**/*.deb
-            dist_electron/**/*.rpm
-            dist_electron/**/*.snap
-          asset_content_type: application/octet-stream
-
             dist_electron/**/*.exe
             dist_electron/**/*.AppImage
             dist_electron/**/*.deb
