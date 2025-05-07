@@ -322,7 +322,19 @@
       class="absolute bottom-0 right-0 w-full bg-card border-t shadow-lg z-20 py-2 mt-0"
     >
       <div class="flex items-center justify-between px-4 space-x-3">
-        <div class="flex items-center justify-end">
+        <div class="flex items-center justify-end space-x-2">
+          <!-- Playground 按钮 -->
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            @click="showPlaygroundModal = true"
+            class="h-9 px-3 focus:outline-none"
+          >
+            <PlayIcon class="h-4 w-4 mr-2" />
+            <span>{{ t("snippets.form.playground.title") }}</span>
+          </Button>
+          
           <!-- 高级设置按钮 -->
           <Button
             type="button"
@@ -582,6 +594,57 @@
       </DialogFooter>
     </DialogContent>
   </Dialog>
+
+  <!-- Playground 测试弹窗 -->
+  <Dialog :open="showPlaygroundModal" @update:open="showPlaygroundModal = $event">
+    <DialogContent class="sm:max-w-[800px]">
+      <DialogHeader>
+        <DialogTitle>{{ t("snippets.form.playground.title") }}</DialogTitle>
+        <DialogDescription>
+          {{ t("snippets.form.playground.description") }}
+        </DialogDescription>
+      </DialogHeader>
+      <div class="max-h-[40vh] overflow-y-auto py-4 space-y-4">
+        <!-- 测试区 -->
+        <div class="space-y-2">
+          <Label for="playground-test-area">{{ t("snippets.form.playground.inputLabel") }}</Label>
+          <Textarea 
+            id="playground-test-area" 
+            v-model="playgroundText" 
+            :placeholder="t('snippets.form.playground.inputPlaceholder')"
+            class="min-h-[120px]"
+            @input="processPlaygroundText"
+          ></Textarea>
+        </div>
+        
+        <!-- 测试结果 -->
+        <div class="space-y-2" v-if="playgroundResult">
+          <div class="flex items-center gap-2">
+            <Label>{{ t("snippets.form.playground.resultLabel") }}</Label>
+            <Badge variant="outline" class="font-normal">
+              {{ playgroundMatched ? t("snippets.form.playground.matched") : t("snippets.form.playground.notMatched") }}
+            </Badge>
+          </div>
+          <div class="p-3 border rounded-md bg-muted/10">
+            <p class="whitespace-pre-wrap" v-html="playgroundResult"></p>
+          </div>
+        </div>
+
+        <!-- 当前片段信息 -->
+        <div class="p-3 border rounded-md bg-muted/10">
+          <div class="text-sm space-y-1">
+            <p>
+              <span class="font-medium">{{ t("snippets.form.playground.currentTrigger") }}</span> 
+              <code class="px-1 py-0.5 bg-muted rounded">{{ formState.trigger || t("snippets.noTrigger") }}</code>
+            </p>
+            <p v-if="formState.word">
+              <span class="font-medium">{{ t("snippets.form.playground.wordBoundary") }}</span>
+            </p>
+          </div>
+        </div>
+      </div>
+    </DialogContent>
+  </Dialog>
 </template>
 
 <script setup lang="ts">
@@ -630,6 +693,7 @@ import {
   MoreHorizontalIcon,
   SettingsIcon,
   UploadCloudIcon,
+  PlayIcon,
 } from "lucide-vue-next";
 import type { Match } from "@/types/core/espanso.types";
 import {
@@ -1972,6 +2036,86 @@ watch(
     }
   }
 );
+
+// Playground 测试弹窗
+const showPlaygroundModal = ref(false);
+const playgroundText = ref("");
+const playgroundResult = ref("");
+const playgroundMatched = ref(false);
+
+// 处理 playground 文本内容
+const processPlaygroundText = () => {
+  const text = playgroundText.value;
+  // 获取触发词 - 可能是单个触发词或多个触发词（用逗号或换行符分隔）
+  const rawTrigger = formState.value.trigger;
+  
+  if (!rawTrigger || !text) {
+    playgroundResult.value = "";
+    playgroundMatched.value = false;
+    return;
+  }
+  
+  // 解析所有可能的触发词
+  const triggers = rawTrigger
+    .split(/[,\n]/)
+    .map(t => t.trim())
+    .filter(t => t.length > 0);
+  
+  // 如果没有有效的触发词，直接返回
+  if (triggers.length === 0) {
+    playgroundResult.value = t("snippets.form.playground.noTrigger");
+    playgroundMatched.value = false;
+    return;
+  }
+  
+  // 检查是否匹配任何触发词
+  let result = text;
+  let matched = false;
+  let matchedTrigger = "";
+  
+  // 遍历所有触发词，检查是否匹配
+  for (const trigger of triggers) {
+    // 根据词边界设置创建正则表达式
+    let pattern = trigger;
+    if (formState.value.word) {
+      pattern = `\\b${escapeRegExp(trigger)}\\b`;
+    } else {
+      // 如果只启用左词边界或右词边界
+      if (formState.value.leftWord) {
+        pattern = `\\b${escapeRegExp(trigger)}`;
+      } 
+      if (formState.value.rightWord) {
+        pattern = `${escapeRegExp(trigger)}\\b`;
+      }
+    }
+    
+    const regex = new RegExp(pattern, "g");
+    
+    // 检查是否匹配
+    if (regex.test(text)) {
+      matched = true;
+      matchedTrigger = trigger;
+      
+      // 模拟替换效果
+      const replacement = formState.value.content || "替换内容";
+      result = text.replace(regex, `<span class="bg-primary/20 px-1 rounded">${replacement}</span>`);
+      break;
+    }
+  }
+  
+  // 更新结果
+  playgroundMatched.value = matched;
+  if (matched) {
+    playgroundResult.value = result;
+  } else {
+    playgroundResult.value = `<span class="text-muted-foreground">${t("snippets.form.playground.noMatch")} ${triggers.join(", ")}</span>`;
+  }
+};
+
+// 辅助函数：转义正则表达式中的特殊字符
+const escapeRegExp = (string: string): string => {
+  return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); // $& 表示整个匹配的字符串
+};
 </script>
 <style>
 /* .codemirror-container.hidden-line-numbers .CodeMirror-gutters {
@@ -1987,8 +2131,7 @@ watch(
 /* 使光标在失焦状态下也可见并闪烁 */
 .CodeMirror {
   /* 设置字体大小为14px */
-  font-size: 14px !important;
-  border-radius: 0.3rem !important; /* 圆角边框 */
+  font-size: 14px !important; /* 圆角边框 */
   height: 100% !important; /* 确保编辑器占满父容器 */
 }
 .CodeMirror-cursors {

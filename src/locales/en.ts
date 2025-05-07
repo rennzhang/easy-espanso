@@ -156,6 +156,19 @@ export default {
       "advancedButton": {
         "title": "Advanced Settings"
       },
+      "playground": {
+        "title": "Playground",
+        "description": "Test your snippet triggers and replacement content here",
+        "inputLabel": "Enter test content (including trigger):",
+        "inputPlaceholder": "Type text here, including your trigger, e.g.: I want to test :hello trigger",
+        "resultLabel": "Result:",
+        "matched": "Triggered",
+        "notMatched": "Not Triggered",
+        "noTrigger": "Please set a valid trigger first",
+        "noMatch": "No triggers matched. Current valid triggers:",
+        "currentTrigger": "Current trigger:",
+        "wordBoundary": "Word boundary: Enabled"
+      },
       "autoSave": {
         "success": "Auto-save successful!",
         "error": "Auto-save failed: {error}",

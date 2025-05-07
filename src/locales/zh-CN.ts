@@ -157,6 +157,19 @@ export default {
       "advancedButton": {
         "title": "高级设置"
       },
+      "playground": {
+        "title": "测试场地",
+        "description": "在这里测试您的片段触发词和替换内容的效果",
+        "inputLabel": "输入测试内容（包含触发词）:",
+        "inputPlaceholder": "在这里输入文本，包含您的触发词，例如: 我要测试 :hello 触发词",
+        "resultLabel": "处理结果:",
+        "matched": "已触发",
+        "notMatched": "未触发",
+        "noTrigger": "请先设置有效的触发词",
+        "noMatch": "未匹配任何触发词。当前有效的触发词:",
+        "currentTrigger": "当前触发词:",
+        "wordBoundary": "词边界: 启用"
+      },
       "autoSave": {
         "success": "自动保存成功！",
         "error": "自动保存失败: {error}",
