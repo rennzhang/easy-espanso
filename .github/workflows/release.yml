@@ -58,3 +58,10 @@ jobs:
             dist_electron/**/*.rpm
             dist_electron/**/*.snap
           asset_content_type: application/octet-stream
+
+            dist_electron/**/*.exe
+            dist_electron/**/*.AppImage
+            dist_electron/**/*.deb
+            dist_electron/**/*.rpm
+            dist_electron/**/*.snap
+          asset_content_type: application/octet-stream
