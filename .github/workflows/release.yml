@@ -57,17 +57,23 @@ jobs:
       - name: Install dependencies
         run: pnpm install # 或者 npm install / yarn install
 
-      - name: Build application
-        run: |
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            pnpm run electron:build:mac
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            pnpm run electron:build:win
-          elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            pnpm run electron:build:linux
-          fi
+      - name: Build for macOS
+        if: matrix.os == 'macos-latest'
+        run: pnpm run electron:build:ci:mac
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # electron-builder 可能需要这个来发布
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build for Windows
+        if: matrix.os == 'windows-latest'
+        run: pnpm run electron:build:ci:win
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm run electron:build:ci:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Upload Release Asset
         uses: actions/upload-release-asset@v1
