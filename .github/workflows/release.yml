@@ -34,8 +34,25 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: "pnpm"
-          cache-dependency-path: pnpm-lock.yaml # Explicitly specify the lock file path
+          # 移除内置的 pnpm 缓存
+          # cache: "pnpm"
+          # cache-dependency-path: pnpm-lock.yaml
+
+      # 新增：获取 pnpm store 路径
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      # 新增：配置 pnpm 缓存
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ matrix.node-version }}-pnpm-
 
       - name: Install dependencies
         run: pnpm install # 或者 npm install / yarn install
