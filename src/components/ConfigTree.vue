@@ -214,7 +214,29 @@ const treeData = computed(() => {
       if (node.type === 'folder' && node.name === 'match') {
         // 将match文件夹的子节点直接添加到根级
         if (node.children && node.children.length > 0) {
-          processedTree.push(...node.children);
+          // 排序子节点，使时间戳命名的文件和文件夹排序在前面
+          const sortedChildren = [...node.children].sort((a, b) => {
+            // 检查名称是否以时间戳开头
+            const aIsTimestamp = /^\d{13}_/.test(a.name);
+            const bIsTimestamp = /^\d{13}_/.test(b.name);
+            
+            // 如果两个都是时间戳命名，按从新到旧排序
+            if (aIsTimestamp && bIsTimestamp) {
+              // 提取时间戳部分进行比较
+              const aTimestamp = parseInt(a.name.split('_')[0], 10);
+              const bTimestamp = parseInt(b.name.split('_')[0], 10);
+              return bTimestamp - aTimestamp; // 从大到小排序，最新的在最前面
+            }
+            
+            // 时间戳命名的排在前面
+            if (aIsTimestamp) return -1;
+            if (bIsTimestamp) return 1;
+            
+            // 否则按文件名排序
+            return a.name.localeCompare(b.name);
+          });
+          
+          processedTree.push(...sortedChildren);
         }
       } else {
         // 其他节点直接添加
@@ -224,6 +246,32 @@ const treeData = computed(() => {
     console.log('[ConfigTree] 已展平match文件夹内容到根级');
   } else {
     processedTree = uniqueConfigTree;
+    
+    // 如果不展平match文件夹，也要对match文件夹内的内容进行排序
+    for (const node of processedTree) {
+      if (node.type === 'folder' && node.children && node.children.length > 0) {
+        node.children.sort((a, b) => {
+          // 检查名称是否以时间戳开头
+          const aIsTimestamp = /^\d{13}_/.test(a.name);
+          const bIsTimestamp = /^\d{13}_/.test(b.name);
+          
+          // 如果两个都是时间戳命名，按从新到旧排序
+          if (aIsTimestamp && bIsTimestamp) {
+            // 提取时间戳部分进行比较
+            const aTimestamp = parseInt(a.name.split('_')[0], 10);
+            const bTimestamp = parseInt(b.name.split('_')[0], 10);
+            return bTimestamp - aTimestamp; // 从大到小排序，最新的在最前面
+          }
+          
+          // 时间戳命名的排在前面
+          if (aIsTimestamp) return -1;
+          if (bIsTimestamp) return 1;
+          
+          // 否则按文件名排序
+          return a.name.localeCompare(b.name);
+        });
+      }
+    }
   }
   
   // 转换为TreeNodeItem结构
@@ -236,6 +284,28 @@ const treeData = computed(() => {
   const packagesNode = tree.find((node: TreeNodeItem) => node.type === 'folder' && node.name === 'Packages');
   const otherNodes = tree.filter((node: TreeNodeItem) => !(node.type === 'folder' && node.name === 'Packages'));
 
+  // 排序其他节点，确保时间戳命名的文件和文件夹排序在前面
+  otherNodes.sort((a, b) => {
+    // 检查名称是否以时间戳开头
+    const aIsTimestamp = /^\d{13}_/.test(a.name);
+    const bIsTimestamp = /^\d{13}_/.test(b.name);
+    
+    // 如果两个都是时间戳命名，按从新到旧排序
+    if (aIsTimestamp && bIsTimestamp) {
+      // 提取时间戳部分进行比较
+      const aTimestamp = parseInt(a.name.split('_')[0], 10);
+      const bTimestamp = parseInt(b.name.split('_')[0], 10);
+      return bTimestamp - aTimestamp; // 从大到小排序，最新的在最前面
+    }
+    
+    // 时间戳命名的排在前面
+    if (aIsTimestamp) return -1;
+    if (bIsTimestamp) return 1;
+    
+    // 否则按文件名排序
+    return a.name.localeCompare(b.name);
+  });
+  
   // 如果找到 Packages 节点，将其添加到数组末尾
   const sortedTree = [...otherNodes];
   if (packagesNode) {

@@ -94,54 +94,68 @@ const handleCreateMatch = async () => {
     // 确保match目录路径正确
     const matchDir = `${rootDir}/match`;
     
+    // 找到match目录节点
+    let matchFolderNode = null;
+    for (const node of store.state.configTree) {
+      if (node.type === 'folder' && node.name === 'match') {
+        matchFolderNode = node;
+        break;
+      }
+    }
+    
     // 检查match目录是否存在，不存在则创建
     const matchDirExists = await platformService.directoryExists(matchDir);
     if (!matchDirExists) {
       await platformService.createDirectory(matchDir);
       toast.success('已创建match目录');
+      
+      // 如果目录刚创建且在树中没有match节点，创建一个
+      if (!matchFolderNode) {
+        const { createFolderNode } = await import('@/utils/configTreeUtils');
+        matchFolderNode = createFolderNode('match', matchDir);
+        store.state.configTree.push(matchFolderNode);
+      }
     }
     
     // 检查是否存在配置文件，如果没有则创建一个默认的
-    const configTree = store.state.configTree;
     let targetFileId = null;
+    let targetFileNode = null;
     
-    // 先尝试查找 base.yml 或其他已有配置文件
-    for (const node of configTree) {
-      if (node.type === 'folder' && node.name === 'match' && node.children && node.children.length > 0) {
-        for (const file of node.children) {
-          if (file.type === 'file') {
-            targetFileId = file.id;
-            break;
-          }
+    // 如果match文件夹节点存在，遍历其子节点查找配置文件
+    if (matchFolderNode && matchFolderNode.children && matchFolderNode.children.length > 0) {
+      for (const file of matchFolderNode.children) {
+        if (file.type === 'file') {
+          targetFileId = file.id;
+          targetFileNode = file;
+          break;
         }
-        if (targetFileId) break;
       }
     }
     
     // 如果没有找到配置文件，先创建一个
     if (!targetFileId) {
       // 使用base.yml作为默认配置文件名
-      await store.createConfigFile(matchDir, 'base.yml');
+      targetFileId = await store.createConfigFile(null, 'base.yml');
+      
+      if (!targetFileId) {
+        toast.error('创建默认配置文件失败');
+        return;
+      }
+      
       toast.success('已创建默认配置文件');
       
-      // 重新加载配置以获取新文件的ID
-      await store.loadConfig(rootDir);
-      
-      // 重新查找文件ID
-      for (const node of store.state.configTree) {
-        if (node.type === 'folder' && node.name === 'match' && node.children && node.children.length > 0) {
-          for (const file of node.children) {
-            if (file.type === 'file' && file.name === 'base.yml') {
-              targetFileId = file.id;
-              break;
-            }
+      // 查找新创建的文件节点
+      if (matchFolderNode && matchFolderNode.children) {
+        for (const file of matchFolderNode.children) {
+          if (file.type === 'file' && file.id === targetFileId) {
+            targetFileNode = file;
+            break;
           }
-          if (targetFileId) break;
         }
       }
     }
     
-    if (!targetFileId) {
+    if (!targetFileId || !targetFileNode) {
       toast.error('无法确定创建新片段的位置');
       return;
     }
@@ -156,6 +170,22 @@ const handleCreateMatch = async () => {
     const addedItem = await store.addItem(newMatchData, 'match', targetFileId, 0);
     if (addedItem) {
       toast.success('新片段已创建，请编辑触发词');
+      
+      // 确保文件和文件夹展开
+      if (matchFolderNode) {
+        const folderNodeInfo = TreeNodeRegistry.get(matchFolderNode.id);
+        if (folderNodeInfo?.info?.isOpen) {
+          folderNodeInfo.info.isOpen.value = true;
+        }
+      }
+      
+      const fileNodeInfo = TreeNodeRegistry.get(targetFileId);
+      if (fileNodeInfo?.info?.isOpen) {
+        fileNodeInfo.info.isOpen.value = true;
+      }
+      
+      // 选中新创建的片段
+      store.selectItem(addedItem.id, 'match');
     } else {
       toast.error('创建新片段失败');
     }
@@ -224,9 +254,32 @@ const handleCreateFolder = async () => {
     // 创建在match目录下，确保match目录存在
     const matchDir = `${rootDir}/match`;
     const matchDirExists = await platformService.directoryExists(matchDir);
+    
+    // 找到match目录节点
+    let matchFolderNode = null;
+    for (const node of store.state.configTree) {
+      if (node.type === 'folder' && node.name === 'match') {
+        matchFolderNode = node;
+        break;
+      }
+    }
+    
     if (!matchDirExists) {
       await platformService.createDirectory(matchDir);
       toast.success('已创建match目录');
+      
+      // 如果目录刚创建且在树中没有match节点，创建一个
+      if (!matchFolderNode) {
+        const { createFolderNode } = await import('@/utils/configTreeUtils');
+        matchFolderNode = createFolderNode('match', matchDir);
+        store.state.configTree.push(matchFolderNode);
+      }
+    }
+    
+    // 确保match文件夹节点存在
+    if (!matchFolderNode) {
+      toast.error('无法找到或创建match文件夹节点');
+      return;
     }
     
     // 创建新文件夹名称并构建完整路径
@@ -237,50 +290,43 @@ const handleCreateFolder = async () => {
     // 使用平台服务创建目录
     await platformService.createDirectory(newFolderPath);
     
-    // 重新加载配置以显示新文件夹
-    await store.loadConfig(rootDir);
+    // 创建新文件夹节点并添加到match文件夹下
+    const { createFolderNode } = await import('@/utils/configTreeUtils');
+    const newFolderNode = createFolderNode(newFolderName, newFolderPath);
+    
+    // 确保match文件夹有children属性
+    if (!matchFolderNode.children) {
+      matchFolderNode.children = [];
+    }
+    
+    // 将新文件夹添加到match文件夹
+    matchFolderNode.children.unshift(newFolderNode);
+    
+    // 确保match文件夹展开
+    const folderNode = TreeNodeRegistry.get(matchFolderNode.id);
+    if (folderNode?.info?.isOpen) {
+      folderNode.info.isOpen.value = true;
+    }
+    
     toast.success(`文件夹 ${newFolderName} 已创建`);
     
-    // 查找新创建的文件夹节点ID
-    let newFolderId = null;
-    for (const node of store.state.configTree) {
-      if (node.type === 'folder' && node.name === 'match') {
-        // 在match文件夹的子节点中查找
-        if (node.children) {
-          for (const child of node.children) {
-            if (child.type === 'folder' && child.path === newFolderPath) {
-              newFolderId = child.id;
-              break;
-            }
-          }
-        }
-      } else if (node.type === 'folder' && node.path === newFolderPath) {
-        // 直接在根节点查找（如果match文件夹被展平）
-        newFolderId = node.id;
-      }
-      
-      if (newFolderId) break;
-    }
+    // 选中新创建的文件夹
+    store.selectItem(newFolderNode.id, 'folder');
     
-    if (newFolderId) {
-      // 选中新创建的文件夹
-      store.selectItem(newFolderId, 'folder');
-      
-      // 延时触发重命名
-      setTimeout(() => {
-        const el = document.getElementById(`tree-node-${newFolderId}`)?.querySelector('.text-sm.font-medium.flex-grow');
-        if (el instanceof HTMLElement) {
-          console.log('找到文件夹名称元素，触发双击事件');
-          try {
-            el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
-          } catch (err) {
-            console.error('触发双击事件失败:', err);
-          }
-        } else {
-          console.warn(`无法找到文件夹节点名称元素，ID: ${newFolderId}`);
+    // 延时触发重命名
+    setTimeout(() => {
+      const el = document.getElementById(`tree-node-${newFolderNode.id}`)?.querySelector('.text-sm.font-medium.flex-grow');
+      if (el instanceof HTMLElement) {
+        console.log('找到文件夹名称元素，触发双击事件');
+        try {
+          el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+        } catch (err) {
+          console.error('触发双击事件失败:', err);
         }
-      }, 300);
-    }
+      } else {
+        console.warn(`无法找到文件夹节点名称元素，ID: ${newFolderNode.id}`);
+      }
+    }, 300);
   } catch (error: any) {
     console.error('创建文件夹失败:', error);
     toast.error(`创建文件夹失败: ${error.message || '未知错误'}`);

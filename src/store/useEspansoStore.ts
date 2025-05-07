@@ -26,6 +26,7 @@ import {
     extractMatchesFromTree, // New util function
 } from '@/utils/configTreeUtils';
 import ClipboardManager from '@/utils/ClipboardManager';
+import TreeNodeRegistry from '@/utils/TreeNodeRegistry'; // 引入 TreeNodeRegistry 用于管理节点展开状态
 
 
 // Define the new, leaner state interface
@@ -699,11 +700,81 @@ export const useEspansoStore = defineStore('espanso', () => {
                 // 将新文件添加到目标文件夹的子节点列表中
                 targetFolder.children.unshift(newFileNode);
                 console.log(`[createConfigFile] 文件节点已添加到树中: ${newFileId}`);
+                
+                // 确保文件夹是展开的
+                const folderNodeInfo = TreeNodeRegistry.get(targetFolder.id);
+                if (folderNodeInfo?.info?.isOpen) {
+                    folderNodeInfo.info.isOpen.value = true;
+                }
             } else {
-                // 如果没有找到目标文件夹节点，不创建新的match文件夹节点，而是重新加载配置
-                console.log(`[createConfigFile] 未找到目标文件夹节点，将重新加载配置`);
-                // 确保物理文件已创建
-                await loadConfig(state.value.configRootDir || undefined);
+                // 如果没有找到目标文件夹节点，需要创建完整的节点结构
+                console.log(`[createConfigFile] 未找到目标文件夹节点，将创建完整的节点结构`);
+                
+                // 创建默认内容
+                const defaultContent = {
+                    matches: [{
+                        trigger: ':newtrigger',
+                        replace: 'Your new snippet!',
+                        label: '新创建的片段'
+                    }]
+                };
+                
+                // 创建匹配项节点
+                const defaultMatch: Match = {
+                    id: `match-${newFileId}-0`,
+                    type: 'match',
+                    trigger: ':newtrigger',
+                    replace: 'Your new snippet!',
+                    label: '新创建的片段',
+                    filePath: newFilePath,
+                    guiOrder: 0,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                // 创建文件节点
+                const newFileNode: ConfigFileNode = {
+                    id: newFileId,
+                    type: 'file' as const,
+                    name: fileName,
+                    path: newFilePath,
+                    matches: [defaultMatch],
+                    content: defaultContent as YamlData,
+                    fileType: 'match',
+                    extension: 'yml'
+                };
+                
+                // 查找或创建match文件夹节点
+                let matchFolderNode: ConfigFolderNode | null = null;
+                
+                // 先在已有树中查找match文件夹
+                for (const node of state.value.configTree) {
+                    if (node.type === 'folder' && node.name === 'match') {
+                        matchFolderNode = node as ConfigFolderNode;
+                        break;
+                    }
+                }
+                
+                // 如果没找到，创建一个match文件夹节点
+                if (!matchFolderNode) {
+                    matchFolderNode = {
+                        id: `folder-${folderPath}`,
+                        type: 'folder',
+                        name: 'match',
+                        path: folderPath,
+                        children: []
+                    };
+                    state.value.configTree.push(matchFolderNode);
+                }
+                
+                // 将新文件节点添加到match文件夹中
+                matchFolderNode.children.unshift(newFileNode);
+                
+                // 确保文件夹是展开的
+                const folderNodeInfo = TreeNodeRegistry.get(matchFolderNode.id);
+                if (folderNodeInfo?.info?.isOpen) {
+                    folderNodeInfo.info.isOpen.value = true;
+                }
             }
             
             console.log(`[createConfigFile] 文件创建成功: ${newFilePath}`);
@@ -890,12 +961,15 @@ export const useEspansoStore = defineStore('espanso', () => {
 
              // If folder, update descendant paths and item filePaths recursively
              if (node.type === 'folder') {
-                  // Need a robust recursive update function for the tree state
-                 // await updateDescendantPathsInTree(node, oldPath, newPath); // Placeholder
-                 console.warn("Recursive path update for folder rename not fully implemented in this example.");
-                 // Simplest fix: reload config after rename
-                 await loadConfig(state.value.configRootDir || undefined);
-
+                 // 使用updateDescendantPathsAndFilePaths更新子节点的路径
+                 const { updateDescendantPathsAndFilePaths } = await import('@/utils/configTreeUtils');
+                 
+                 // 递归更新所有子节点的路径和ID
+                 if (node.children && node.children.length > 0) {
+                     for (const child of node.children) {
+                         await updateDescendantPathsAndFilePaths(child, newPath, platformService.joinPath);
+                     }
+                 }
              } else if (node.type === 'file') {
                  // Update filePath for contained matches/groups
                   const updateContainedPaths = (items?: (Match)[]) => {
@@ -903,7 +977,6 @@ export const useEspansoStore = defineStore('espanso', () => {
                           if (item.filePath === oldPath) {
                               item.filePath = newPath;
                           }
-
                       });
                   };
                   updateContainedPaths((node as ConfigFileNode).matches);
