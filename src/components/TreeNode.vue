@@ -907,8 +907,44 @@ watch(isOpen, (newIsOpen) => {
   box-sizing: border-box;
   width: 100%;
   position: relative; /* 确保绝对定位的子元素相对于此元素定位 */
-  transition: background-color 0.1s ease-out; /* 统一过渡效果 */
+  transition: background-color 0.1s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 统一过渡效果，添加transform过渡 */
 }
+
+/* 选中节点的动态效果 */
+.node-row.selected {
+  transform: translateX(-4px); /* 选中时向左移动5像素 */
+  box-shadow: 4px 0 0 0 hsl(var(--primary)/60%); /* 右侧添加主题色阴影指示 */
+  position: relative;
+}
+
+/* 添加一个微妙的呼吸效果，让选中状态更加动态 */
+.node-row.selected::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 确保不影响点击事件 */
+  border-radius: 2px;
+  animation: select-pulse 2s infinite ease-in-out;
+  opacity: 0.2;
+  z-index: 0;
+}
+
+@keyframes select-pulse {
+  0% {
+    box-shadow: inset 0 0 0 1px hsla(var(--primary)/25%);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px hsla(var(--primary)/5%);
+  }
+  100% {
+    box-shadow: inset 0 0 0 1px hsla(var(--primary)/25%);
+  }
+}
+
+
 
 /* 新增样式：确保左侧点击区域在最上层 */
 .node-row .absolute {
