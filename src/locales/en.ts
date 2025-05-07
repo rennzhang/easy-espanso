@@ -21,7 +21,9 @@ export default {
     "yes": "Yes",
     "no": "No",
     "modified": "Content Modified",
-    "details": "Details"
+    "details": "Details",
+    "noSelection": "No Item Selected",
+    "selectFromListDetails": "Please select a file or folder from the list on the left"
   },
   "sidebar": {
     "snippets": "Snippets",
@@ -40,7 +42,6 @@ export default {
     "previewTitle": "Preview \"{trigger}\"",
     "imagePreview": "Image Preview",
     "imagePreviewError": "Failed to load image preview. Please check the path.",
-    "noSelection": "No Item Selected",
     "selectFromList": "Please select a rule or group from the list on the left to edit",
     "noTrigger": "[No Trigger]",
     "confirmDelete": "Are you sure you want to delete this rule? This action cannot be undone.",
@@ -322,5 +323,22 @@ export default {
       "remove": "Remove",
       "screenReaderRemove": "Remove tag"
     }
+  },
+  "fileDetails": {
+    "fileInfo": "File Information",
+    "folderInfo": "Folder Information",
+    "path": "Path",
+    "type": "Type",
+    "snippetsCount": "Snippets Count",
+    "lastUpdated": "Last Updated",
+    "containsFiles": "Contains Files",
+    "matchFile": "Match Configuration File",
+    "configFile": "Configuration File",
+    "packageFile": "Package File",
+    "folder": "Folder",
+    "unknown": "Unknown Type",
+    "never": "Never",
+    "snippets": "snippets",
+    "files": "files"
   }
 } 

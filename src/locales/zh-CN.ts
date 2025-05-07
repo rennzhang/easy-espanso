@@ -22,7 +22,9 @@ export default {
     "yes": "是",
     "no": "否",
     "modified": "内容已修改",
-    "details": "详情"
+    "details": "详情",
+    "noSelection": "未选择项目",
+    "selectFromListDetails": "请从左侧列表选择文件或文件夹"
   },
   "sidebar": {
     "snippets": "片段管理",
@@ -41,7 +43,6 @@ export default {
     "previewTitle": "预览 \"{trigger}\"",
     "imagePreview": "图片预览",
     "imagePreviewError": "图片预览加载失败，请检查路径是否正确。",
-    "noSelection": "未选择项目",
     "selectFromList": "请从左侧列表选择一个规则或分组进行编辑",
     "noTrigger": "[无触发词]",
     "confirmDelete": "确定要删除这个规则吗？此操作无法撤销。",
@@ -323,5 +324,22 @@ export default {
       "remove": "移除",
       "screenReaderRemove": "移除标签"
     }
+  },
+  "fileDetails": {
+    "fileInfo": "文件信息",
+    "folderInfo": "文件夹信息",
+    "path": "路径",
+    "type": "类型",
+    "snippetsCount": "片段数量",
+    "lastUpdated": "最近更新",
+    "containsFiles": "包含文件",
+    "matchFile": "片段配置文件",
+    "configFile": "配置文件",
+    "packageFile": "包文件",
+    "folder": "文件夹",
+    "unknown": "未知类型",
+    "never": "从未",
+    "snippets": "个片段",
+    "files": "个文件"
   }
 } 

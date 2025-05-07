@@ -58,6 +58,9 @@
           @delete="deleteRule(selectedItem.id)"
         />
       </div>
+      <div v-else-if="selectedItem.type === 'file' || selectedItem.type === 'folder'" class="flex flex-col h-full">
+        <FileDetailsPanel :node="selectedNodeAsTreeNode" />
+      </div>
     </div>
 
      <div v-if="showPreviewModal" class="fixed inset-0 z-[9999] flex items-center justify-center">
@@ -112,6 +115,7 @@ import {
 } from "../ui/tooltip";
 import RuleEditForm from '../forms/RuleEditForm.vue';   // 规则编辑表单
 import GroupEditForm from '../forms/GroupEditForm.vue'; // 分组编辑表单
+import FileDetailsPanel from './FileDetailsPanel.vue';  // 文件/文件夹详情面板
 
 // --- Refs 和 Store 实例 ---
 const { t } = useI18n(); // 使用 useI18n hook
@@ -132,8 +136,20 @@ const previewIsImage = ref(false);
 const middlePaneRef = ref<any>(null); // 用于接收 MiddlePane 引用
 
 // --- 计算属性 ---
-const selectedItem = computed(() => store.selectedItem as Match | null); // 类型断言
+const selectedItem = computed(() => store.selectedItem as Match | ConfigTreeNode | null); // 类型断言
 const selectedId = computed(() => store.state.selectedItemId);
+
+// 将选中项转换为 ConfigTreeNode 类型（仅当是文件或文件夹时）
+const selectedNodeAsTreeNode = computed(() => {
+  const item = selectedItem.value;
+  if (!item) return null;
+  
+  if (item.type === 'file' || item.type === 'folder') {
+    return item as ConfigTreeNode;
+  }
+  
+  return null;
+});
 
 // 根据选中项动态生成标题
 const headerTitle = computed(() => {
@@ -142,6 +158,10 @@ const headerTitle = computed(() => {
   if (item.type === 'match') {
     let displayTrigger = item.trigger || (item.triggers && item.triggers.length > 0 ? `${item.triggers[0]}...` : t('snippets.noTrigger'));
     return t('snippets.editSnippet') + ` <span class="ml-2 text-sm text-muted-foreground">${displayTrigger}</span>`;
+  } else if (item.type === 'file') {
+    return t('fileDetails.fileInfo') + ` <span class="ml-2 text-sm text-muted-foreground">${item.name}</span>`;
+  } else if (item.type === 'folder') {
+    return t('fileDetails.folderInfo') + ` <span class="ml-2 text-sm text-muted-foreground">${item.name}</span>`;
   }
   return t('common.details');
 });
