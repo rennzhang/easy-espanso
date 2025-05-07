@@ -34,7 +34,8 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: "pnpm" # 如果你使用 pnpm，可以缓存依赖
+          cache: "pnpm"
+          cache-dependency-path: pnpm-lock.yaml # Explicitly specify the lock file path
 
       - name: Install dependencies
         run: pnpm install # 或者 npm install / yarn install
