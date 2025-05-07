@@ -1,6 +1,10 @@
 {
   "name": "easy-espanso",
-  "version": "0.1.0",
+  "version": "1.0.1",
+  "author": {
+    "name": "Easy Espanso Team",
+    "email": "906155099@qq.com"
+  },
   "private": true,
   "main": "dist/electron/main/index.js",
   "scripts": {
