@@ -3,7 +3,7 @@
     <!-- ========================= -->
     <!-- 1. 基本信息区 (始终可见) -->
     <!-- ========================= -->
-    <div class="space-y-4 flex-1 flex flex-col h-full">
+    <div class="space-y-4 flex-1 flex flex-col h-full overflow-hidden">
       <!-- 触发词和名称一行 -->
       <div class="flex flex-col md:flex-row gap-4 mb-4 pb-4 border-b relative">
         <!-- 触发词 -->
@@ -49,7 +49,7 @@
       </div>
 
       <!-- 内容类型选择器 & 替换内容 -->
-      <div class="space-y-2 flex-1 flex flex-col">
+      <div class="space-y-2 flex-1 flex flex-col overflow-hidden">
         <div class="flex items-center justify-between">
           <div class="flex items-center">
             <label class="text-sm font-medium leading-none mr-2">{{
@@ -84,10 +84,10 @@
         <!-- Editor Container -->
         <div
           v-if="currentContentType !== 'image'"
-          class="shadow-xs border rounded-md overflow-hidden min-h-[300px] focus-within:border-primary focus-within:shadow-xl focus:border-primary focus:shadow-xl duration-150 flex-1 flex flex-col bg-card"
+          class=" shadow-xs border rounded-md overflow-hidden min-h-[300px] focus-within:border-primary focus-within:shadow-xl focus:border-primary focus:shadow-xl duration-150 flex-1 flex flex-col bg-card"
         >
           <!-- CodeMirror Editor (Replaces all previous textareas) -->
-          <div class="h-full">
+          <div class="h-full max-h-[calc(100%-40px)]">
             <Codemirror
               :border="false"
               :class="{
