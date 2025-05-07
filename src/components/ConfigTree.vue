@@ -184,7 +184,50 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
 const treeData = computed(() => {
   const configTree = store.state.configTree || [];
   console.log('[ConfigTree] 原始 store.state.configTree:', JSON.stringify(configTree, null, 2));
-  const tree = configTree
+  
+  // 检查是否有重复的match文件夹节点
+  const matchFolderPaths = new Set<string>();
+  const uniqueConfigTree = configTree.filter(node => {
+    // 如果不是folder类型，或者不是match文件夹，直接保留
+    if (node.type !== 'folder' || node.name !== 'match') {
+      return true;
+    }
+    
+    // 如果是match文件夹，检查路径是否已经存在
+    if (matchFolderPaths.has(node.path)) {
+      console.log(`[ConfigTree] 发现重复的match文件夹节点，路径为: ${node.path}，已过滤`);
+      return false; // 过滤掉重复的
+    }
+    
+    matchFolderPaths.add(node.path);
+    return true;
+  });
+  
+  // 如果match文件夹存在，展平match文件夹的子节点到根级
+  // 也就是说，不显示match文件夹本身，而是直接显示其内容
+  const shouldFlattenMatchFolder = true; // 这可以根据需要改为配置项
+  
+  let processedTree;
+  if (shouldFlattenMatchFolder) {
+    processedTree = [];
+    for (const node of uniqueConfigTree) {
+      if (node.type === 'folder' && node.name === 'match') {
+        // 将match文件夹的子节点直接添加到根级
+        if (node.children && node.children.length > 0) {
+          processedTree.push(...node.children);
+        }
+      } else {
+        // 其他节点直接添加
+        processedTree.push(node);
+      }
+    }
+    console.log('[ConfigTree] 已展平match文件夹内容到根级');
+  } else {
+    processedTree = uniqueConfigTree;
+  }
+  
+  // 转换为TreeNodeItem结构
+  const tree = processedTree
     .map((node: any) => convertStoreNodeToTreeNodeItem(node, true))
     .filter((item: TreeNodeItem | null): item is TreeNodeItem => item !== null)
     .filter((node: TreeNodeItem) => !(node.type === 'folder' && node.name === 'config'));
@@ -381,7 +424,7 @@ const getAllSelectableNodes = (): { node: TreeNodeItem, element: HTMLElement }[]
 
         // 检查节点是否展开
         const nodeInfo = TreeNodeRegistry.get(node.id);
-        const isNodeOpen = nodeInfo?.isOpen?.value === true;
+        const isNodeOpen = nodeInfo?.info?.isOpen?.value === true;
 
         // 如果节点有子节点且是展开的，则递归处理子节点
         if (isNodeOpen && node.children && node.children.length > 0) {
@@ -513,6 +556,9 @@ const createNewSnippet = async () => {
     toast.error(`创建新片段失败: ${error.message || '未知错误'}`);
   }
 };
+
+// 默认收起所有节点
+const isOpen = ref(false);
 
 </script>
 

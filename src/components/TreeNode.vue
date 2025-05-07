@@ -51,7 +51,7 @@
                 v-else-if="hasChildren && isOpen"
                 class="h-4 w-4"
               />
-              <span v-else class="inline-block"></span>
+              <span v-else class="inline-block" :class="{ 'h-4 w-4': node.type === 'folder' }"></span>
             </span>
             <!-- 文件夹图标放在名称前面 -->
             <span v-if="node.type === 'folder'" class="mr-1.5">
@@ -269,8 +269,8 @@ const emit = defineEmits<{
 
 const store = useEspansoStore();
 
-// 默认展开状态：Packages 文件夹默认收起，其他节点默认展开
-const isOpen = ref(props.node.name === "Packages" ? false : true);
+// 默认收起所有节点
+const isOpen = ref(false);
 
 // 编辑相关的状态
 const isEditing = ref(false);
@@ -854,6 +854,20 @@ const shouldShowCount = computed(() => {
 
   // Alternative simpler logic: Always show for non-match nodes with children?
   // return props.node.type !== 'match' && hasChildren.value;
+});
+
+// 监听 isOpen 的变化，如果节点被打开，发出事件
+watch(isOpen, (newIsOpen) => {
+  emit("toggle-node", props.node.id);
+  
+  // 如果节点被展开，尝试确保所有子节点可见
+  if (newIsOpen && props.node.children && props.node.children.length > 0) {
+    // 简单的触发更新
+    nextTick(() => {
+      // 这里不需要实际内容，只需触发一个更新周期
+      console.log(`Node ${props.node.id} (${props.node.name}) expanded`);
+    });
+  }
 });
 </script>
 

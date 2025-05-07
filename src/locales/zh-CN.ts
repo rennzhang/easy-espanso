@@ -302,6 +302,7 @@ export default {
   "contextMenu": {
     "newSnippet": "新建片段",
     "newConfigFile": "新建配置文件",
+    "newFolder": "新建文件夹",
     "paste": "粘贴",
     "copyPath": "复制路径",
     "expandAll": "展开全部",

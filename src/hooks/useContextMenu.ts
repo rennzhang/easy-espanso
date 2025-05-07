@@ -4,9 +4,10 @@ import { toast } from 'vue-sonner';
 import ClipboardManager from '@/utils/ClipboardManager';
 import TreeNodeRegistry from '@/utils/TreeNodeRegistry'; // 假设这个注册表仍然用于展开/折叠状态
 import type { TreeNodeItem } from '@/components/ConfigTree.vue'; // 假设 TreeNodeItem 类型不变 (需要确认或调整)
-import { findParentNodeInTree } from '@/utils/configTreeUtils'; // 引入查找父节点工具函数
+import { findParentNodeInTree, findNodeById } from '@/utils/configTreeUtils'; // 引入查找父节点工具函数
 import { Match } from '@/types/core/espanso.types';
 import { determineSnippetPosition, focusTriggerInput } from '@/utils/snippetPositionUtils';
+import * as platformService from '@/services/platformService';
 
 // --- MenuItem Interface (保持不变) ---
 interface MenuItem {
@@ -212,95 +213,136 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
   };
 
   const handleCreateConfigFile = async () => {
-      const targetNode = getCurrentNode();
-      if (!targetNode || targetNode.type !== 'folder') {
-           toast.error("请选择一个文件夹来创建配置文件");
-           return;
-      }
-      const folderPath = targetNode.path;
-      if (!folderPath) {
-           toast.error("无法获取文件夹路径");
-           return;
-      }
+    const targetNode = getCurrentNode();
+    
+    // 如果当前选中了一个文件夹节点，则在该文件夹下创建文件
+    if (targetNode && targetNode.type === 'folder') {
+        const folderId = targetNode.id;
+        if (!folderId) {
+            toast.error("无法获取文件夹ID");
+            return;
+        }
 
-      const newFileName = `new_config_${Date.now()}.yml`;
-      console.log(`[ContextMenu] 准备在 ${folderPath} 下创建配置文件 ${newFileName}`);
+        const timestamp = new Date().getTime();
+        const newFileName = `${timestamp}_config.yml`;
+        console.log(`[ContextMenu] 准备在文件夹 ${folderId} 下创建配置文件 ${newFileName}`);
 
-      try {
-          await store.createConfigFile(folderPath, newFileName);
-          toast.success(`配置文件 ${newFileName} 已创建`);
-      } catch (error: any) {
-          console.error("创建配置文件失败:", error);
-          toast.error(`创建配置文件失败: ${error.message || '未知错误'}`);
-      }
+        try {
+            const newFileId = await store.createConfigFile(folderId, newFileName);
+            if (!newFileId) {
+                toast.error("创建配置文件失败");
+                return;
+            }
+            
+            toast.success(`配置文件 ${newFileName} 已创建`);
+            
+            // 选中新创建的文件
+            store.selectItem(newFileId, 'file');
+            
+            // 确保文件夹是展开的
+            const folderNode = TreeNodeRegistry.get(folderId);
+            if (folderNode?.info?.isOpen) {
+                folderNode.info.isOpen.value = true;
+            }
+            
+            // 延时触发重命名
+            setTimeout(() => {
+                const el = document.getElementById(`tree-node-${newFileId}`)?.querySelector('.text-sm.font-medium.flex-grow');
+                if (el instanceof HTMLElement) {
+                    try {
+                        el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+                    } catch (err) {
+                        console.error('触发双击事件失败:', err);
+                    }
+                }
+            }, 300);
+        } catch (error: any) {
+            toast.error(`创建配置文件失败: ${error.message || '未知错误'}`);
+        }
+    } else {
+        // 如果未选中文件夹节点，则在match文件夹下创建
+        // 直接创建，不需要查找match文件夹节点
+        const timestamp = new Date().getTime();
+        const newFileName = `${timestamp}_config.yml`;
+        console.log(`[ContextMenu] 准备创建配置文件 ${newFileName}`);
+
+        try {
+            const newFileId = await store.createConfigFile(null, newFileName); // 传null让store自行处理
+            if (!newFileId) {
+                toast.error("创建配置文件失败");
+                return;
+            }
+            
+            toast.success(`配置文件 ${newFileName} 已创建`);
+            
+            // 选中新创建的文件
+            store.selectItem(newFileId, 'file');
+            
+            // 延时触发重命名
+            setTimeout(() => {
+                const el = document.getElementById(`tree-node-${newFileId}`)?.querySelector('.text-sm.font-medium.flex-grow');
+                if (el instanceof HTMLElement) {
+                    try {
+                        el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+                    } catch (err) {
+                        console.error('触发双击事件失败:', err);
+                    }
+                }
+            }, 300);
+        } catch (error: any) {
+            toast.error(`创建配置文件失败: ${error.message || '未知错误'}`);
+        }
+    }
   };
-
-
-  // --- 展开/折叠操作 (保持不变，依赖 TreeNodeRegistry) ---
-  const handleExpandAll = () => TreeNodeRegistry.expandAll();
-  const handleCollapseAll = () => TreeNodeRegistry.collapseAll();
-  const handleExpandCurrentNode = () => {
-    const node = getCurrentNode();
-    if (node?.id && nodeHasChildren(node)) TreeNodeRegistry.expandNodeAndChildren(node.id);
-  };
-  const handleCollapseCurrentNode = () => {
-    const node = getCurrentNode();
-    if (node?.id && nodeHasChildren(node)) TreeNodeRegistry.collapseNodeAndChildren(node.id);
-  };
-
 
   // 使用系统级别的 confirm 对话框直接删除
   const deleteItem = async (type: 'match' | 'file' | 'folder') => {
-      const node = getCurrentNode();
-      if (!node || node.type !== type) return;
+    const node = getCurrentNode();
+    if (!node || node.type !== type) return;
 
-      const id = node.id;
-      let name = node.name || '未知项';
-      if (type === 'match' && node.match) {
-           name = node.match.trigger || node.match.label || '未知片段';
-      }
+    const id = node.id;
+    let name = node.name || '未知项';
+    if (type === 'match' && node.match) {
+         name = node.match.trigger || node.match.label || '未知片段';
+    }
 
-      let message = '';
+    let message = '';
 
-      if (type === 'match') {
-          message = `确定要删除片段 "${name}" 吗？`;
-          if (confirm(message)) {
-            try {
-              await store.deleteItem(id, 'match');
-              toast.success(`已删除: ${name}`);
-            } catch (err: any) {
-              console.error('删除操作失败:', err);
-              toast.error(`删除失败: ${err.message || '未知错误'}`);
-            }
+    if (type === 'match') {
+        message = `确定要删除片段 "${name}" 吗？`;
+        if (confirm(message)) {
+          try {
+            await store.deleteItem(id, 'match');
+            toast.success(`已删除: ${name}`);
+          } catch (err: any) {
+            console.error('删除操作失败:', err);
+            toast.error(`删除失败: ${err.message || '未知错误'}`);
           }
-      } else if (type === 'file') {
-           message = `确定要删除配置文件 "${name}" 吗？此操作会从文件系统中移除该文件，且不可撤销。`;
-           if (confirm(message)) {
-            try {
-              await store.deleteFileNode(id);
-              toast.success(`已删除: ${name}`);
-            } catch (err: any) {
-              console.error('删除操作失败:', err);
-              toast.error(`删除失败: ${err.message || '未知错误'}`);
-            }
-           }
-      } else if (type === 'folder') {
-           message = `确定要删除文件夹 "${name}" 及其所有内容吗？此操作会从文件系统中移除该文件夹及其包含的所有文件和子文件夹，且不可撤销。`;
-           if (confirm(message)) {
-            try {
-              await store.deleteFolderNode(id);
-              toast.success(`已删除: ${name}`);
-            } catch (err: any) {
-              console.error('删除操作失败:', err);
-              toast.error(`删除失败: ${err.message || '未知错误'}`);
-            }
-           }
-      }
+        }
+    } else if (type === 'file') {
+         message = `确定要删除配置文件 "${name}" 吗？此操作会从文件系统中移除该文件，且不可撤销。`;
+         if (confirm(message)) {
+          try {
+            await store.deleteFileNode(id);
+            toast.success(`已删除: ${name}`);
+          } catch (err: any) {
+            console.error('删除操作失败:', err);
+            toast.error(`删除失败: ${err.message || '未知错误'}`);
+          }
+         }
+    } else if (type === 'folder') {
+         message = `确定要删除文件夹 "${name}" 及其所有内容吗？此操作会从文件系统中移除该文件夹及其包含的所有文件和子文件夹，且不可撤销。`;
+         if (confirm(message)) {
+          try {
+            await store.deleteFolderNode(id);
+            toast.success(`已删除: ${name}`);
+          } catch (err: any) {
+            console.error('删除操作失败:', err);
+            toast.error(`删除失败: ${err.message || '未知错误'}`);
+          }
+         }
+    }
   };
-
-  const prepareDeleteMatch = () => deleteItem('match');
-  const prepareDeleteFile = () => deleteItem('file');
-  const prepareDeleteFolder = () => deleteItem('folder');
 
   // --- 返回暴露给组件的接口 ---
   return {
@@ -327,16 +369,118 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     // 创建操作 (只创建 Match 和 File)
     handleCreateMatch,
     handleCreateConfigFile,
+    
+    // 添加创建文件夹的函数
+    handleCreateFolder: async () => {
+      try {
+        const targetNode = getCurrentNode();
+        let targetFolderId = null;
+        
+        // 如果当前选中了一个文件夹节点，则在该文件夹下创建新文件夹
+        if (targetNode && targetNode.type === 'folder') {
+          targetFolderId = targetNode.id;
+        }
+        
+        // 获取根目录
+        const rootDir = store.state.configRootDir;
+        if (!rootDir) {
+          toast.error('未设置根目录');
+          return;
+        }
+        
+        // 确定目标路径
+        let parentPath;
+        if (targetFolderId) {
+          // 如果有目标文件夹，获取其路径
+          const folderNode = findNodeById(store.state.configTree, targetFolderId);
+          if (!folderNode || folderNode.type !== 'folder') {
+            toast.error('无效的目标文件夹');
+            return;
+          }
+          parentPath = folderNode.path;
+        } else {
+          // 否则在match文件夹下创建
+          parentPath = `${rootDir}/match`;
+          // 确保match目录存在
+          const matchDirExists = await platformService.directoryExists(parentPath);
+          if (!matchDirExists) {
+            await platformService.createDirectory(parentPath);
+          }
+        }
+        
+        // 创建新文件夹名称并构建完整路径
+        const timestamp = new Date().getTime();
+        const newFolderName = `${timestamp}_folder`;
+        const newFolderPath = `${parentPath}/${newFolderName}`;
+
+        // 使用平台服务创建目录
+        await platformService.createDirectory(newFolderPath);
+
+        // 重新加载配置以显示新文件夹
+        await store.loadConfig(rootDir);
+        toast.success(`文件夹 ${newFolderName} 已创建`);
+
+        // 查找新创建的文件夹节点ID
+        let newFolderId = null;
+        for (const node of store.state.configTree) {
+          if (node.type === 'folder' && node.name === 'match') {
+            // 在match文件夹的子节点中查找
+            if (node.children) {
+              for (const child of node.children) {
+                if (child.type === 'folder' && child.path === newFolderPath) {
+                  newFolderId = child.id;
+                  break;
+                }
+              }
+            }
+          } else if (node.type === 'folder' && node.path === newFolderPath) {
+            // 直接在根节点查找（如果match文件夹被展平）
+            newFolderId = node.id;
+          }
+          
+          if (newFolderId) break;
+        }
+
+        if (newFolderId) {
+          // 选中新创建的文件夹
+          store.selectItem(newFolderId, 'folder');
+          
+          // 延时触发重命名
+          setTimeout(() => {
+            const el = document.getElementById(`tree-node-${newFolderId}`)?.querySelector('.text-sm.font-medium.flex-grow');
+            if (el instanceof HTMLElement) {
+              console.log('找到文件夹名称元素，触发双击事件');
+              try {
+                el.dispatchEvent(new MouseEvent('dblclick', { bubbles: true, cancelable: true }));
+              } catch (err) {
+                console.error('触发双击事件失败:', err);
+              }
+            } else {
+              console.warn(`无法找到文件夹节点名称元素，ID: ${newFolderId}`);
+            }
+          }, 300);
+        }
+      } catch (error: any) {
+        console.error('创建文件夹失败:', error);
+        toast.error(`创建文件夹失败: ${error.message || '未知错误'}`);
+      }
+    },
 
     // 展开/折叠
-    handleExpandAll,
-    handleCollapseAll,
-    handleExpandCurrentNode,
-    handleCollapseCurrentNode,
+    handleExpandAll: () => TreeNodeRegistry.expandAll(),
+    handleCollapseAll: () => TreeNodeRegistry.collapseAll(),
+    handleExpandCurrentNode: () => {
+      const node = getCurrentNode();
+      if (node?.id && nodeHasChildren(node)) TreeNodeRegistry.expandNodeAndChildren(node.id);
+    },
+    handleCollapseCurrentNode: () => {
+      const node = getCurrentNode();
+      if (node?.id && nodeHasChildren(node)) TreeNodeRegistry.collapseNodeAndChildren(node.id);
+    },
 
     // 删除操作
-    prepareDeleteMatch,
-    prepareDeleteFile,
-    prepareDeleteFolder,
+    prepareDeleteMatch: () => deleteItem('match'),
+    prepareDeleteFile: () => deleteItem('file'),
+    prepareDeleteFolder: () => deleteItem('folder'),
   };
 }

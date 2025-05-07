@@ -7,6 +7,7 @@ import { v4 as uuidv4 } from 'uuid';
 import type { ConfigTreeNode, ConfigFileNode, ConfigFolderNode } from '@/types/core/ui.types'; // Renamed/Moved
 import type { GlobalConfig } from '@/types/core/espanso-format.types'; // Use canonical format type
 import type { Match } from '@/types/core/espanso.types'; // Use canonical internal type
+import { YamlData } from '@/types/core/preload.types';
 
 // Import Services (Assuming they are refactored)
 import * as espansoService from '@/services/espansoService';
@@ -606,35 +607,116 @@ export const useEspansoStore = defineStore('espanso', () => {
 
      const createConfigFile = async (targetFolderNodeId: string | null, fileName: string) => {
         _setStatus(`正在创建: ${fileName}...`);
-        let folderPath: string | null = null;
-
-        if (targetFolderNodeId) {
-            const folderNode = findTreeNodeById(state.value.configTree, targetFolderNodeId);
-            if (!folderNode || folderNode.type !== 'folder') {
-                 _setError('无效的目标文件夹。');
-                 return;
+        
+        console.log(`[createConfigFile] 开始创建文件 ${fileName}，目标文件夹ID: ${targetFolderNodeId}`);
+        
+        try {
+            // 步骤1: 确定目标文件夹路径
+            let folderPath: string | null = null;
+            let targetFolder: ConfigFolderNode | null = null;
+            
+            if (targetFolderNodeId) {
+                // 如果提供了目标文件夹ID，尝试找到对应节点
+                const node = findTreeNodeById(state.value.configTree, targetFolderNodeId);
+                if (!node || node.type !== 'folder') {
+                    _setError('无效的目标文件夹。');
+                    return null;
+                }
+                targetFolder = node as ConfigFolderNode;
+                folderPath = targetFolder.path;
+                console.log(`[createConfigFile] 使用指定文件夹: ${targetFolder.name}, 路径: ${folderPath}`);
+            } else {
+                // 如果未提供ID，使用默认的match文件夹路径
+                const rootDir = state.value.configRootDir;
+                if (!rootDir) {
+                    _setError('未设置配置根目录。');
+                    return null;
+                }
+                
+                folderPath = `${rootDir}/match`;
+                console.log(`[createConfigFile] 未指定目标文件夹，使用默认match路径: ${folderPath}`);
+                
+                // 在配置树中查找match文件夹节点（可能已经是顶层节点）
+                for (const node of state.value.configTree) {
+                    if (node.type === 'folder' && 
+                        (node.path === folderPath || (node.name === 'match' && node.path.endsWith('/match')))) {
+                        targetFolder = node as ConfigFolderNode;
+                        folderPath = node.path; // 使用找到节点的路径，以确保准确
+                        console.log(`[createConfigFile] 在树中找到match文件夹节点: ${targetFolder.id}`);
+                        break;
+                    }
+                }
             }
-            folderPath = folderNode.path;
-        } else {
-            // Create in root config dir? Needs policy.
-            folderPath = state.value.configRootDir ? `${state.value.configRootDir}/match` : null; // Default to match dir?
-             if (!folderPath) {
-                 _setError('无法确定目标目录。');
-                 return;
-             }
-        }
-
-         try {
+            
+            // 步骤2: 确保物理文件夹存在
+            const folderExists = await platformService.directoryExists(folderPath);
+            if (!folderExists) {
+                console.log(`[createConfigFile] 物理文件夹不存在，创建文件夹: ${folderPath}`);
+                await platformService.createDirectory(folderPath);
+            }
+            
+            // 步骤3: 创建实际的配置文件
+            console.log(`[createConfigFile] 开始创建文件: ${fileName} 在 ${folderPath}`);
             const newFilePath = await espansoService.createAndSaveEmptyConfigFile(folderPath, fileName);
-            // Easiest way to update UI is reload
-            await loadConfig(state.value.configRootDir || undefined);
-            // 统一提示格式
+            const newFileId = `file-${newFilePath}`;
+            
+            // 步骤4: 如果找到了目标文件夹节点，直接添加文件节点到树中
+            if (targetFolder) {
+                // 创建默认内容
+                const defaultContent = {
+                    matches: [{
+                        trigger: ':newtrigger',
+                        replace: 'Your new snippet!',
+                        label: '新创建的片段'
+                    }]
+                };
+                
+                // 创建匹配项节点
+                const defaultMatch: Match = {
+                    id: `match-${newFileId}-0`,
+                    type: 'match',
+                    trigger: ':newtrigger',
+                    replace: 'Your new snippet!',
+                    label: '新创建的片段',
+                    filePath: newFilePath,
+                    guiOrder: 0,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+                
+                // 创建文件节点
+                const newFileNode: ConfigFileNode = {
+                    id: newFileId,
+                    type: 'file' as const,
+                    name: fileName,
+                    path: newFilePath,
+                    matches: [defaultMatch],
+                    content: defaultContent as YamlData,
+                    fileType: 'match',
+                    extension: 'yml'
+                };
+                
+                // 将新文件添加到目标文件夹的子节点列表中
+                targetFolder.children.unshift(newFileNode);
+                console.log(`[createConfigFile] 文件节点已添加到树中: ${newFileId}`);
+            } else {
+                // 如果没有找到目标文件夹节点，不创建新的match文件夹节点，而是重新加载配置
+                console.log(`[createConfigFile] 未找到目标文件夹节点，将重新加载配置`);
+                // 确保物理文件已创建
+                await loadConfig(state.value.configRootDir || undefined);
+            }
+            
+            console.log(`[createConfigFile] 文件创建成功: ${newFilePath}`);
             _setStatus(`已创建: ${fileName}`);
             setTimeout(() => { if (state.value.statusMessage === `已创建: ${fileName}`) _setStatus(null); }, 2000);
-         } catch (err: any) {
-             _setError(`创建文件失败: ${err.message}`);
-         }
-     };
+            
+            return newFileId;
+        } catch (err: any) {
+            console.error(`[createConfigFile] 创建文件失败:`, err);
+            _setError(`创建文件失败: ${err.message}`);
+            return null;
+        }
+    };
 
      const deleteFileNode = async (fileNodeId: string) => {
          const fileNode = findTreeNodeById(state.value.configTree, fileNodeId);

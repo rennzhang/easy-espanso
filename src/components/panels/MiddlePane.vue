@@ -76,139 +76,141 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto middle-pane-scrollbar">
-      <div
-        v-if="loading"
-        class="flex flex-col justify-center items-center h-full gap-4"
-      >
+    <RootContextMenu>
+      <div class="flex-1 overflow-y-auto middle-pane-scrollbar">
         <div
-          class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"
-        ></div>
-        <div class="text-primary font-medium">加载中...</div>
-      </div>
-      <div
-        v-else-if="!store.allMatches"
-        class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
-      >
-        <FolderIcon class="h-12 w-12 mb-4" />
-        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
-          未加载配置
-        </h4>
-        <p class="mb-6 text-muted-foreground max-w-md">
-          请点击顶部的"打开配置"按钮加载Espanso配置文件
-        </p>
-      </div>
-      <div
-        v-else-if="store.allMatches.length === 0"
-        class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
-      >
-        <FileTextIcon class="h-12 w-12 mb-4" />
-        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
-        <p class="mb-6 text-muted-foreground max-w-md">
-          请在右侧面板添加新规则
-        </p>
-      </div>
-      <div
-        v-else-if="filteredItems.length === 0"
-        class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
-      >
-        <SearchIcon class="h-12 w-12 mb-4" />
-        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
-          未找到匹配项
-        </h4>
-        <p class="mb-6 text-muted-foreground max-w-md">
-          尝试使用不同的搜索词或标签过滤器
-        </p>
-        <Button
-          variant="ghost"
-          class="border-none focus:ring-0 focus:ring-offset-0"
-          @click="clearFilters"
-          >清除过滤器</Button
+          v-if="loading"
+          class="flex flex-col justify-center items-center h-full gap-4"
         >
-      </div>
-      <div v-else class="h-full">
-        <!-- 树视图 -->
-        <div v-if="viewMode === 'tree'" class="h-full flex-1">
-          <!-- Log: Rendering ConfigTree -->
-          {{
-            console.log(
-              "[MiddlePane] Rendering ConfigTree component because viewMode is tree"
-            )
-          }}
-          <ConfigTree
-            ref="configTreeRef"
-            :selected-id="selectedItemId"
-            :searchQuery="searchQuery.trim()"
-            @select="handleTreeItemSelect"
-          />
+          <div
+            class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"
+          ></div>
+          <div class="text-primary font-medium">加载中...</div>
         </div>
-
-        <!-- 列表视图 -->
-        <div v-else class="p-0">
-          <Card
-            v-for="item in filteredItems"
-            :key="item.id"
-            :class="{
-              'bg-primary-gradient text-primary-gradient-text':
-                selectedItemId === item.id,
-            }"
-            class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md rounded-none mb-2"
-            @click="selectItem(item.id, item.type)"
+        <div
+          v-else-if="!store.allMatches"
+          class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
+        >
+          <FolderIcon class="h-12 w-12 mb-4" />
+          <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
+            未加载配置
+          </h4>
+          <p class="mb-6 text-muted-foreground max-w-md">
+            请点击顶部的"打开配置"按钮加载Espanso配置文件
+          </p>
+        </div>
+        <div
+          v-else-if="store.allMatches.length === 0"
+          class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
+        >
+          <FileTextIcon class="h-12 w-12 mb-4" />
+          <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
+          <p class="mb-6 text-muted-foreground max-w-md">
+            请在右侧面板添加新规则
+          </p>
+        </div>
+        <div
+          v-else-if="filteredItems.length === 0"
+          class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
+        >
+          <SearchIcon class="h-12 w-12 mb-4" />
+          <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
+            未找到匹配项
+          </h4>
+          <p class="mb-6 text-muted-foreground max-w-md">
+            尝试使用不同的搜索词或标签过滤器
+          </p>
+          <Button
+            variant="ghost"
+            class="border-none focus:ring-0 focus:ring-offset-0"
+            @click="clearFilters"
+            >清除过滤器</Button
           >
-            <CardContent class="p-4 flex items-start gap-2">
-              <div class="flex-1">
-                <div v-if="item.type === 'match'">
-                  <div class="flex justify-between items-start">
-                    <span class="font-semibold text-foreground">
+        </div>
+        <div v-else class="h-full">
+          <!-- 树视图 -->
+          <div v-if="viewMode === 'tree'" class="h-full flex-1">
+            <!-- Log: Rendering ConfigTree -->
+            {{
+              console.log(
+                "[MiddlePane] Rendering ConfigTree component because viewMode is tree"
+              )
+            }}
+            <ConfigTree
+              ref="configTreeRef"
+              :selected-id="selectedItemId"
+              :searchQuery="searchQuery.trim()"
+              @select="handleTreeItemSelect"
+            />
+          </div>
+
+          <!-- 列表视图 -->
+          <div v-else class="p-0">
+            <Card
+              v-for="item in filteredItems"
+              :key="item.id"
+              :class="{
+                'bg-primary-gradient text-primary-gradient-text':
+                  selectedItemId === item.id,
+              }"
+              class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md rounded-none mb-2"
+              @click="selectItem(item.id, item.type)"
+            >
+              <CardContent class="p-4 flex items-start gap-2">
+                <div class="flex-1">
+                  <div v-if="item.type === 'match'">
+                    <div class="flex justify-between items-start">
+                      <span class="font-semibold text-foreground">
+                        <HighlightText
+                          v-if="searchQuery.trim()"
+                          :text="(item as Match).trigger || ''"
+                          :searchQuery="searchQuery.trim()"
+                        />
+                        <template v-else>{{ (item as Match).trigger }}</template>
+                      </span>
+                      <div
+                        class="flex flex-wrap gap-1"
+                        v-if="(item as Match).tags && ((item as Match)?.tags?.length||0) > 0"
+                      >
+                        <Badge
+                          v-for="tag in (item as Match).tags"
+                          :key="tag"
+                          @click.stop="addTagFilter(tag)"
+                        >
+                          {{ tag }}
+                        </Badge>
+                      </div>
+                    </div>
+                    <div
+                      class="text-sm text-muted-foreground my-1 whitespace-pre-line"
+                    >
                       <HighlightText
                         v-if="searchQuery.trim()"
-                        :text="(item as Match).trigger || ''"
+                        :text="getContentPreview(item as Match)"
                         :searchQuery="searchQuery.trim()"
                       />
-                      <template v-else>{{ (item as Match).trigger }}</template>
-                    </span>
+                      <template v-else>{{
+                        getContentPreview(item as Match)
+                      }}</template>
+                    </div>
                     <div
-                      class="flex flex-wrap gap-1"
-                      v-if="(item as Match).tags && ((item as Match)?.tags?.length||0) > 0"
+                      class="flex justify-between text-xs text-muted-foreground mt-1"
                     >
-                      <Badge
-                        v-for="tag in (item as Match).tags"
-                        :key="tag"
-                        @click.stop="addTagFilter(tag)"
-                      >
-                        {{ tag }}
-                      </Badge>
+                      <Badge variant="outline" class="bg-muted">{{
+                        getContentTypeLabel((item as Match).contentType)
+                      }}</Badge>
+                      <span v-if="(item as Match).updatedAt">{{
+                        formatDate((item as Match).updatedAt!)
+                      }}</span>
                     </div>
                   </div>
-                  <div
-                    class="text-sm text-muted-foreground my-1 whitespace-pre-line"
-                  >
-                    <HighlightText
-                      v-if="searchQuery.trim()"
-                      :text="getContentPreview(item as Match)"
-                      :searchQuery="searchQuery.trim()"
-                    />
-                    <template v-else>{{
-                      getContentPreview(item as Match)
-                    }}</template>
-                  </div>
-                  <div
-                    class="flex justify-between text-xs text-muted-foreground mt-1"
-                  >
-                    <Badge variant="outline" class="bg-muted">{{
-                      getContentTypeLabel((item as Match).contentType)
-                    }}</Badge>
-                    <span v-if="(item as Match).updatedAt">{{
-                      formatDate((item as Match).updatedAt!)
-                    }}</span>
-                  </div>
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
-    </div>
+    </RootContextMenu>
   </div>
 </template>
 
@@ -221,6 +223,7 @@ import { Badge } from "../ui/badge";
 import { Card, CardContent } from "../ui/card";
 import ConfigTree from "@/components/ConfigTree.vue";
 import HighlightText from "@/components/common/HighlightText.vue";
+import RootContextMenu from "@/components/RootContextMenu.vue";
 import {
   SearchIcon,
   FolderIcon,

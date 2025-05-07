@@ -301,6 +301,7 @@ export default {
   "contextMenu": {
     "newSnippet": "New Snippet",
     "newConfigFile": "New Config File",
+    "newFolder": "New Folder",
     "paste": "Paste",
     "copyPath": "Copy Path",
     "expandAll": "Expand All",
