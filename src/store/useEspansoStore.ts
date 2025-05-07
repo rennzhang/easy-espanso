@@ -275,21 +275,39 @@ export const useEspansoStore = defineStore('espanso', () => {
 
     const updateGlobalConfig = async (newData: Partial<GlobalConfig>) => {
         if (!state.value.globalConfig || !state.value.globalConfigPath) {
-            _setError("Global config not loaded, cannot update.");
-            return;
+            // 如果全局配置未加载，先尝试初始化
+            try {
+                await initializeStore();
+                
+                // 再次检查全局配置是否已加载
+                if (!state.value.globalConfig || !state.value.globalConfigPath) {
+                    // 如果仍然未加载，创建一个新的全局配置
+                    const defaultConfigPath = await configService.getDefaultConfigPath();
+                    if (!defaultConfigPath) {
+                        throw new Error("无法确定默认配置路径");
+                    }
+                    
+                    state.value.globalConfigPath = `${defaultConfigPath}/config/default.yml`;
+                    state.value.globalConfig = { ...newData }; // 使用传入的数据作为初始配置
+                }
+            } catch (err: any) {
+                console.error('初始化全局配置失败:', err);
+                _setError(`初始化全局配置失败: ${err.message}`);
+                throw err;
+            }
         }
-        _setStatus('Saving global settings...');
+
+        _setStatus('正在保存全局设置...');
         try {
-            // Merge updates into the existing state
+            // 合并更新到现有配置
             state.value.globalConfig = { ...state.value.globalConfig, ...newData };
-            // Use toRaw if encountering reactivity issues during serialization
-            // const rawConfig = toRaw(state.value.globalConfig);
             await espansoService.saveGlobalConfig(state.value.globalConfigPath, state.value.globalConfig);
-            _setStatus('Global settings saved.');
-            setTimeout(() => { if (state.value.statusMessage === 'Global settings saved.') _setStatus(null); }, 2000);
+            _setStatus('全局设置已保存');
+            setTimeout(() => { if (state.value.statusMessage === '全局设置已保存') _setStatus(null); }, 2000);
         } catch (err: any) {
-            console.error('Failed to save global config:', err);
-            _setError(`Save failed: ${err.message}`);
+            console.error('保存全局配置失败:', err);
+            _setError(`保存失败: ${err.message}`);
+            throw err;
         }
     };
 

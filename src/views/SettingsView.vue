@@ -1133,9 +1133,27 @@ const saveSettings = async () => {
     originalConfig.value = cloneDeep(localConfig);
     console.log('设置保存成功');
     toast.success(t('settings.settingsSaved'));
+
+    // 重新加载配置以确保所有更改都已正确应用
+    await loadConfig();
   } catch (error: any) {
     console.error('保存设置失败:', error);
-    toast.error(t('settings.settingsSaveFailed', { error: error.message || String(error) }));
+    
+    // 显示更详细的错误信息
+    let errorMessage = error.message || String(error);
+    if (error.cause) {
+      errorMessage += `\n原因: ${error.cause}`;
+    }
+    
+    // 如果是初始化错误，提供更具体的提示
+    if (errorMessage.includes('初始化全局配置失败')) {
+      toast.error(t('settings.initializationFailed', { error: errorMessage }));
+    } else {
+      toast.error(t('settings.settingsSaveFailed', { error: errorMessage }));
+    }
+    
+    // 如果保存失败，可能需要重新加载原始配置
+    await loadConfig();
   } finally {
     isSaving.value = false;
   }

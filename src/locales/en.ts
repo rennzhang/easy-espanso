@@ -334,7 +334,7 @@ export default {
     "containsFiles": "Contains Files",
     "matchFile": "Match Configuration File",
     "configFile": "Configuration File",
-    "packageFile": "Package File",
+    "packageFile": "Packages",
     "folder": "Folder",
     "unknown": "Unknown Type",
     "never": "Never",
