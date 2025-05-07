@@ -702,9 +702,15 @@ export const useEspansoStore = defineStore('espanso', () => {
                 console.log(`[createConfigFile] 文件节点已添加到树中: ${newFileId}`);
                 
                 // 确保文件夹是展开的
-                const folderNodeInfo = TreeNodeRegistry.get(targetFolder.id);
-                if (folderNodeInfo?.info?.isOpen) {
-                    folderNodeInfo.info.isOpen.value = true;
+                const parentFolderNodeInfo = TreeNodeRegistry.get(targetFolder.id);
+                if (parentFolderNodeInfo?.info?.isOpen) {
+                    parentFolderNodeInfo.info.isOpen.value = true;
+                }
+
+                // 新增：确保新创建的文件节点本身是展开的
+                const newFileNodeInfo = TreeNodeRegistry.get(newFileNode.id);
+                if (newFileNodeInfo?.info?.isOpen) {
+                    newFileNodeInfo.info.isOpen.value = true;
                 }
             } else {
                 // 如果没有找到目标文件夹节点，需要创建完整的节点结构
@@ -771,15 +777,36 @@ export const useEspansoStore = defineStore('espanso', () => {
                 matchFolderNode.children.unshift(newFileNode);
                 
                 // 确保文件夹是展开的
-                const folderNodeInfo = TreeNodeRegistry.get(matchFolderNode.id);
-                if (folderNodeInfo?.info?.isOpen) {
-                    folderNodeInfo.info.isOpen.value = true;
+                const parentMatchFolderNodeInfo = TreeNodeRegistry.get(matchFolderNode.id);
+                if (parentMatchFolderNodeInfo?.info?.isOpen) {
+                    parentMatchFolderNodeInfo.info.isOpen.value = true;
+                }
+                
+                // 新增：确保新创建的文件节点本身是展开的
+                const newFileNodeInfo = TreeNodeRegistry.get(newFileNode.id);
+                if (newFileNodeInfo?.info?.isOpen) {
+                    newFileNodeInfo.info.isOpen.value = true;
                 }
             }
             
             console.log(`[createConfigFile] 文件创建成功: ${newFilePath}`);
             _setStatus(`已创建: ${fileName}`);
             setTimeout(() => { if (state.value.statusMessage === `已创建: ${fileName}`) _setStatus(null); }, 2000);
+            
+            // 选中新创建的文件节点
+            selectItem(newFileId, 'file');
+            
+            // 添加延时以确保DOM更新后再尝试展开节点
+            setTimeout(() => {
+                // 再次尝试展开新文件节点
+                const fileNodeInfo = TreeNodeRegistry.get(newFileId);
+                if (fileNodeInfo?.info?.isOpen) {
+                    console.log(`[createConfigFile] 通过延时确保展开文件节点: ${newFileId}`);
+                    fileNodeInfo.info.isOpen.value = true;
+                } else {
+                    console.log(`[createConfigFile] 无法获取文件节点信息用于展开: ${newFileId}`);
+                }
+            }, 100);
             
             return newFileId;
         } catch (err: any) {
