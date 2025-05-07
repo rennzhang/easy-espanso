@@ -75,17 +75,32 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # 替换为 upload-artifact
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          upload_url: ${{ github.event.release.upload_url }} # 获取 Release 的上传 URL
-          asset_path: | # 这里需要根据 electron-builder 的输出路径和文件名来调整
+          name: ${{ matrix.os }}-build
+          path: |
             dist_electron/**/*.dmg
             dist_electron/**/*.exe
             dist_electron/**/*.AppImage
             dist_electron/**/*.deb
             dist_electron/**/*.rpm
             dist_electron/**/*.snap
-          asset_content_type: application/octet-stream
+          retention-days: 5
+
+      # 注释掉原有的 upload-release-asset
+      # - name: Upload Release Asset
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ github.event.release.upload_url }} # 获取 Release 的上传 URL
+      #     asset_path: | # 这里需要根据 electron-builder 的输出路径和文件名来调整
+      #       dist_electron/**/*.dmg
+      #       dist_electron/**/*.exe
+      #       dist_electron/**/*.AppImage
+      #       dist_electron/**/*.deb
+      #       dist_electron/**/*.rpm
+      #       dist_electron/**/*.snap
+      #     asset_content_type: application/octet-stream
