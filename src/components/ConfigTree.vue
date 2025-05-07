@@ -2,10 +2,10 @@
   <div class="config-tree" tabindex="0" @focus="treeHasFocus = true" @blur="treeHasFocus = false" @click="handleTreeClick">
     <div v-if="loading" class="flex items-center justify-center p-4 text-muted-foreground">
       <div class="animate-spin h-5 w-5 border-2 border-border border-t-primary rounded-full mr-2"></div>
-      <span>加载中...</span>
+      <span>{{ t('common.loading') }}</span>
     </div>
     <div v-else-if="!treeData || treeData.length === 0" class="p-4 text-muted-foreground">
-      没有找到配置文件
+      {{ t('snippets.noSnippets') }}
     </div>
     <div v-else class="tree-container w-full drop-zone" v-sortable="rootSortableOptions" data-parent-id="root" data-container-type="root">
       <template v-for="node in treeData" :key="node.id">
@@ -37,6 +37,10 @@ import Sortable from 'sortablejs';
 import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
 import { toast } from 'vue-sonner';
 import { determineSnippetPosition, focusTriggerInput } from '@/utils/snippetPositionUtils';
+import { useI18n } from 'vue-i18n';
+
+// 初始化 i18n
+const { t } = useI18n();
 
 // 定义树节点类型
 export interface TreeNodeItem {
@@ -71,7 +75,7 @@ const createMatchNode = (match: Match): TreeNodeItem => {
       displayName += '...'; // Indicate multiple triggers
     }
   } else if (!displayName) {
-    displayName = '[未命名触发词]'; // Fallback if neither exists
+    displayName = t('snippets.noTrigger'); // Fallback if neither exists
   }
 
   return {
@@ -93,7 +97,7 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
     const packagesNode: TreeNodeItem = {
       id: node.id || `folder-${node.path || 'packages'}`,
       type: 'folder',
-      name: 'Packages', // Rename to 'Packages'
+      name: t('fileDetails.packageFile'), // Rename to 'Packages'
       path: node.path,
       children: []
     };
@@ -513,7 +517,6 @@ const getAllSelectableNodes = (): { node: TreeNodeItem, element: HTMLElement }[]
 const handleKeyDown = (event: KeyboardEvent) => {
   // 只有当树组件有焦点时才处理键盘事件
   if (!treeHasFocus.value) {
-    // console.log('键盘导航: 树组件没有焦点，忽略键盘事件');
     return;
   }
 
@@ -530,20 +533,14 @@ const handleKeyDown = (event: KeyboardEvent) => {
   // 阻止默认行为（例如页面滚动）
   event.preventDefault();
 
-  console.log(`键盘导航: 检测到 ${event.key} 按键`);
-
   // 获取所有可选择的节点
   const selectableNodes = getAllSelectableNodes();
   if (selectableNodes.length === 0) {
-    console.log('键盘导航: 没有找到可选择的节点');
     return;
   }
 
-  console.log(`键盘导航: 找到 ${selectableNodes.length} 个可选择的节点`);
-
   // 找到当前选中节点的索引
   const currentIndex = selectableNodes.findIndex(item => item.node.id === props.selectedId);
-  console.log(`键盘导航: 当前选中节点索引: ${currentIndex}, ID: ${props.selectedId || '无'}`);
 
   // 计算下一个要选择的节点索引
   let nextIndex = currentIndex;
@@ -555,25 +552,19 @@ const handleKeyDown = (event: KeyboardEvent) => {
     nextIndex = currentIndex > 0 ? currentIndex - 1 : 0;
   }
 
-  console.log(`键盘导航: 下一个节点索引: ${nextIndex}`);
-
   // 如果索引没有变化，则不需要进一步处理
   if (nextIndex === currentIndex && currentIndex !== -1) {
-    console.log('键盘导航: 索引未变化，不进行选择');
     return;
   }
 
   // 如果没有选中项，则选择第一个节点
   if (currentIndex === -1) {
-    console.log('键盘导航: 没有当前选中项，选择第一个节点');
     nextIndex = 0;
   }
 
   // 获取下一个要选择的节点
   const nextNode = selectableNodes[nextIndex].node;
   const nextElement = selectableNodes[nextIndex].element;
-
-  console.log(`键盘导航: 选择节点 ${nextNode.id} (${nextNode.type}: ${nextNode.name})`);
 
   // 选择节点
   handleSelect(nextNode);
@@ -591,7 +582,7 @@ const createNewSnippet = async () => {
 
   if (!targetParentNodeId) {
     console.error('创建新片段: 无法确定目标父节点');
-    toast.error('无法确定创建新片段的位置');
+    toast.error(t('snippets.form.autoSave.error', { error: t('snippets.noSelection') }));
     return;
   }
 
@@ -600,8 +591,8 @@ const createNewSnippet = async () => {
   // 创建新片段数据
   const newMatchData = {
     trigger: ':new',
-    replace: '新片段内容',
-    label: '新片段',
+    replace: t('snippets.form.content.placeholder.plain'),
+    label: t('snippets.form.label.placeholder'),
   };
 
   try {
@@ -610,7 +601,7 @@ const createNewSnippet = async () => {
 
     if (addedItem) {
       console.log('创建新片段: 成功创建新片段', addedItem.id);
-      toast.success('新片段已创建，请编辑触发词');
+      toast.success(t('snippets.form.autoSave.success'));
 
       // 在下一个 tick 中开始尝试聚焦
       nextTick(() => {
@@ -619,11 +610,11 @@ const createNewSnippet = async () => {
       });
     } else {
       console.error('创建新片段: 创建失败');
-      toast.error('创建新片段失败');
+      toast.error(t('snippets.form.autoSave.error', { error: t('common.error') }));
     }
   } catch (error: any) {
     console.error('创建新片段: 错误', error);
-    toast.error(`创建新片段失败: ${error.message || '未知错误'}`);
+    toast.error(t('snippets.form.autoSave.error', { error: error.message || t('common.error') }));
   }
 };
 

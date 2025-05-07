@@ -335,7 +335,7 @@ export default {
     "containsFiles": "包含文件",
     "matchFile": "片段配置文件",
     "configFile": "配置文件",
-    "packageFile": "包文件",
+    "packageFile": "已安装的包文件",
     "folder": "文件夹",
     "unknown": "未知类型",
     "never": "从未",
