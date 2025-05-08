@@ -15,7 +15,8 @@ import * as platformService from '@/services/platformService'; // Renamed from f
 import * as configService from '@/services/configService';
 
 // Import Utils (Assuming they are refactored)
-import { generateId } from '@/utils/espansoDataUtils';
+import { generateMatchId } from '@/utils/espansoDataUtils'; // 新的确定性 Match ID 生成器
+import { encodeNodeId } from "@/utils/nodeIdUtils"; // 导入节点ID编码函数
 import {
     findFileNode,
     findNodeById as findTreeNodeById, // Disambiguate tree node search
@@ -132,8 +133,9 @@ export const useEspansoStore = defineStore('espanso', () => {
         }
     };
 
-    // Storage key for expanded nodes
+    // Storage keys
     const STORAGE_KEY_EXPANDED = 'espanso-gui-expanded-nodes';
+    const STORAGE_KEY_SELECTED = 'espanso-gui-selected-node';
 
     // Save expanded node IDs to localStorage
     const _saveExpansionState = () => {
@@ -167,6 +169,131 @@ export const useEspansoStore = defineStore('espanso', () => {
         } catch (e) {
             console.error("从localStorage加载或解析展开状态失败:", e);
             state.value.expandedNodeIds = new Set(); // 出错时重置
+        }
+    };
+
+    // Save selected node to localStorage
+    const _saveSelectedNodeState = () => {
+        try {
+            if (state.value.selectedItemId && state.value.selectedItemType) {
+                const selectedNode = findItemInTreeById(state.value.configTree, state.value.selectedItemId);
+                if (!selectedNode) {
+                    console.warn('[Store] 无法找到选中的节点，不保存选中状态');
+                    localStorage.removeItem(STORAGE_KEY_SELECTED); // 清除无效状态
+                    return;
+                }
+
+                let persistentIdRaw: string;
+                if (selectedNode.type === 'match') {
+                    const match = selectedNode as Match;
+                    const trigger = match.trigger || (match.triggers ? match.triggers[0] : '');
+                    const label = match.label || '';
+                    const filePath = match.filePath || '';
+                    persistentIdRaw = `match:${filePath}:${trigger}:${label}`;
+                } else if (selectedNode.type === 'file' || selectedNode.type === 'folder') {
+                    persistentIdRaw = `${selectedNode.type}:${selectedNode.path}`;
+                } else {
+                    console.warn('[Store] 未知节点类型，不保存选中状态');
+                    localStorage.removeItem(STORAGE_KEY_SELECTED);
+                    return;
+                }
+
+                // 对构造的原始 persistent ID 进行编码
+                const persistentIdEncoded = btoa(encodeURIComponent(persistentIdRaw));
+
+                const selectedNodeState = {
+                    persistentId: persistentIdEncoded, // 存储编码后的 ID
+                    type: state.value.selectedItemType
+                };
+
+                localStorage.setItem(STORAGE_KEY_SELECTED, JSON.stringify(selectedNodeState));
+                // console.log('[Store] 保存选中节点状态 (Encoded):', selectedNodeState);
+            } else {
+                localStorage.removeItem(STORAGE_KEY_SELECTED);
+                // console.log('[Store] 清除选中节点状态（无选中节点）');
+            }
+        } catch (e) {
+            console.error("保存选中节点状态到localStorage失败:", e);
+        }
+    };
+
+    // Load selected node from localStorage
+    const _loadSelectedNodeState = () => {
+        try {
+            const storedValue = localStorage.getItem(STORAGE_KEY_SELECTED);
+            if (storedValue) {
+                const selectedNodeState = JSON.parse(storedValue) as {
+                    persistentId: string; // 这是编码后的 ID
+                    type: EspansoState['selectedItemType'];
+                };
+
+                if (!selectedNodeState.persistentId) {
+                    console.log('[Store] 存储的选中节点状态格式无效，忽略。');
+                    return;
+                }
+
+                // 解码 persistent ID
+                let persistentIdDecoded = '';
+                try {
+                    persistentIdDecoded = decodeURIComponent(atob(selectedNodeState.persistentId));
+                } catch (e) {
+                    console.error('[Store] 解码存储的 persistentId 失败:', selectedNodeState.persistentId, e);
+                    // 如果解码失败，可能意味着数据损坏或格式变更，无法恢复
+                    return;
+                }
+
+                // 解析解码后的 persistent ID
+                const [nodeType, ...parts] = persistentIdDecoded.split(':');
+                let foundNodeId: string | null = null;
+
+                if (nodeType === 'match') {
+                    const filePath = parts[0] || '';
+                    const trigger = parts[1] || '';
+                    const label = parts[2] || '';
+                    const allMatches = extractMatchesFromTree(state.value.configTree);
+                    for (const match of allMatches) {
+                        const matchTrigger = match.trigger || (match.triggers ? match.triggers[0] : '');
+                        const matchLabel = match.label || '';
+                        const matchFilePath = match.filePath || '';
+                        if (matchFilePath === filePath && (matchTrigger === trigger || matchLabel === label)) {
+                            foundNodeId = match.id; // 获取当前匹配项的 (已编码的) ID
+                            break;
+                        }
+                    }
+                } else if (nodeType === 'file' || nodeType === 'folder') {
+                    const path = parts.join(':');
+                    const findNodeByPath = (nodes: ConfigTreeNode[]): string | null => {
+                        for (const node of nodes) {
+                            if (node.type === nodeType && node.path === path) {
+                                return node.id; // 获取当前匹配项的 (已编码的) ID
+                            }
+                            if (node.type === 'folder' && node.children) {
+                                const foundId = findNodeByPath(node.children);
+                                if (foundId) return foundId;
+                            }
+                        }
+                        return null;
+                    };
+                    foundNodeId = findNodeByPath(state.value.configTree);
+                }
+
+                if (foundNodeId) {
+                    state.value.selectedItemId = foundNodeId;
+                    state.value.selectedItemType = selectedNodeState.type;
+                    // console.log('[Store] 加载选中节点状态 (Found):', { id: foundNodeId, type: selectedNodeState.type });
+                    expandParentNodes(foundNodeId);
+                } else {
+                    // console.log('[Store] 未找到匹配的节点，忽略选中状态。');
+                    state.value.selectedItemId = null;
+                    state.value.selectedItemType = null;
+                }
+            } else {
+                // console.log('[Store] 未找到保存的选中节点状态。');
+            }
+        } catch (e) {
+            console.error("从localStorage加载或解析选中节点状态失败:", e);
+            state.value.selectedItemId = null;
+            state.value.selectedItemType = null;
         }
     };
 
@@ -299,6 +426,9 @@ export const useEspansoStore = defineStore('espanso', () => {
             // Load expanded node state after configTree is loaded
             _loadExpansionState();
 
+            // Load selected node state after configTree is loaded
+            _loadSelectedNodeState();
+
             console.log(`[EspansoStore] 配置加载完成，文件树节点数: ${configTree.length}`);
             _setStatus('配置加载完成');
         } catch (err: any) {
@@ -318,6 +448,9 @@ export const useEspansoStore = defineStore('espanso', () => {
         if (itemId) {
             expandParentNodes(itemId);
         }
+
+        // 保存选中节点状态到 localStorage
+        _saveSelectedNodeState();
     };
 
     const setSearchQuery = (query: string) => {
@@ -394,77 +527,103 @@ export const useEspansoStore = defineStore('espanso', () => {
 
 
 
-    const addItem = async (itemData: Omit<Match, 'id'|'type'>, itemType: 'match', targetParentNodeId: string | null, insertIndex: number = -1) => {
+    const addItem = async (itemData: Omit<Match, 'id'|'type'|'guiOrder'>, itemType: 'match', targetParentNodeId: string | null, insertIndex: number = -1) => {
         _setStatus(`Adding ${itemType}...`);
         try {
-            // Create a new item with UUID
+            // 1. 确定目标父节点和文件路径
+            let targetParentNode: ConfigFileNode | ConfigFolderNode | null = null;
+            let targetFilePath: string | null = null;
+            let targetFileNode: ConfigFileNode | null = null;
+
+            if (targetParentNodeId) {
+                const foundNode = findTreeNodeById(state.value.configTree, targetParentNodeId);
+                if (foundNode && (foundNode.type === 'file' || foundNode.type === 'folder')) {
+                    // 使用类型断言明确告知 TypeScript 类型
+                    targetParentNode = foundNode as ConfigFileNode | ConfigFolderNode;
+                    if (targetParentNode.type === 'file') {
+                        targetFilePath = targetParentNode.path;
+                        // 断言 targetParentNode 是 ConfigFileNode
+                        targetFileNode = targetParentNode as ConfigFileNode;
+                    }
+                } else {
+                     console.warn(`[addItem] Target parent node (${targetParentNodeId}) not found or is not a file/folder.`);
+                }
+            }
+
+            // 如果目标父节点是文件夹，或者未指定目标，我们需要确定将片段添加到哪个文件
+            if (!targetFilePath) {
+                 const defaultFileName = 'base.yml';
+                 const rootDir = state.value.configRootDir;
+                 if (rootDir) {
+                     const defaultFilePath = await platformService.joinPath(rootDir, 'match', defaultFileName);
+                     const defaultFileNode = findFileNode(state.value.configTree, defaultFilePath);
+                     if (defaultFileNode) {
+                         targetFilePath = defaultFilePath;
+                         targetFileNode = defaultFileNode;
+                         console.log(`[addItem] No specific file target, adding to default file: ${defaultFilePath}`);
+                     } else {
+                         throw new Error(`无法确定目标文件，且默认文件 (${defaultFileName}) 不存在。`);
+                     }
+                 } else {
+                    throw new Error("无法确定目标文件，且配置根目录未知。");
+                 }
+            }
+
+            // 确保我们最终找到了一个有效的文件目标
+            if (!targetFileNode || !targetFilePath) {
+                throw new Error("未能确定有效的文件目标来添加片段。");
+            }
+            
+            // 使用 ! 断言 targetFileNode 和 targetFilePath 在此之后非 null
+            const finalTargetFileNode = targetFileNode!;
+            const finalTargetFilePath = targetFilePath!;
+
+            // 2. 确定新片段的 guiOrder
+            const existingMatches = finalTargetFileNode.matches || [];
+            const newGuiOrder = existingMatches.length > 0 
+                ? Math.max(...existingMatches.map(m => m.guiOrder ?? 0)) + 1 
+                : 1;
+
+            // 3. 生成新的确定性 ID
+            const newMatchId = generateMatchId(
+                itemData, 
+                finalTargetFilePath, // 使用确定的路径
+                newGuiOrder
+            );
+
+            // 4. 创建新的 Match 对象
             const newItem: Match = {
                 ...itemData,
-                id: uuidv4(),
+                id: newMatchId,
                 type: itemType,
+                filePath: finalTargetFilePath, // 使用确定的路径
+                guiOrder: newGuiOrder,
                 updatedAt: new Date().toISOString(),
                 createdAt: new Date().toISOString()
             };
 
-            // Determine the file path for this item
-            let filePath: string | null = null;
-
-            if (targetParentNodeId) {
-                // Find the target parent node
-                const targetNode = findItemInTreeById(state.value.configTree, targetParentNodeId);
-                if (targetNode) {
-                    if ('path' in targetNode && targetNode.type === 'file') {
-                        filePath = targetNode.path;
-                    } else if ('filePath' in targetNode && targetNode.filePath) {
-                        filePath = targetNode.filePath;
-                    }
-                }
+            // 5. 将新项添加到树状态中 (添加到目标文件节点的 matches 数组)
+            if (!finalTargetFileNode.matches) {
+                finalTargetFileNode.matches = [];
             }
-
-            if (!filePath) {
-                // Fall back to a default config file (e.g. base.yml in config dir)
-                // (Logic would depend on the specific context - e.g. current location in UI)
-                console.warn("[Store addItem] No valid parent found, falling back to default file");
-                // ...logic to determine default file...
-            }
-
-            if (!filePath) {
-                throw new Error("Cannot determine which file to add the item to.");
-            }
-
-            // Set the filePath for the new item
-            newItem.filePath = filePath;
-
-            // This util needs to find the parent (File) and add the newItem ref
-            // It should also determine and set newItem.filePath based on the parent
-            const addedItemRef = addItemToTree(state.value.configTree, newItem, targetParentNodeId, insertIndex);
-
-            if (!addedItemRef) {
-                throw new Error(`Failed to add ${itemType} to the tree structure.`);
-            }
-
-            // 修复第358行和363行错误
-            if ('filePath' in addedItemRef) {
-                if (!addedItemRef.filePath) {
-                    throw new Error(`Added ${itemType} missing file path reference.`);
-                }
-
-                // Save the file that contains the new item
-                await _saveFileByPath(addedItemRef.filePath);
-
-                // Select the newly added item
-                selectItem(addedItemRef.id, itemType);
-
-                return addedItemRef;
+            if (insertIndex >= 0 && insertIndex <= finalTargetFileNode.matches.length) {
+                finalTargetFileNode.matches.splice(insertIndex, 0, newItem);
             } else {
-                throw new Error(`Unexpected item type returned from addItemToTree.`);
+                finalTargetFileNode.matches.push(newItem);
             }
+            
+            // 6. 保存包含新片段的文件
+            await _saveFileByPath(finalTargetFilePath); // 使用确定的路径
+
+            // 7. 选中新创建的项
+            selectItem(newItem.id, newItem.type);
+
+            _setStatus(`已添加: ${(newItem.trigger || newItem.label || '新片段')}`);
+            setTimeout(() => { if (state.value.statusMessage === `已添加: ${(newItem.trigger || newItem.label || '新片段')}`) _setStatus(null); }, 2000);
+
         } catch (err: any) {
-            console.error(`Failed to add ${itemType}:`, err);
-            _setError(`Failed to add ${itemType}: ${err.message}`);
-            return null;
-        } finally {
-            _setStatus(null);
+            console.error(`[addItem] Error adding ${itemType}:`, err);
+            _setError(`添加失败: ${err.message}`);
         }
     };
 
@@ -734,7 +893,8 @@ export const useEspansoStore = defineStore('espanso', () => {
             // 步骤3: 创建实际的配置文件
             console.log(`[createConfigFile] 开始创建文件: ${fileName} 在 ${folderPath}`);
             const newFilePath = await espansoService.createAndSaveEmptyConfigFile(folderPath, fileName);
-            const newFileId = `file-${newFilePath}`;
+            const rawFileId = `file-${newFilePath}`;
+            const newFileId = encodeNodeId(rawFileId); // <-- 使用编码后的 ID
 
             // 步骤4: 如果找到了目标文件夹节点，直接添加文件节点到树中
             if (targetFolder) {
@@ -749,20 +909,20 @@ export const useEspansoStore = defineStore('espanso', () => {
 
                 // 创建匹配项节点
                 const defaultMatch: Match = {
-                    id: `match-${newFileId}-0`,
+                    id: generateMatchId({ trigger: ':newtrigger', label: '新创建的片段' }, newFilePath, 1), // <-- 使用 generateMatchId
                     type: 'match',
                     trigger: ':newtrigger',
                     replace: 'Your new snippet!',
                     label: '新创建的片段',
                     filePath: newFilePath,
-                    guiOrder: 0,
+                    guiOrder: 1, // <-- 明确设置 guiOrder 为 1
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString()
                 };
 
                 // 创建文件节点
                 const newFileNode: ConfigFileNode = {
-                    id: newFileId,
+                    id: newFileId, // <-- 使用编码后的 ID
                     type: 'file' as const,
                     name: fileName,
                     path: newFilePath,
@@ -802,20 +962,20 @@ export const useEspansoStore = defineStore('espanso', () => {
 
                 // 创建匹配项节点
                 const defaultMatch: Match = {
-                    id: `match-${newFileId}-0`,
+                    id: generateMatchId({ trigger: ':newtrigger', label: '新创建的片段' }, newFilePath, 1), // <-- 使用 generateMatchId
                     type: 'match',
                     trigger: ':newtrigger',
                     replace: 'Your new snippet!',
                     label: '新创建的片段',
                     filePath: newFilePath,
-                    guiOrder: 0,
+                    guiOrder: 1, // <-- 明确设置 guiOrder 为 1
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString()
                 };
 
                 // 创建文件节点
                 const newFileNode: ConfigFileNode = {
-                    id: newFileId,
+                    id: newFileId, // <-- 使用编码后的 ID
                     type: 'file' as const,
                     name: fileName,
                     path: newFilePath,
@@ -838,11 +998,14 @@ export const useEspansoStore = defineStore('espanso', () => {
 
                 // 如果没找到，创建一个match文件夹节点
                 if (!matchFolderNode) {
+                    const matchFolderPath = folderPath; // 假设 folderPath 指向 match 目录
+                    const rawFolderId = `folder-${matchFolderPath}`;
+                    const encodedFolderId = encodeNodeId(rawFolderId);
                     matchFolderNode = {
-                        id: `folder-${folderPath}`,
+                        id: encodedFolderId, // <-- 使用编码后的 ID
                         type: 'folder',
                         name: 'match',
-                        path: folderPath,
+                        path: matchFolderPath,
                         children: []
                     };
                     state.value.configTree.push(matchFolderNode);
@@ -1051,22 +1214,24 @@ export const useEspansoStore = defineStore('espanso', () => {
 
          const parentPath = oldPath.substring(0, oldPath.lastIndexOf('/'));
          const newPath = `${parentPath}/${newName}`;
+         const oldId = node.id; // 保存旧 ID 用于更新选中状态
 
          try {
              // 1. Rename in file system FIRST
-             await platformService.renameFileOrDirectory(oldPath, newPath); // Assumes unified function
+             await platformService.renameFileOrDirectory(oldPath, newPath);
 
              // 2. Update tree state
              node.name = newName;
              node.path = newPath;
-             node.id = `${node.type}-${newPath}`; // IMPORTANT: Update ID if based on path
+             const rawNewId = `${node.type}-${newPath}`;
+             node.id = encodeNodeId(rawNewId); // <-- 使用编码后的新 ID
 
              // If folder, update descendant paths and item filePaths recursively
              if (node.type === 'folder') {
                  // 使用updateDescendantPathsAndFilePaths更新子节点的路径
-                 const { updateDescendantPathsAndFilePaths } = await import('@/utils/configTreeUtils');
+                 // 注意：这个函数也需要能正确处理并更新编码后的 ID
+                 const updateDescendantPathsAndFilePaths = (await import('@/utils/configTreeUtils')).updateDescendantPathsAndFilePaths;
 
-                 // 递归更新所有子节点的路径和ID
                  if (node.children && node.children.length > 0) {
                      for (const child of node.children) {
                          await updateDescendantPathsAndFilePaths(child, newPath, platformService.joinPath);
@@ -1078,6 +1243,9 @@ export const useEspansoStore = defineStore('espanso', () => {
                       items?.forEach(item => {
                           if (item.filePath === oldPath) {
                               item.filePath = newPath;
+                              // IMPORTANT: Match ID 依赖 filePath，也需要更新！
+                              // 重新生成 Match ID
+                              item.id = generateMatchId(item, newPath, item.guiOrder ?? 0); 
                           }
                       });
                   };
@@ -1085,17 +1253,17 @@ export const useEspansoStore = defineStore('espanso', () => {
              }
 
              // Update selection ID if renamed item was selected
-             if (state.value.selectedItemId === `${node.type}-${oldPath}`) { // Check against old path-based ID
-                 selectItem(node.id, node.type);
+             if (state.value.selectedItemId === oldId) { // 检查旧 ID
+                 selectItem(node.id, node.type); // 使用新 ID 选中
              }
 
-             // 统一提示格式
              _setStatus(`已重命名: ${newName}`);
              setTimeout(() => { if (state.value.statusMessage === `已重命名: ${newName}`) _setStatus(null); }, 2000);
 
          } catch (err: any) {
+             console.error(`Failed to rename ${node.type} ${oldName}:`, err);
              _setError(`重命名失败: ${err.message}`);
-             // Consider reloading config on error
+             // 可选: 尝试回滚状态？（比较复杂）
          }
      };
 

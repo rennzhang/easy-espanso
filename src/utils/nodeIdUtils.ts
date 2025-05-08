@@ -15,17 +15,38 @@
  * @returns 编码后的节点ID
  */
 export const encodeNodeId = (nodeId: string): string => {
-  // 检查是否是文件或文件夹节点
-  if (nodeId.startsWith('file-') || nodeId.startsWith('folder-')) {
-    const [type, ...pathParts] = nodeId.split('-');
-    const path = pathParts.join('-'); // 重新连接路径部分（路径中可能包含连字符）
+  // 检查ID的前缀
+  const matchPrefix = 'match-';
+  const filePrefix = 'file-';
+  const folderPrefix = 'folder-';
 
-    // 对路径部分进行Base64编码
-    const encodedPath = btoa(encodeURIComponent(path));
-    return `${type}-${encodedPath}`;
+  let prefix = '';
+  let contentToEncode = '';
+
+  if (nodeId.startsWith(matchPrefix)) {
+    prefix = matchPrefix;
+    contentToEncode = nodeId.substring(prefix.length);
+  } else if (nodeId.startsWith(filePrefix)) {
+    prefix = filePrefix;
+    contentToEncode = nodeId.substring(prefix.length);
+  } else if (nodeId.startsWith(folderPrefix)) {
+    prefix = folderPrefix;
+    contentToEncode = nodeId.substring(prefix.length);
   }
 
-  // 对于match节点，直接返回原始ID
+  // 如果有需要编码的内容
+  if (prefix && contentToEncode) {
+    try {
+        // 对内容部分进行Base64编码
+        const encodedContent = btoa(encodeURIComponent(contentToEncode));
+        return `${prefix}${encodedContent}`; // 保持前缀，编码内容
+    } catch (e) {
+        console.error(`编码节点内容失败 (${nodeId}):`, e);
+        return nodeId; // 编码失败则返回原始ID
+    }
+  }
+
+  // 如果不是需要编码的类型（或者格式不对），直接返回原始ID
   return nodeId;
 };
 
@@ -36,29 +57,38 @@ export const encodeNodeId = (nodeId: string): string => {
  * @returns 原始节点ID
  */
 export const decodeNodeId = (encodedId: string): string => {
-  try {
-    // 检查是否是编码后的文件或文件夹节点ID
-    if (encodedId.startsWith('file-') || encodedId.startsWith('folder-')) {
-      const [type, ...encodedPathParts] = encodedId.split('-');
-      const encodedPath = encodedPathParts.join('-'); // 重新连接编码部分
+  const matchPrefix = 'match-';
+  const filePrefix = 'file-';
+  const folderPrefix = 'folder-';
 
-      // 尝试解码
-      try {
-        const path = decodeURIComponent(atob(encodedPath));
-        return `${type}-${path}`;
-      } catch (e) {
-        // 如果解码失败，可能是未编码的ID，直接返回原始ID
-        return encodedId;
-      }
-    }
+  let prefix = '';
+  let contentToDecode = '';
 
-    // 对于match节点，直接返回原始ID
-    return encodedId;
-  } catch (e) {
-    console.error('解码节点ID失败:', encodedId, e);
-    // 解码失败时返回原始ID
-    return encodedId;
+  if (encodedId.startsWith(matchPrefix)) {
+    prefix = matchPrefix;
+    contentToDecode = encodedId.substring(prefix.length);
+  } else if (encodedId.startsWith(filePrefix)) {
+    prefix = filePrefix;
+    contentToDecode = encodedId.substring(prefix.length);
+  } else if (encodedId.startsWith(folderPrefix)) {
+    prefix = folderPrefix;
+    contentToDecode = encodedId.substring(prefix.length);
   }
+
+  if (prefix && contentToDecode) {
+    try {
+      // 尝试解码Base64和URIComponent
+      const decodedContent = decodeURIComponent(atob(contentToDecode));
+      return `${prefix}${decodedContent}`;
+    } catch (e) {
+      // 如果解码失败，可能意味着它本身就是未编码的ID（例如旧数据或错误）
+      // console.warn(`解码节点内容失败 (${encodedId})，可能不是编码格式:`, e);
+      return encodedId; // 返回原始编码ID
+    }
+  }
+
+  // 如果不是需要解码的类型，直接返回原始ID
+  return encodedId;
 };
 
 /**
@@ -68,28 +98,31 @@ export const decodeNodeId = (encodedId: string): string => {
  * @returns 如果节点ID已经编码，返回true
  */
 export const isNodeIdEncoded = (nodeId: string): boolean => {
-  // 对于文件和文件夹节点
-  if (nodeId.startsWith('file-') || nodeId.startsWith('folder-')) {
-    const [_type, ...pathParts] = nodeId.split('-');
-    const path = pathParts.join('-');
+  const matchPrefix = 'match-';
+  const filePrefix = 'file-';
+  const folderPrefix = 'folder-';
+  let contentPart = '';
 
-    // 尝试解码，如果成功则说明是已编码的
-    try {
-      atob(path);
-      // 进一步验证解码后的内容是否有效
-      try {
-        decodeURIComponent(atob(path));
-        return true;
-      } catch {
-        return false;
-      }
-    } catch {
-      return false;
-    }
+  if (nodeId.startsWith(matchPrefix)) {
+    contentPart = nodeId.substring(matchPrefix.length);
+  } else if (nodeId.startsWith(filePrefix)) {
+    contentPart = nodeId.substring(filePrefix.length);
+  } else if (nodeId.startsWith(folderPrefix)) {
+    contentPart = nodeId.substring(folderPrefix.length);
+  } else {
+      return false; // 没有有效前缀，肯定未编码
   }
 
-  // 对于match节点，始终返回false（不需要编码）
-  return false;
+  // 尝试解码，如果成功则说明是已编码的
+  try {
+    // 检查是否是有效的Base64
+    atob(contentPart);
+    // 检查是否能被URI解码
+    decodeURIComponent(atob(contentPart));
+    return true;
+  } catch {
+    return false;
+  }
 };
 
 

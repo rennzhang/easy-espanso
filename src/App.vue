@@ -133,8 +133,8 @@ onMounted(async () => {
 
         if (installed) {
           console.log('[App] Espanso is installed. Initializing store...');
-          // 调用 Store 的初始化 Action
-          store.initializeStore();
+      // 调用 Store 的初始化 Action
+      store.initializeStore();
         } else {
           console.log('[App] Espanso is not installed. Showing installation prompt...');
           // 不初始化 store，显示安装提示
@@ -164,7 +164,7 @@ onMounted(async () => {
     } catch (error) {
       console.error('[App] Failed to check Espanso installation:', error);
       // 出错时假设已安装，继续初始化
-      store.initializeStore();
+    store.initializeStore();
     }
   }
 });
