@@ -1,6 +1,7 @@
 // main.js (整合后的版本)
 
 const { app, BrowserWindow, ipcMain, dialog, Notification, shell } = require('electron'); // 移除了 shell，如果需要再加回来
+const { exec } = require('child_process'); // 添加 exec 用于检测命令
 const path = require('path');
 const fs = require('fs/promises'); // 使用 promises API
 const fsSync = require('fs'); // 保留 fsSync 用于日志等同步操作
@@ -65,6 +66,8 @@ const CHANNELS = {
     SYS_GET_PLATFORM: 'sys:getPlatform',
     SYS_SHOW_NOTIFICATION: 'sys:showNotification',
     SYS_GET_ENV_VAR: 'sys:getEnvironmentVariable',
+    SYS_CHECK_ESPANSO: 'sys:checkEspansoInstalled', // 添加检测 Espanso 安装状态的通道
+    SYS_OPEN_EXTERNAL: 'sys:openExternal', // 添加在默认浏览器中打开链接的通道
     // YAML
     YAML_PARSE: 'yaml:parse',
     YAML_SERIALIZE: 'yaml:serialize',
@@ -76,7 +79,9 @@ const CHANNELS = {
     APP_MINIMIZE: 'app:minimize',
     APP_MAXIMIZE: 'app:maximize',
     // 全屏状态 (如果需要从主进程发送)
-    APP_FULLSCREEN_CHANGED: 'fullscreen-changed' // 与你现有代码匹配
+    APP_FULLSCREEN_CHANGED: 'fullscreen-changed', // 与你现有代码匹配
+    // Espanso 安装状态
+    ESPANSO_INSTALL_STATUS: 'espanso:installStatus'
 };
 
 
@@ -319,6 +324,29 @@ function registerIpcHandlers(mw) {
         } catch (error) {
             console.error(`[Main IPC] 获取环境变量 ${name} 失败:`, error);
             return null;
+        }
+    });
+
+    // 检测 Espanso 是否安装
+    ipcMain.handle(CHANNELS.SYS_CHECK_ESPANSO, async () => {
+        console.log('[Main IPC] 检测 Espanso 是否安装');
+        try {
+            return await checkEspansoInstalled();
+        } catch (error) {
+            console.error('[Main IPC] 检测 Espanso 安装失败:', error);
+            return false;
+        }
+    });
+
+    // 在默认浏览器中打开链接
+    ipcMain.handle(CHANNELS.SYS_OPEN_EXTERNAL, async (event, url) => {
+        console.log(`[Main IPC] 在默认浏览器中打开链接: ${url}`);
+        try {
+            await shell.openExternal(url);
+            return true;
+        } catch (error) {
+            console.error(`[Main IPC] 打开链接 ${url} 失败:`, error);
+            return false;
         }
     });
 
@@ -635,10 +663,45 @@ function createWindow() {
     });
 }
 
+/**
+ * 检测 Espanso 是否已安装
+ * @returns {Promise<boolean>} 是否已安装
+ */
+async function checkEspansoInstalled() {
+    return new Promise((resolve) => {
+        const command = process.platform === 'win32' ? 'where espanso' : 'which espanso';
+        
+        exec(command, (error, stdout, stderr) => {
+            if (error) {
+                console.log('[Main] Espanso 未安装或未在环境变量中:', error.message);
+                resolve(false);
+                return;
+            }
+            
+            // 使用 espanso status 命令来检查服务是否运行，而不仅仅是检查版本
+            exec('espanso status', (error, stdout, stderr) => {
+                if (error) {
+                    console.log('[Main] Espanso 安装异常，无法执行或未运行:', error.message);
+                    resolve(false);
+                } else {
+                    console.log('[Main] Espanso 已安装且正在运行，状态:', stdout.trim());
+                    resolve(true);
+                }
+            });
+        });
+    });
+}
+
 // --- Electron 应用生命周期事件 ---
 
 app.whenReady().then(async () => {
     console.log('Electron就绪，开始初始化...');
+
+    // 检测 Espanso 是否安装
+    const espansoInstalled = await checkEspansoInstalled();
+    console.log(`[Main] Espanso 安装检测结果: ${espansoInstalled ? '已安装' : '未安装'}`);
+    // 创建一个全局变量以便在创建窗口后通知渲染进程
+    global.espansoInstalled = espansoInstalled;
 
     // 安装Vue开发者工具 (只在开发环境)
     if (!app.isPackaged) {
@@ -656,6 +719,14 @@ app.whenReady().then(async () => {
     // **在这里调用 IPC 处理器注册函数**
     if (mainWindow) {
         registerIpcHandlers(mainWindow);
+        
+        // 窗口准备好后发送 Espanso 安装状态
+        mainWindow.webContents.on('did-finish-load', () => {
+            if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                console.log('[Main] 通知渲染进程 Espanso 安装状态:', global.espansoInstalled);
+                mainWindow.webContents.send(CHANNELS.ESPANSO_INSTALL_STATUS, global.espansoInstalled);
+            }
+        });
     } else {
         console.error("无法注册 IPC Handlers，因为 mainWindow 未成功创建！");
     }

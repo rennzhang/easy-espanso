@@ -183,6 +183,38 @@ export class ElectronAdapter implements IPlatformAdapter {
     return null;
   }
 
+  async executeCommand(command: string): Promise<string> {
+    // 检查 preloadApi 是否有 executeCommand 方法
+    if (typeof (this.preloadApi as any).executeCommand === "function") {
+      return (this.preloadApi as any).executeCommand(command);
+    }
+
+    console.warn(
+      `[ElectronAdapter] executeCommand('${command}') is not available in preloadApi. Returning empty string.`
+    );
+    return "";
+  }
+
+  async openExternal(url: string): Promise<boolean> {
+    // 检查 preloadApi 是否有 openExternal 方法
+    if (typeof this.preloadApi.openExternal === "function") {
+      return this.preloadApi.openExternal(url);
+    }
+
+    console.warn(
+      `[ElectronAdapter] openExternal('${url}') is not available in preloadApi. Falling back to window.open.`
+    );
+    
+    // 备用方案：使用 window.open
+    try {
+      window.open(url, "_blank", "noopener,noreferrer");
+      return true;
+    } catch (error) {
+      console.error(`[ElectronAdapter] 打开链接 ${url} 失败:`, error);
+      return false;
+    }
+  }
+
   // --- YAML 操作 ---
   async parseYaml(content: string): Promise<YamlData> {
     this.ensurePreloadMethod("parseYaml");

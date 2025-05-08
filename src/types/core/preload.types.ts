@@ -110,6 +110,8 @@ export interface PreloadApi {
   // System Information
   getPlatform: () => Promise<string>; // Renamed from platform()
   getEnvironmentVariable?: (name: string) => Promise<string | null>; // 获取环境变量
+  executeCommand?: (command: string) => Promise<string>; // 执行命令行命令
+  openExternal?: (url: string) => Promise<boolean>; // 在默认浏览器中打开外部链接
 
   // YAML Handling
   parseYaml: (content: string) => Promise<YamlData>;
@@ -124,6 +126,9 @@ export interface PreloadApi {
 
   // IPC Ready Signal (If needed)
   onIpcHandlersReady?: (callback: () => void) => void;
+  
+  // Espanso Installation
+  checkEspansoInstalled?: () => Promise<boolean>; // 检查 Espanso 是否已安装
 }
 
 // Note: The global Window augmentation is assumed to be handled elsewhere

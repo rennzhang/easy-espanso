@@ -1,5 +1,25 @@
 export default {
   "greeting": "Hello!",
+  "installation": {
+    "notDetected": "Espanso Not Detected",
+    "needInstall": "To use this application, you need to install Espanso first",
+    "needStart": "Espanso is installed but not running, please start the service",
+    "description": "Espanso is a cross-platform text expander that helps you type common phrases quickly.",
+    "detectedOS": "Detected Operating System",
+    "viewInstallGuide": "View Installation Guide",
+    "checkAgain": "Check Again",
+    "checking": "Checking Espanso installation status...",
+    "installed": "Espanso is installed!",
+    "notInstalled": "Espanso is not installed. Please install it first.",
+    "checkFailed": "Detection failed, please install Espanso manually.",
+    "espansoNotFound": "Espanso command not found in system path.",
+    "espansoNotInstalled": "Espanso is not installed. Please install it first.",
+    "serviceNotRunning": "Espanso service is not running. Please start the service.",
+    "startService": "Start Espanso Service",
+    "serviceStarted": "Espanso service started!",
+    "startFailed": "Failed to start Espanso service. Please start it manually.",
+    "openLinkFailed": "Failed to open link, please visit manually:"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -23,7 +43,9 @@ export default {
     "modified": "Content Modified",
     "details": "Details",
     "noSelection": "No Item Selected",
-    "selectFromListDetails": "Please select a file or folder from the list on the left"
+    "selectFromListDetails": "Please select a file or folder from the list on the left",
+    "unknownError": "Unknown Error",
+    "unknown": "Unknown"
   },
   "sidebar": {
     "snippets": "Snippets",
@@ -194,6 +216,11 @@ export default {
     "settingsSaved": "Settings saved",
     "settingsSaveFailed": "Failed to save settings: {error}",
     "restoredToLastSave": "Restored to last saved settings",
+    "selectConfigFolder": "Please select Espanso configuration folder",
+    "invalidPath": "Failed to get a valid file path",
+    "configLoadSuccess": "Configuration loaded successfully!",
+    "operationFailed": "Operation failed: {error}",
+    "configLoadFailed": "Failed to select or load configuration: {error}",
     "language": "Language",
     "languageTooltip": "Select the display language for the application.",
     "selectLanguagePlaceholder": "Select Language",
@@ -354,4 +381,4 @@ export default {
     "snippets": "snippets",
     "files": "files"
   }
-} 
+}

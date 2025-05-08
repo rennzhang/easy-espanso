@@ -1,5 +1,25 @@
 export default {
   "greeting": "你好！",
+  "installation": {
+    "notDetected": "未检测到 Espanso",
+    "needInstall": "要使用此应用程序，您需要先安装 Espanso",
+    "needStart": "Espanso 已安装但未运行，需要启动服务",
+    "description": "Espanso 是一个跨平台的文本扩展工具，可以帮助您快速输入常用文本。",
+    "detectedOS": "检测到您的操作系统",
+    "viewInstallGuide": "查看安装指南",
+    "checkAgain": "重新检测",
+    "checking": "正在检测 Espanso 安装状态...",
+    "installed": "检测到 Espanso 已安装！",
+    "notInstalled": "未检测到 Espanso，请先安装。",
+    "checkFailed": "检测失败，请手动安装 Espanso。",
+    "espansoNotFound": "在系统路径中未找到 Espanso 命令。",
+    "espansoNotInstalled": "Espanso 未安装，请先安装。",
+    "serviceNotRunning": "Espanso 服务未运行，请启动服务。",
+    "startService": "启动 Espanso 服务",
+    "serviceStarted": "Espanso 服务已启动！",
+    "startFailed": "启动 Espanso 服务失败，请手动启动。",
+    "openLinkFailed": "无法打开链接，请手动访问："
+  },
   "common": {
     "save": "保存",
     "cancel": "取消",
@@ -24,7 +44,9 @@ export default {
     "modified": "内容已修改",
     "details": "详情",
     "noSelection": "未选择项目",
-    "selectFromListDetails": "请从左侧列表选择文件或文件夹"
+    "selectFromListDetails": "请从左侧列表选择文件或文件夹",
+    "unknownError": "未知错误",
+    "unknown": "未知"
   },
   "sidebar": {
     "snippets": "片段管理",
@@ -196,6 +218,11 @@ export default {
     "settingsSaveFailed": "保存设置失败: {error}",
     "initializationFailed": "初始化配置失败: {error}",
     "restoredToLastSave": "已恢复到上次保存的设置",
+    "selectConfigFolder": "请选择 Espanso 配置文件夹",
+    "invalidPath": "未能获取有效的文件路径",
+    "configLoadSuccess": "配置加载成功！",
+    "operationFailed": "操作失败: {error}",
+    "configLoadFailed": "选择或加载配置失败: {error}",
     "language": "界面语言",
     "languageTooltip": "选择应用程序的显示语言。",
     "selectLanguagePlaceholder": "选择语言",
@@ -356,4 +383,4 @@ export default {
     "snippets": "个片段",
     "files": "个文件"
   }
-} 
+}

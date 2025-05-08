@@ -274,3 +274,26 @@ export function onIpcHandlersReady(callback: () => void): void {
 
 // 注意: parseYaml 和 serializeYaml 现在应该在 yamlService.ts 中
 // 注意: getEspansoConfigDir 和 getDefaultConfigPath 的逻辑现在应该在 configService.ts 中
+
+/**
+ * 在用户默认浏览器中打开外部链接
+ * @param url 要打开的URL
+ * @returns 是否成功打开
+ */
+export async function openExternalLink(url: string): Promise<boolean> {
+  try {
+    const adapter = PlatformAdapterFactory.getInstance();
+    return await adapter.openExternal(url);
+  } catch (error) {
+    console.error('在用户浏览器中打开链接失败:', error);
+    
+    // 作为备用方案，使用标准的 window.open
+    try {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return true;
+    } catch (fallbackError) {
+      console.error('备用打开链接方法也失败:', fallbackError);
+      return false;
+    }
+  }
+}

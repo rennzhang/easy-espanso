@@ -28,6 +28,8 @@ const CHANNELS = {
     SYS_GET_PLATFORM: 'sys:getPlatform',
     SYS_SHOW_NOTIFICATION: 'sys:showNotification',
     SYS_GET_ENV_VAR: 'sys:getEnvironmentVariable',
+    SYS_CHECK_ESPANSO: 'sys:checkEspansoInstalled', // 添加检测 Espanso 安装状态的通道
+    SYS_OPEN_EXTERNAL: 'sys:openExternal', // 添加在默认浏览器中打开链接的通道
 
     // YAML
     YAML_PARSE: 'yaml:parse',
@@ -35,7 +37,10 @@ const CHANNELS = {
 
     // IPC 状态
     IPC_READY_CHECK: 'ipc:readyCheck', // 用于 onIpcHandlersReady
-    IPC_MAIN_READY: 'ipc:mainReady'      // 主进程发送的消息，表示已就绪
+    IPC_MAIN_READY: 'ipc:mainReady',      // 主进程发送的消息，表示已就绪
+    
+    // Espanso 状态
+    ESPANSO_INSTALL_STATUS: 'espanso:installStatus'
 };
 
 
@@ -108,7 +113,14 @@ const preloadApi = {
         ipcRenderer.invoke(CHANNELS.DIALOG_MESSAGE_BOX, options),
 
     // --- 系统操作 ---
-    platform: () => // 返回 Promise<string>
+    // 返回当前平台信息，这是一个同步方法，不使用promise
+    platform: () => {
+        // 直接返回process.platform，这是同步的
+        return process.platform;
+    },
+    
+    // 异步获取平台
+    getPlatform: () => // 返回 Promise<string>
         ipcRenderer.invoke(CHANNELS.SYS_GET_PLATFORM),
 
     showNotification: (title, body) =>
@@ -116,6 +128,14 @@ const preloadApi = {
 
     getEnvironmentVariable: (name) =>
         ipcRenderer.invoke(CHANNELS.SYS_GET_ENV_VAR, name),
+        
+    // 检测 Espanso 是否安装
+    checkEspansoInstalled: () =>
+        ipcRenderer.invoke(CHANNELS.SYS_CHECK_ESPANSO),
+        
+    // 在系统默认浏览器中打开链接
+    openExternal: (url) =>
+        ipcRenderer.invoke(CHANNELS.SYS_OPEN_EXTERNAL, url),
 
     // --- YAML 操作 ---
     parseYaml: async (content) => {
@@ -174,6 +194,51 @@ const preloadApi = {
 // 使用 contextBridge 将定义的 API 安全地暴露给渲染进程
 try {
     contextBridge.exposeInMainWorld('preloadApi', preloadApi);
+    
+    // 直接暴露 ipcRenderer 中的少数方法给渲染进程（仅用于事件监听）
+    contextBridge.exposeInMainWorld('ipcRenderer', {
+        on: (channel, callback) => {
+            // 白名单检查：确保只有安全的通道可以监听
+            const validChannels = [
+                CHANNELS.IPC_MAIN_READY,
+                CHANNELS.ESPANSO_INSTALL_STATUS
+            ];
+            
+            if (validChannels.includes(channel)) {
+                // 包装回调，确保参数传递安全
+                const subscription = (event, ...args) => callback(...args);
+                ipcRenderer.on(channel, subscription);
+                
+                // 返回清理函数以便移除监听器
+                return () => {
+                    ipcRenderer.removeListener(channel, subscription);
+                };
+            }
+        },
+        removeAllListeners: (channel) => {
+            const validChannels = [
+                CHANNELS.IPC_MAIN_READY,
+                CHANNELS.ESPANSO_INSTALL_STATUS
+            ];
+            
+            if (validChannels.includes(channel)) {
+                ipcRenderer.removeAllListeners(channel);
+            }
+        },
+        // 添加 invoke 方法，只用于特定的几个通道
+        invoke: (channel, ...args) => {
+            const validChannels = [
+                CHANNELS.SYS_CHECK_ESPANSO
+            ];
+            
+            if (validChannels.includes(channel)) {
+                return ipcRenderer.invoke(channel, ...args);
+            }
+            
+            throw new Error(`通道 ${channel} 不在 invoke 白名单中`);
+        }
+    });
+    
     console.log('[Preload] preloadApi exposed successfully.');
 } catch (error) {
     console.error('[Preload] Failed to expose preloadApi:', error);
