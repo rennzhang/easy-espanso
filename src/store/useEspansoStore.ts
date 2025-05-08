@@ -44,8 +44,7 @@ export interface EspansoState {
     loading: boolean;
     error: string | null;
     statusMessage: string | null; // For non-error feedback like "Saving..."
-    // Optional: State for expanded nodes if TreeNodeRegistry is removed
-    // expandedNodeIds: Set<string>;
+    expandedNodeIds: Set<string>; // Store expanded node IDs for persistence
 }
 
 export const useEspansoStore = defineStore('espanso', () => {
@@ -64,7 +63,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         loading: false,
         error: null,
         statusMessage: null,
-        // expandedNodeIds: new Set(),
+        expandedNodeIds: new Set<string>(),
     });
 
     // --- Getters (Computed Properties) ---
@@ -94,6 +93,11 @@ export const useEspansoStore = defineStore('espanso', () => {
         return null; // Folder selected, no single file node
     });
 
+    // Check if a node is expanded
+    const isNodeExpanded = (nodeId: string): boolean => {
+        return state.value.expandedNodeIds.has(nodeId);
+    };
+
 
     // --- Internal Helper ---
     // Centralized error/status handling
@@ -121,30 +125,64 @@ export const useEspansoStore = defineStore('espanso', () => {
         }
     };
 
+    // Storage key for expanded nodes
+    const STORAGE_KEY_EXPANDED = 'espanso-gui-expanded-nodes';
+
+    // Save expanded node IDs to localStorage
+    const _saveExpansionState = () => {
+        try {
+            const idsArray = Array.from(state.value.expandedNodeIds);
+            localStorage.setItem(STORAGE_KEY_EXPANDED, JSON.stringify(idsArray));
+            console.log('[Store] Saved expansion state:', idsArray.length, 'nodes');
+        } catch (e) {
+            console.error("Failed to save expansion state to localStorage:", e);
+        }
+    };
+
+    // Load expanded node IDs from localStorage
+    const _loadExpansionState = () => {
+        try {
+            const storedValue = localStorage.getItem(STORAGE_KEY_EXPANDED);
+            if (storedValue) {
+                const idsArray = JSON.parse(storedValue) as string[];
+                // Validate IDs to ensure they still exist in the current configTree
+                const validIds = idsArray.filter(id => !!findTreeNodeById(state.value.configTree, id));
+                state.value.expandedNodeIds = new Set(validIds);
+                console.log('[Store] Loaded expansion state:', state.value.expandedNodeIds.size, 'nodes');
+            } else {
+                state.value.expandedNodeIds = new Set(); // Default to no expanded nodes
+                console.log('[Store] No saved expansion state found.');
+            }
+        } catch (e) {
+            console.error("Failed to load or parse expansion state from localStorage:", e);
+            state.value.expandedNodeIds = new Set(); // Reset on error
+        }
+    };
+
     // Helper to save a file based on its path, finding its items in the tree
     const _saveFileByPath = async (filePath: string) => {
         const fileNode = findFileNode(state.value.configTree, filePath);
         if (!fileNode) {
             throw new Error(`File node not found: ${filePath}`);
         }
-        
+
         _setStatus(`正在保存 ${fileNode.name}...`);
-        
+
         try {
             // 提取所有直接与此文件节点关联的匹配项和分组
             const itemsToSave = [
                 ...(fileNode.matches || []),
             ];
-            
+
             // 使用正确的API
             await espansoService.saveConfigurationFile(filePath, itemsToSave, fileNode.content || {});
-            
+
             state.value.hasUnsavedChanges = false;
             _setStatus(`${fileNode.name} 已保存`);
             // 短暂延迟后清除状态
-            setTimeout(() => { 
-                if (state.value.statusMessage === `${fileNode.name} 已保存`) 
-                    _setStatus(null); 
+            setTimeout(() => {
+                if (state.value.statusMessage === `${fileNode.name} 已保存`)
+                    _setStatus(null);
             }, 2000);
         } catch (err: any) {
             console.error(`[EspansoStore] 保存文件失败: ${filePath}`, err);
@@ -206,23 +244,23 @@ export const useEspansoStore = defineStore('espanso', () => {
                 _setStatus('配置目录不存在，尝试创建...');
                 try {
                     await platformService.createDirectory(rootDir);
-                    
+
                     // 创建必要的子目录结构
                     const configDir = await platformService.joinPath(rootDir, 'config');
                     const matchDir = await platformService.joinPath(rootDir, 'match');
-                    
+
                     // 确保config目录存在
                     if (!(await platformService.directoryExists(configDir))) {
                         await platformService.createDirectory(configDir);
                         console.log(`[EspansoStore] 创建config目录成功: ${configDir}`);
                     }
-                    
+
                     // 确保match目录存在
                     if (!(await platformService.directoryExists(matchDir))) {
                         await platformService.createDirectory(matchDir);
                         console.log(`[EspansoStore] 创建match目录成功: ${matchDir}`);
                     }
-                    
+
                     // 这里不再自动创建base.yml，而是让espansoService根据需要处理
                     // 这样避免重复创建配置文件
                 } catch (err: any) {
@@ -247,6 +285,9 @@ export const useEspansoStore = defineStore('espanso', () => {
             state.value.configTree = configTree;
             state.value.hasUnsavedChanges = false; // 初始加载后重置状态
 
+            // Load expanded node state after configTree is loaded
+            _loadExpansionState();
+
             console.log(`[EspansoStore] 配置加载完成，文件树节点数: ${configTree.length}`);
             _setStatus('配置加载完成');
         } catch (err: any) {
@@ -261,6 +302,11 @@ export const useEspansoStore = defineStore('espanso', () => {
         state.value.selectedItemId = itemId;
         state.value.selectedItemType = itemType;
         _setError(null); // Clear errors on selection change
+
+        // Auto-expand parent nodes when an item is selected
+        if (itemId) {
+            expandParentNodes(itemId);
+        }
     };
 
     const setSearchQuery = (query: string) => {
@@ -278,7 +324,7 @@ export const useEspansoStore = defineStore('espanso', () => {
             // 如果全局配置未加载，先尝试初始化
             try {
                 await initializeStore();
-                
+
                 // 再次检查全局配置是否已加载
                 if (!state.value.globalConfig || !state.value.globalConfigPath) {
                     // 如果仍然未加载，创建一个新的全局配置
@@ -286,7 +332,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                     if (!defaultConfigPath) {
                         throw new Error("无法确定默认配置路径");
                     }
-                    
+
                     state.value.globalConfigPath = `${defaultConfigPath}/config/default.yml`;
                     state.value.globalConfig = { ...newData }; // 使用传入的数据作为初始配置
                 }
@@ -351,9 +397,9 @@ export const useEspansoStore = defineStore('espanso', () => {
 
             // Determine the file path for this item
             let filePath: string | null = null;
-            
+
             if (targetParentNodeId) {
-                // Find the target parent node 
+                // Find the target parent node
                 const targetNode = findItemInTreeById(state.value.configTree, targetParentNodeId);
                 if (targetNode) {
                     if ('path' in targetNode && targetNode.type === 'file') {
@@ -363,18 +409,18 @@ export const useEspansoStore = defineStore('espanso', () => {
                     }
                 }
             }
-            
+
             if (!filePath) {
                 // Fall back to a default config file (e.g. base.yml in config dir)
                 // (Logic would depend on the specific context - e.g. current location in UI)
                 console.warn("[Store addItem] No valid parent found, falling back to default file");
                 // ...logic to determine default file...
             }
-            
+
             if (!filePath) {
                 throw new Error("Cannot determine which file to add the item to.");
             }
-            
+
             // Set the filePath for the new item
             newItem.filePath = filePath;
 
@@ -391,13 +437,13 @@ export const useEspansoStore = defineStore('espanso', () => {
                 if (!addedItemRef.filePath) {
                     throw new Error(`Added ${itemType} missing file path reference.`);
                 }
-            
+
                 // Save the file that contains the new item
                 await _saveFileByPath(addedItemRef.filePath);
-                
+
                 // Select the newly added item
                 selectItem(addedItemRef.id, itemType);
-                
+
                 return addedItemRef;
             } else {
                 throw new Error(`Unexpected item type returned from addItemToTree.`);
@@ -492,7 +538,7 @@ export const useEspansoStore = defineStore('espanso', () => {
              _setError(`项目 ${itemId} 无法移动: 缺少原始文件路径。`);
              return;
         }
-        
+
         // 使用触发词作为名称
         const itemName = (movedItemRef.trigger || movedItemRef.label || 'Unknown Match')
         _setStatus(`正在移动: ${itemName}...`);
@@ -566,14 +612,14 @@ export const useEspansoStore = defineStore('espanso', () => {
             return;
         }
         _setStatus(`正在粘贴项目...`);
-        
+
         try {
             // 如果目标父节点ID为null，尝试找到默认文件节点作为粘贴目标
             let effectiveTargetNodeId = targetParentNodeId;
-            
+
             if (targetParentNodeId === null) {
                 console.log(`[pasteItem] targetParentNodeId 为 null，尝试查找默认文件节点作为粘贴目标`);
-                
+
                 // 遍历配置树，寻找第一个文件节点或优先选择 base.yml
                 const findDefaultFileNodeId = (nodes: ConfigTreeNode[]): string | null => {
                     for (const node of nodes) {
@@ -582,7 +628,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                             if (node.name === 'base.yml') {
                                 return node.id;
                             }
-                            
+
                             // 备选：第一个找到的文件节点
                             return node.id;
                         } else if (node.type === 'folder' && node.children && node.children.length > 0) {
@@ -595,23 +641,23 @@ export const useEspansoStore = defineStore('espanso', () => {
                     }
                     return null;
                 };
-                
+
                 effectiveTargetNodeId = findDefaultFileNodeId(state.value.configTree);
                 console.log(`[pasteItem] 找到默认文件节点作为粘贴目标: ${effectiveTargetNodeId}`);
             }
-            
+
             if (!effectiveTargetNodeId) {
                 throw new Error("无法确定粘贴位置，请选择一个具体的文件或分组。");
             }
-            
+
             if (operation === 'copy') {
                 // 创建深拷贝，移除ID和filePath
                 const itemData = JSON.parse(JSON.stringify(clipboardItem));
                 delete itemData.id;
                 delete itemData.filePath;
-                
+
                 await addItem(itemData, clipboardItem.type, effectiveTargetNodeId, insertIndex);
-                
+
             } else if (operation === 'cut') {
                 await moveItem(clipboardItem.id, effectiveTargetNodeId, insertIndex);
                 ClipboardManager.clear(); // 剪切后清空剪贴板
@@ -626,14 +672,14 @@ export const useEspansoStore = defineStore('espanso', () => {
 
      const createConfigFile = async (targetFolderNodeId: string | null, fileName: string) => {
         _setStatus(`正在创建: ${fileName}...`);
-        
+
         console.log(`[createConfigFile] 开始创建文件 ${fileName}，目标文件夹ID: ${targetFolderNodeId}`);
-        
+
         try {
             // 步骤1: 确定目标文件夹路径
             let folderPath: string | null = null;
             let targetFolder: ConfigFolderNode | null = null;
-            
+
             if (targetFolderNodeId) {
                 // 如果提供了目标文件夹ID，尝试找到对应节点
                 const node = findTreeNodeById(state.value.configTree, targetFolderNodeId);
@@ -651,13 +697,13 @@ export const useEspansoStore = defineStore('espanso', () => {
                     _setError('未设置配置根目录。');
                     return null;
                 }
-                
+
                 folderPath = `${rootDir}/match`;
                 console.log(`[createConfigFile] 未指定目标文件夹，使用默认match路径: ${folderPath}`);
-                
+
                 // 在配置树中查找match文件夹节点（可能已经是顶层节点）
                 for (const node of state.value.configTree) {
-                    if (node.type === 'folder' && 
+                    if (node.type === 'folder' &&
                         (node.path === folderPath || (node.name === 'match' && node.path.endsWith('/match')))) {
                         targetFolder = node as ConfigFolderNode;
                         folderPath = node.path; // 使用找到节点的路径，以确保准确
@@ -666,19 +712,19 @@ export const useEspansoStore = defineStore('espanso', () => {
                     }
                 }
             }
-            
+
             // 步骤2: 确保物理文件夹存在
             const folderExists = await platformService.directoryExists(folderPath);
             if (!folderExists) {
                 console.log(`[createConfigFile] 物理文件夹不存在，创建文件夹: ${folderPath}`);
                 await platformService.createDirectory(folderPath);
             }
-            
+
             // 步骤3: 创建实际的配置文件
             console.log(`[createConfigFile] 开始创建文件: ${fileName} 在 ${folderPath}`);
             const newFilePath = await espansoService.createAndSaveEmptyConfigFile(folderPath, fileName);
             const newFileId = `file-${newFilePath}`;
-            
+
             // 步骤4: 如果找到了目标文件夹节点，直接添加文件节点到树中
             if (targetFolder) {
                 // 创建默认内容
@@ -689,7 +735,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                         label: '新创建的片段'
                     }]
                 };
-                
+
                 // 创建匹配项节点
                 const defaultMatch: Match = {
                     id: `match-${newFileId}-0`,
@@ -702,7 +748,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString()
                 };
-                
+
                 // 创建文件节点
                 const newFileNode: ConfigFileNode = {
                     id: newFileId,
@@ -714,11 +760,11 @@ export const useEspansoStore = defineStore('espanso', () => {
                     fileType: 'match',
                     extension: 'yml'
                 };
-                
+
                 // 将新文件添加到目标文件夹的子节点列表中
                 targetFolder.children.unshift(newFileNode);
                 console.log(`[createConfigFile] 文件节点已添加到树中: ${newFileId}`);
-                
+
                 // 确保文件夹是展开的
                 const parentFolderNodeInfo = TreeNodeRegistry.get(targetFolder.id);
                 if (parentFolderNodeInfo?.info?.isOpen) {
@@ -733,7 +779,7 @@ export const useEspansoStore = defineStore('espanso', () => {
             } else {
                 // 如果没有找到目标文件夹节点，需要创建完整的节点结构
                 console.log(`[createConfigFile] 未找到目标文件夹节点，将创建完整的节点结构`);
-                
+
                 // 创建默认内容
                 const defaultContent = {
                     matches: [{
@@ -742,7 +788,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                         label: '新创建的片段'
                     }]
                 };
-                
+
                 // 创建匹配项节点
                 const defaultMatch: Match = {
                     id: `match-${newFileId}-0`,
@@ -755,7 +801,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString()
                 };
-                
+
                 // 创建文件节点
                 const newFileNode: ConfigFileNode = {
                     id: newFileId,
@@ -767,10 +813,10 @@ export const useEspansoStore = defineStore('espanso', () => {
                     fileType: 'match',
                     extension: 'yml'
                 };
-                
+
                 // 查找或创建match文件夹节点
                 let matchFolderNode: ConfigFolderNode | null = null;
-                
+
                 // 先在已有树中查找match文件夹
                 for (const node of state.value.configTree) {
                     if (node.type === 'folder' && node.name === 'match') {
@@ -778,7 +824,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                         break;
                     }
                 }
-                
+
                 // 如果没找到，创建一个match文件夹节点
                 if (!matchFolderNode) {
                     matchFolderNode = {
@@ -790,30 +836,30 @@ export const useEspansoStore = defineStore('espanso', () => {
                     };
                     state.value.configTree.push(matchFolderNode);
                 }
-                
+
                 // 将新文件节点添加到match文件夹中
                 matchFolderNode.children.unshift(newFileNode);
-                
+
                 // 确保文件夹是展开的
                 const parentMatchFolderNodeInfo = TreeNodeRegistry.get(matchFolderNode.id);
                 if (parentMatchFolderNodeInfo?.info?.isOpen) {
                     parentMatchFolderNodeInfo.info.isOpen.value = true;
                 }
-                
+
                 // 新增：确保新创建的文件节点本身是展开的
                 const newFileNodeInfo = TreeNodeRegistry.get(newFileNode.id);
                 if (newFileNodeInfo?.info?.isOpen) {
                     newFileNodeInfo.info.isOpen.value = true;
                 }
             }
-            
+
             console.log(`[createConfigFile] 文件创建成功: ${newFilePath}`);
             _setStatus(`已创建: ${fileName}`);
             setTimeout(() => { if (state.value.statusMessage === `已创建: ${fileName}`) _setStatus(null); }, 2000);
-            
+
             // 选中新创建的文件节点
             selectItem(newFileId, 'file');
-            
+
             // 添加延时以确保DOM更新后再尝试展开节点
             setTimeout(() => {
                 // 再次尝试展开新文件节点
@@ -825,7 +871,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                     console.log(`[createConfigFile] 无法获取文件节点信息用于展开: ${newFileId}`);
                 }
             }, 100);
-            
+
             return newFileId;
         } catch (err: any) {
             console.error(`[createConfigFile] 创建文件失败:`, err);
@@ -1008,7 +1054,7 @@ export const useEspansoStore = defineStore('espanso', () => {
              if (node.type === 'folder') {
                  // 使用updateDescendantPathsAndFilePaths更新子节点的路径
                  const { updateDescendantPathsAndFilePaths } = await import('@/utils/configTreeUtils');
-                 
+
                  // 递归更新所有子节点的路径和ID
                  if (node.children && node.children.length > 0) {
                      for (const child of node.children) {
@@ -1043,6 +1089,102 @@ export const useEspansoStore = defineStore('espanso', () => {
      };
 
 
+    // --- Node Expansion Actions ---
+
+    // Toggle a node's expansion state
+    const toggleNodeExpansion = (nodeId: string) => {
+        const currentSet = state.value.expandedNodeIds;
+        if (currentSet.has(nodeId)) {
+            currentSet.delete(nodeId);
+            console.log('[Store] Node collapsed:', nodeId);
+        } else {
+            currentSet.add(nodeId);
+            console.log('[Store] Node expanded:', nodeId);
+
+            // Auto-expand parent nodes to ensure visibility
+            const node = findTreeNodeById(state.value.configTree, nodeId);
+            if (node) {
+                // Find all parent nodes and expand them
+                const parentNode = findParentNodeInTree(state.value.configTree, nodeId);
+                if (parentNode) {
+                    state.value.expandedNodeIds.add(parentNode.id);
+                    console.log('[Store] Auto-expanded parent node:', parentNode.id);
+                }
+            }
+        }
+
+        // Update the Set (Vue 3 Set is reactive)
+        state.value.expandedNodeIds = new Set(currentSet);
+
+        // Save to localStorage
+        _saveExpansionState();
+    };
+
+    // Expand all nodes
+    const expandAllNodes = () => {
+        console.log('[Store] Expanding all nodes...');
+        const newExpandedIds = new Set<string>();
+
+        // Recursive function to collect all node IDs
+        const collectNodeIds = (nodes: ConfigTreeNode[]) => {
+            nodes.forEach(node => {
+                if (node.type === 'folder' || (node.type === 'file' && node.matches && node.matches.length > 0)) {
+                    newExpandedIds.add(node.id);
+                }
+
+                if (node.type === 'folder' && node.children) {
+                    collectNodeIds(node.children);
+                }
+            });
+        };
+
+        collectNodeIds(state.value.configTree);
+        state.value.expandedNodeIds = newExpandedIds;
+        _saveExpansionState();
+    };
+
+    // Collapse all nodes
+    const collapseAllNodes = () => {
+        console.log('[Store] Collapsing all nodes...');
+        state.value.expandedNodeIds = new Set();
+        _saveExpansionState();
+    };
+
+    // Expand parent nodes of a selected node
+    const expandParentNodes = (nodeId: string) => {
+        const parentIds = new Set<string>();
+
+        // Find all parent nodes recursively
+        const findParents = (nodes: ConfigTreeNode[], targetId: string, path: string[] = []): boolean => {
+            for (const node of nodes) {
+                if (node.id === targetId) {
+                    // Found the target node, add all parents in the path
+                    path.forEach(parentId => parentIds.add(parentId));
+                    return true;
+                }
+
+                if (node.type === 'folder' && node.children) {
+                    // Check children with this node added to the path
+                    if (findParents(node.children, targetId, [...path, node.id])) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        };
+
+        findParents(state.value.configTree, nodeId);
+
+        // Add parent IDs to expanded set
+        parentIds.forEach(id => state.value.expandedNodeIds.add(id));
+
+        // Save changes
+        if (parentIds.size > 0) {
+            console.log('[Store] Expanded parent nodes:', parentIds.size, 'nodes');
+            _saveExpansionState();
+        }
+    };
+
     // --- Return Store Interface ---
     return {
         state, // Read-only state access preferred via computed properties
@@ -1051,6 +1193,7 @@ export const useEspansoStore = defineStore('espanso', () => {
         allItems,
         selectedItem,
         selectedFileNode,
+        isNodeExpanded, // Expose node expansion state getter
         // Actions
         initializeStore,
         loadConfig,
@@ -1064,10 +1207,14 @@ export const useEspansoStore = defineStore('espanso', () => {
         deleteItem,
         moveItem,
         pasteItem,
-        createConfigFile, // Example File/Folder Op
-        deleteFileNode, // Example File/Folder Op
-        deleteFolderNode, // Example File/Folder Op
-        renameNode, // Example File/Folder Op
-
+        createConfigFile,
+        deleteFileNode,
+        deleteFolderNode,
+        renameNode,
+        // Node expansion actions
+        toggleNodeExpansion,
+        expandAllNodes,
+        collapseAllNodes,
+        expandParentNodes,
     };
 });

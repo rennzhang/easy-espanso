@@ -17,9 +17,9 @@
         <component :is="icons.FolderPlus" class="mr-2 h-4 w-4" />
         {{ t('contextMenu.newFolder') }}
       </ContextMenuItem>
-      
+
       <ContextMenuSeparator />
-      
+
       <!-- 展开/折叠操作 -->
       <ContextMenuItem @select="handleExpandAll">
         <component :is="icons.ChevronsDown" class="mr-2 h-4 w-4" />
@@ -29,9 +29,9 @@
         <component :is="icons.ChevronsUp" class="mr-2 h-4 w-4" />
         {{ t('contextMenu.collapseAll') }}
       </ContextMenuItem>
-      
+
       <ContextMenuSeparator />
-      
+
       <!-- 浏览官方包（链接到Espanso Hub） -->
       <ContextMenuItem @select="handleOpenPackageHub">
         <component :is="icons.ExternalLink" class="mr-2 h-4 w-4" />
@@ -42,11 +42,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useEspansoStore } from '@/store/useEspansoStore';
-import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
-import ClipboardManager from '@/utils/ClipboardManager';
 import { toast } from 'vue-sonner';
 import {
   ContextMenu,
@@ -90,10 +88,10 @@ const handleCreateMatch = async () => {
       toast.error('未设置根目录');
       return;
     }
-    
+
     // 确保match目录路径正确
     const matchDir = `${rootDir}/match`;
-    
+
     // 找到match目录节点
     let matchFolderNode = null;
     for (const node of store.state.configTree) {
@@ -102,13 +100,13 @@ const handleCreateMatch = async () => {
         break;
       }
     }
-    
+
     // 检查match目录是否存在，不存在则创建
     const matchDirExists = await platformService.directoryExists(matchDir);
     if (!matchDirExists) {
       await platformService.createDirectory(matchDir);
       toast.success('已创建match目录');
-      
+
       // 如果目录刚创建且在树中没有match节点，创建一个
       if (!matchFolderNode) {
         const { createFolderNode } = await import('@/utils/configTreeUtils');
@@ -116,11 +114,11 @@ const handleCreateMatch = async () => {
         store.state.configTree.push(matchFolderNode);
       }
     }
-    
+
     // 检查是否存在配置文件，如果没有则创建一个默认的
     let targetFileId = null;
     let targetFileNode = null;
-    
+
     // 如果match文件夹节点存在，遍历其子节点查找配置文件
     if (matchFolderNode && matchFolderNode.children && matchFolderNode.children.length > 0) {
       for (const file of matchFolderNode.children) {
@@ -131,19 +129,19 @@ const handleCreateMatch = async () => {
         }
       }
     }
-    
+
     // 如果没有找到配置文件，先创建一个
     if (!targetFileId) {
       // 使用base.yml作为默认配置文件名
       targetFileId = await store.createConfigFile(null, 'base.yml');
-      
+
       if (!targetFileId) {
         toast.error('创建默认配置文件失败');
         return;
       }
-      
+
       toast.success('已创建默认配置文件');
-      
+
       // 查找新创建的文件节点
       if (matchFolderNode && matchFolderNode.children) {
         for (const file of matchFolderNode.children) {
@@ -154,36 +152,36 @@ const handleCreateMatch = async () => {
         }
       }
     }
-    
+
     if (!targetFileId || !targetFileNode) {
       toast.error('无法确定创建新片段的位置');
       return;
     }
-    
+
     // 创建新片段
     const newMatchData = {
       trigger: ':new',
       replace: '新片段内容',
       label: '新片段',
     };
-    
+
     const addedItem = await store.addItem(newMatchData, 'match', targetFileId, 0);
     if (addedItem) {
       toast.success('新片段已创建，请编辑触发词');
-      
+
       // 确保文件和文件夹展开
       if (matchFolderNode) {
-        const folderNodeInfo = TreeNodeRegistry.get(matchFolderNode.id);
-        if (folderNodeInfo?.info?.isOpen) {
-          folderNodeInfo.info.isOpen.value = true;
+        // Use store action to expand the folder node
+        if (!store.isNodeExpanded(matchFolderNode.id)) {
+          store.toggleNodeExpansion(matchFolderNode.id);
         }
       }
-      
-      const fileNodeInfo = TreeNodeRegistry.get(targetFileId);
-      if (fileNodeInfo?.info?.isOpen) {
-        fileNodeInfo.info.isOpen.value = true;
+
+      // Expand the file node
+      if (!store.isNodeExpanded(targetFileId)) {
+        store.toggleNodeExpansion(targetFileId);
       }
-      
+
       // 选中新创建的片段
       store.selectItem(addedItem.id, 'match');
     } else {
@@ -203,27 +201,27 @@ const handleCreateConfigFile = async () => {
       toast.error('未设置根目录');
       return;
     }
-    
+
     // 创建唯一的文件名
     const timestamp = new Date().getTime();
     const newFileName = `${timestamp}_config.yml`;
-    
+
     console.log(`准备创建配置文件, 文件名: ${newFileName}`);
-    
+
     // 直接在match文件夹中创建文件（传null让store自行处理）
     const newFileId = await store.createConfigFile(null, newFileName);
-    
+
     if (!newFileId) {
       console.error('创建文件返回ID为空');
       toast.error('创建文件失败');
       return;
     }
-    
+
     toast.success(`配置文件 ${newFileName} 已创建`);
-    
+
     // 选中新创建的文件
     store.selectItem(newFileId, 'file');
-    
+
     // 延时后尝试触发重命名
     setTimeout(() => {
       const el = document.getElementById(`tree-node-${newFileId}`)?.querySelector('.text-sm.font-medium.flex-grow');
@@ -250,11 +248,11 @@ const handleCreateFolder = async () => {
       toast.error('未设置根目录');
       return;
     }
-    
+
     // 创建在match目录下，确保match目录存在
     const matchDir = `${rootDir}/match`;
     const matchDirExists = await platformService.directoryExists(matchDir);
-    
+
     // 找到match目录节点
     let matchFolderNode = null;
     for (const node of store.state.configTree) {
@@ -263,11 +261,11 @@ const handleCreateFolder = async () => {
         break;
       }
     }
-    
+
     if (!matchDirExists) {
       await platformService.createDirectory(matchDir);
       toast.success('已创建match目录');
-      
+
       // 如果目录刚创建且在树中没有match节点，创建一个
       if (!matchFolderNode) {
         const { createFolderNode } = await import('@/utils/configTreeUtils');
@@ -275,44 +273,43 @@ const handleCreateFolder = async () => {
         store.state.configTree.push(matchFolderNode);
       }
     }
-    
+
     // 确保match文件夹节点存在
     if (!matchFolderNode) {
       toast.error('无法找到或创建match文件夹节点');
       return;
     }
-    
+
     // 创建新文件夹名称并构建完整路径
     const timestamp = new Date().getTime();
     const newFolderName = `${timestamp}_folder`;
     const newFolderPath = `${matchDir}/${newFolderName}`;
-    
+
     // 使用平台服务创建目录
     await platformService.createDirectory(newFolderPath);
-    
+
     // 创建新文件夹节点并添加到match文件夹下
     const { createFolderNode } = await import('@/utils/configTreeUtils');
     const newFolderNode = createFolderNode(newFolderName, newFolderPath);
-    
+
     // 确保match文件夹有children属性
     if (!matchFolderNode.children) {
       matchFolderNode.children = [];
     }
-    
+
     // 将新文件夹添加到match文件夹
     matchFolderNode.children.unshift(newFolderNode);
-    
+
     // 确保match文件夹展开
-    const folderNode = TreeNodeRegistry.get(matchFolderNode.id);
-    if (folderNode?.info?.isOpen) {
-      folderNode.info.isOpen.value = true;
+    if (!store.isNodeExpanded(matchFolderNode.id)) {
+      store.toggleNodeExpansion(matchFolderNode.id);
     }
-    
+
     toast.success(`文件夹 ${newFolderName} 已创建`);
-    
+
     // 选中新创建的文件夹
     store.selectItem(newFolderNode.id, 'folder');
-    
+
     // 延时触发重命名
     setTimeout(() => {
       const el = document.getElementById(`tree-node-${newFolderNode.id}`)?.querySelector('.text-sm.font-medium.flex-grow');
@@ -335,12 +332,12 @@ const handleCreateFolder = async () => {
 
 // 展开所有节点
 const handleExpandAll = () => {
-  TreeNodeRegistry.expandAll();
+  store.expandAllNodes();
 };
 
 // 折叠所有节点
 const handleCollapseAll = () => {
-  TreeNodeRegistry.collapseAll();
+  store.collapseAllNodes();
 };
 
 // 打开Espanso官方包网站
@@ -352,4 +349,4 @@ const handleOpenPackageHub = () => {
 const handleContextMenuUpdate = (open: boolean) => {
   isContextMenuOpen.value = open;
 };
-</script> 
+</script>

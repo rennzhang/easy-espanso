@@ -214,7 +214,7 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
 
   const handleCreateConfigFile = async () => {
     const targetNode = getCurrentNode();
-    
+
     // 如果当前选中了一个文件夹节点，则在该文件夹下创建文件
     if (targetNode && targetNode.type === 'folder') {
         const folderId = targetNode.id;
@@ -233,18 +233,18 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
                 toast.error("创建配置文件失败");
                 return;
             }
-            
+
             toast.success(`配置文件 ${newFileName} 已创建`);
-            
+
             // 选中新创建的文件
             store.selectItem(newFileId, 'file');
-            
+
             // 确保文件夹是展开的
             const folderNode = TreeNodeRegistry.get(folderId);
             if (folderNode?.info?.isOpen) {
                 folderNode.info.isOpen.value = true;
             }
-            
+
             // 延时触发重命名
             setTimeout(() => {
                 const el = document.getElementById(`tree-node-${newFileId}`)?.querySelector('.text-sm.font-medium.flex-grow');
@@ -271,12 +271,12 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
                 toast.error("创建配置文件失败");
                 return;
             }
-            
+
             toast.success(`配置文件 ${newFileName} 已创建`);
-            
+
             // 选中新创建的文件
             store.selectItem(newFileId, 'file');
-            
+
             // 查找match文件夹节点并确保它展开
             for (const node of store.state.configTree) {
                 if (node.type === 'folder' && node.name === 'match') {
@@ -287,7 +287,7 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
                     break;
                 }
             }
-            
+
             // 延时触发重命名
             setTimeout(() => {
                 const el = document.getElementById(`tree-node-${newFileId}`)?.querySelector('.text-sm.font-medium.flex-grow');
@@ -379,25 +379,25 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     // 创建操作 (只创建 Match 和 File)
     handleCreateMatch,
     handleCreateConfigFile,
-    
+
     // 添加创建文件夹的函数
     handleCreateFolder: async () => {
       try {
         const targetNode = getCurrentNode();
         let targetFolderId = null;
-        
+
         // 如果当前选中了一个文件夹节点，则在该文件夹下创建新文件夹
         if (targetNode && targetNode.type === 'folder') {
           targetFolderId = targetNode.id;
         }
-        
+
         // 获取根目录
         const rootDir = store.state.configRootDir;
         if (!rootDir) {
           toast.error('未设置根目录');
           return;
         }
-        
+
         // 确定目标路径
         let parentPath;
         let parentNode = null;
@@ -423,7 +423,7 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
           const matchDirExists = await platformService.directoryExists(parentPath);
           if (!matchDirExists) {
             await platformService.createDirectory(parentPath);
-            
+
             // 如果match目录不存在且创建成功，但在树中没有match节点，创建一个
             if (!parentNode) {
               const { createFolderNode } = await import('@/utils/configTreeUtils');
@@ -432,13 +432,13 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
             }
           }
         }
-        
+
         // 确保有父节点存在
         if (!parentNode) {
           toast.error('无法找到或创建父文件夹节点');
           return;
         }
-        
+
         // 创建新文件夹名称并构建完整路径
         const timestamp = new Date().getTime();
         const newFolderName = `${timestamp}_folder`;
@@ -446,24 +446,24 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
 
         // 使用平台服务创建目录
         await platformService.createDirectory(newFolderPath);
-        
+
         // 创建新文件夹节点并添加到树中
         const { createFolderNode } = await import('@/utils/configTreeUtils');
         const newFolderNode = createFolderNode(newFolderName, newFolderPath);
-        
+
         // 将新节点添加到父节点
         if (parentNode.children) {
           parentNode.children.unshift(newFolderNode);
-          
+
           // 选中新创建的文件夹
           store.selectItem(newFolderNode.id, 'folder');
-          
+
           // 确保父文件夹是展开的
           const folderNode = TreeNodeRegistry.get(parentNode.id);
           if (folderNode?.info?.isOpen) {
             folderNode.info.isOpen.value = true;
           }
-          
+
           // 延时触发重命名
           setTimeout(() => {
             const el = document.getElementById(`tree-node-${newFolderNode.id}`)?.querySelector('.text-sm.font-medium.flex-grow');
@@ -478,7 +478,7 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
               console.warn(`无法找到文件夹节点名称元素，ID: ${newFolderNode.id}`);
             }
           }, 300);
-          
+
           toast.success(`文件夹 ${newFolderName} 已创建`);
         } else {
           toast.error('父文件夹节点没有children属性');
@@ -489,16 +489,64 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
       }
     },
 
-    // 展开/折叠
-    handleExpandAll: () => TreeNodeRegistry.expandAll(),
-    handleCollapseAll: () => TreeNodeRegistry.collapseAll(),
+    // 展开/折叠 - now using store actions
+    handleExpandAll: () => store.expandAllNodes(),
+    handleCollapseAll: () => store.collapseAllNodes(),
     handleExpandCurrentNode: () => {
       const node = getCurrentNode();
-      if (node?.id && nodeHasChildren(node)) TreeNodeRegistry.expandNodeAndChildren(node.id);
+      if (node?.id && nodeHasChildren(node)) {
+        // Expand the node and all its children
+        // First ensure the node itself is expanded
+        if (!store.isNodeExpanded(node.id)) {
+          store.toggleNodeExpansion(node.id);
+        }
+
+        // Then recursively expand all child nodes
+        const expandChildren = (nodes: TreeNodeItem[]) => {
+          for (const child of nodes) {
+            if (child.type === 'folder' || child.type === 'file') {
+              if (!store.isNodeExpanded(child.id)) {
+                store.toggleNodeExpansion(child.id);
+              }
+              if (child.children && child.children.length > 0) {
+                expandChildren(child.children);
+              }
+            }
+          }
+        };
+
+        if (node.children && node.children.length > 0) {
+          expandChildren(node.children);
+        }
+      }
     },
     handleCollapseCurrentNode: () => {
       const node = getCurrentNode();
-      if (node?.id && nodeHasChildren(node)) TreeNodeRegistry.collapseNodeAndChildren(node.id);
+      if (node?.id && nodeHasChildren(node)) {
+        // Collapse the node and all its children
+        // First ensure the node itself is collapsed
+        if (store.isNodeExpanded(node.id)) {
+          store.toggleNodeExpansion(node.id);
+        }
+
+        // Then recursively collapse all child nodes
+        const collapseChildren = (nodes: TreeNodeItem[]) => {
+          for (const child of nodes) {
+            if (child.type === 'folder' || child.type === 'file') {
+              if (store.isNodeExpanded(child.id)) {
+                store.toggleNodeExpansion(child.id);
+              }
+              if (child.children && child.children.length > 0) {
+                collapseChildren(child.children);
+              }
+            }
+          }
+        };
+
+        if (node.children && node.children.length > 0) {
+          collapseChildren(node.children);
+        }
+      }
     },
 
     // 删除操作

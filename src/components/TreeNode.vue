@@ -269,28 +269,30 @@ const emit = defineEmits<{
 
 const store = useEspansoStore();
 
-// 默认收起所有节点
-const isOpen = ref(false);
-
 // 编辑相关的状态
 const isEditing = ref(false);
 const editingName = ref("");
 const editNameInput = ref<HTMLInputElement | null>(null);
 
+// Use store's expansion state instead of local state
+const isOpen = computed(() => store.isNodeExpanded(props.node.id));
+
 watch(
   () => props.searchQuery,
   (newQuery) => {
-    if (newQuery && newQuery.trim() !== "") {
-      isOpen.value = true;
+    if (newQuery && newQuery.trim() !== "" && !isOpen.value) {
+      // If search query is not empty and node is not already open, toggle it
+      store.toggleNodeExpansion(props.node.id);
     }
   },
   { immediate: true }
 );
 
-const toggleFolder = (event?: MouseEvent) => {
+const toggleFolder = () => {
   if (props.node.type !== "match" && hasChildren.value) {
-    isOpen.value = !isOpen.value;
-    // Emit event for parent component to handle state changes if needed
+    // Use store action instead of local state
+    store.toggleNodeExpansion(props.node.id);
+    // Still emit event for backward compatibility
     emit("toggle-node", props.node.id);
   }
 };
@@ -429,8 +431,9 @@ const isVisible = computed(() => {
 
 // Auto-expand node if it becomes visible due to search results
 watch(isVisible, (newValue, oldValue) => {
-  if (newValue && !oldValue && props.searchQuery?.trim()) {
-    isOpen.value = true;
+  if (newValue && !oldValue && props.searchQuery?.trim() && !isOpen.value) {
+    // Use store action instead of directly modifying computed property
+    store.toggleNodeExpansion(props.node.id);
   }
 });
 
@@ -544,8 +547,9 @@ const visibleChildCount = computed(() => {
 watch(
   () => props.parentMatches,
   (newValue) => {
-    if (newValue && props.searchQuery?.trim()) {
-      isOpen.value = true;
+    if (newValue && props.searchQuery?.trim() && !isOpen.value) {
+      // Use store action instead of directly modifying computed property
+      store.toggleNodeExpansion(props.node.id);
     }
   },
   { immediate: true }
@@ -689,15 +693,15 @@ const handleDragMove = (event: any): boolean => {
 };
 
 onMounted(() => {
+  // Register node metadata but not isOpen (now managed by store)
   TreeNodeRegistry.register(
     props.node.id,
-    {
-      isOpen: isOpen,
-    },
+    {}, // No longer need to register isOpen ref
     {
       type: props.node.type,
       id: props.node.id,
       parentId: props.parentId,
+      filePath: props.node.path,
       // Add other relevant info if needed
     }
   );
@@ -709,8 +713,9 @@ onUnmounted(() => {
 
 // 折叠当前节点 (can be called programmatically if needed)
 const collapseNode = () => {
-  if (hasChildren.value) {
-    isOpen.value = false;
+  if (hasChildren.value && isOpen.value) {
+    // Use store action instead of directly modifying computed property
+    store.toggleNodeExpansion(props.node.id);
     emit("toggle-node", props.node.id); // Notify parent if state needs to be synced
   }
 };
@@ -856,19 +861,8 @@ const shouldShowCount = computed(() => {
   // return props.node.type !== 'match' && hasChildren.value;
 });
 
-// 监听 isOpen 的变化，如果节点被打开，发出事件
-watch(isOpen, (newIsOpen) => {
-  emit("toggle-node", props.node.id);
-  
-  // 如果节点被展开，尝试确保所有子节点可见
-  if (newIsOpen && props.node.children && props.node.children.length > 0) {
-    // 简单的触发更新
-    nextTick(() => {
-      // 这里不需要实际内容，只需触发一个更新周期
-      console.log(`Node ${props.node.id} (${props.node.name}) expanded`);
-    });
-  }
-});
+// No longer need to watch isOpen as it's now a computed property
+// and changes are handled by the store
 </script>
 
 <style scoped>
@@ -1041,7 +1035,7 @@ watch(isOpen, (newIsOpen) => {
     to right,
     hsl(var(--primary)), /* 使用主题主色 */
     hsl(var(--secondary)) /* 使用主题次要颜色 */
-  ); 
+  );
   /* position: absolute; */
   /* top: 0; */
   /* left: 0; */
