@@ -67,6 +67,7 @@ import ClipboardManager from "@/utils/ClipboardManager";
 import type { TreeNodeItem } from "./ConfigTree.vue";
 import { useI18n } from "vue-i18n";
 
+const t = useI18n().t;
 
 // --- MenuItem Interface ---
 interface MenuItem {
@@ -161,7 +162,6 @@ const computedMenuItems = computed((): MenuItem[] => {
   const type = props.node.type;
   let items: MenuItem[] = [];
 
-  const t = useI18n().t;
 
   // --- Common Items (Top) ---
   // 只有当节点是文件类型时才添加"新建片段"菜单项
