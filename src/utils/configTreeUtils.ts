@@ -7,6 +7,7 @@ import type {
   ConfigFileNode,
   ConfigFolderNode,
 } from "@/types/core/ui.types"; // 核心 UI/树节点类型
+import { encodeNodeId } from "@/utils/nodeIdUtils"; // 导入节点ID编码函数
 
 // --- 类型守卫 (Type Guards) ---
 
@@ -43,9 +44,15 @@ export const createFileNode = (
   matches: Match[],
   // groups: Group[] // 移除了 groups 参数
 ): ConfigFileNode => {
+  // 生成基于路径的ID
+  const nodeId = `file-${path}`;
+
+  // 使用Base64编码路径部分，确保ID在会话之间保持稳定
+  const encodedId = encodeNodeId(nodeId);
+
   return {
     type: "file",
-    id: `file-${path}`,
+    id: encodedId,
     name,
     path,
     fileType,
@@ -65,9 +72,15 @@ export const createFolderNode = (
   name: string,
   path: string
 ): ConfigFolderNode => {
+  // 生成基于路径的ID
+  const nodeId = `folder-${path}`;
+
+  // 使用Base64编码路径部分，确保ID在会话之间保持稳定
+  const encodedId = encodeNodeId(nodeId);
+
   return {
     type: "folder",
-    id: `folder-${path}`,
+    id: encodedId,
     name,
     path,
     children: [],
@@ -188,7 +201,7 @@ export const findParentNodeInTree = (
 
     const findParentRecursive = (
         currentNodes: ConfigTreeNode[],
-        currentParent: ConfigFolderNode | ConfigFileNode | null
+        _currentParent: ConfigFolderNode | ConfigFileNode | null
     ): ConfigFolderNode | ConfigFileNode | null => {
 
         for (const node of currentNodes) {
@@ -370,7 +383,9 @@ export const updateDescendantPathsAndFilePaths = async (
   const newNodePath = await joinPathFunc(newBasePath, node.name);
 
   node.path = newNodePath;
-  node.id = `${node.type}-${newNodePath}`; // 更新 ID!
+  // 生成新的编码ID
+  const newNodeId = `${node.type}-${newNodePath}`;
+  node.id = encodeNodeId(newNodeId); // 更新为编码后的ID
 
   // 如果是文件节点，更新其内部 Match 项的 filePath
   if (isFileNode(node)) {

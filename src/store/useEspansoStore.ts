@@ -95,7 +95,14 @@ export const useEspansoStore = defineStore('espanso', () => {
 
     // Check if a node is expanded
     const isNodeExpanded = (nodeId: string): boolean => {
-        return state.value.expandedNodeIds.has(nodeId);
+        // 直接检查节点ID是否在集合中
+        if (state.value.expandedNodeIds.has(nodeId)) {
+            return true;
+        }
+
+        // 由于我们在保存时对所有ID进行编码，在加载时对所有ID进行解码
+        // 所以这里不需要额外的编码/解码逻辑
+        return false;
     };
 
 
@@ -131,11 +138,12 @@ export const useEspansoStore = defineStore('espanso', () => {
     // Save expanded node IDs to localStorage
     const _saveExpansionState = () => {
         try {
+            // 节点ID已经在创建时编码，直接保存
             const idsArray = Array.from(state.value.expandedNodeIds);
             localStorage.setItem(STORAGE_KEY_EXPANDED, JSON.stringify(idsArray));
-            console.log('[Store] Saved expansion state:', idsArray.length, 'nodes');
+            console.log('[Store] 保存展开状态:', idsArray.length, '个节点');
         } catch (e) {
-            console.error("Failed to save expansion state to localStorage:", e);
+            console.error("保存展开状态到localStorage失败:", e);
         }
     };
 
@@ -145,17 +153,20 @@ export const useEspansoStore = defineStore('espanso', () => {
             const storedValue = localStorage.getItem(STORAGE_KEY_EXPANDED);
             if (storedValue) {
                 const idsArray = JSON.parse(storedValue) as string[];
-                // Validate IDs to ensure they still exist in the current configTree
+
+                // 验证ID确保它们在当前configTree中存在
+                // 注意：由于节点ID现在是编码后的，我们需要使用编码后的ID进行查找
                 const validIds = idsArray.filter(id => !!findTreeNodeById(state.value.configTree, id));
+
                 state.value.expandedNodeIds = new Set(validIds);
-                console.log('[Store] Loaded expansion state:', state.value.expandedNodeIds.size, 'nodes');
+                console.log('[Store] 加载展开状态:', state.value.expandedNodeIds.size, '个节点');
             } else {
-                state.value.expandedNodeIds = new Set(); // Default to no expanded nodes
-                console.log('[Store] No saved expansion state found.');
+                state.value.expandedNodeIds = new Set(); // 默认不展开任何节点
+                console.log('[Store] 未找到保存的展开状态。');
             }
         } catch (e) {
-            console.error("Failed to load or parse expansion state from localStorage:", e);
-            state.value.expandedNodeIds = new Set(); // Reset on error
+            console.error("从localStorage加载或解析展开状态失败:", e);
+            state.value.expandedNodeIds = new Set(); // 出错时重置
         }
     };
 
@@ -1094,41 +1105,44 @@ export const useEspansoStore = defineStore('espanso', () => {
     // Toggle a node's expansion state
     const toggleNodeExpansion = (nodeId: string) => {
         const currentSet = state.value.expandedNodeIds;
-        if (currentSet.has(nodeId)) {
+        if (isNodeExpanded(nodeId)) {
+            // 如果节点已展开，则折叠它
             currentSet.delete(nodeId);
-            console.log('[Store] Node collapsed:', nodeId);
+            console.log('[Store] 节点已折叠:', nodeId);
         } else {
+            // 如果节点未展开，则展开它
             currentSet.add(nodeId);
-            console.log('[Store] Node expanded:', nodeId);
+            console.log('[Store] 节点已展开:', nodeId);
 
-            // Auto-expand parent nodes to ensure visibility
+            // 自动展开父节点以确保可见性
             const node = findTreeNodeById(state.value.configTree, nodeId);
             if (node) {
-                // Find all parent nodes and expand them
+                // 查找所有父节点并展开它们
                 const parentNode = findParentNodeInTree(state.value.configTree, nodeId);
                 if (parentNode) {
                     state.value.expandedNodeIds.add(parentNode.id);
-                    console.log('[Store] Auto-expanded parent node:', parentNode.id);
+                    console.log('[Store] 自动展开父节点:', parentNode.id);
                 }
             }
         }
 
-        // Update the Set (Vue 3 Set is reactive)
+        // 更新Set（Vue 3中Set是响应式的）
         state.value.expandedNodeIds = new Set(currentSet);
 
-        // Save to localStorage
+        // 保存到localStorage
         _saveExpansionState();
     };
 
     // Expand all nodes
     const expandAllNodes = () => {
-        console.log('[Store] Expanding all nodes...');
+        console.log('[Store] 展开所有节点...');
         const newExpandedIds = new Set<string>();
 
-        // Recursive function to collect all node IDs
+        // 递归函数收集所有节点ID
         const collectNodeIds = (nodes: ConfigTreeNode[]) => {
             nodes.forEach(node => {
                 if (node.type === 'folder' || (node.type === 'file' && node.matches && node.matches.length > 0)) {
+                    // 直接使用原始节点ID
                     newExpandedIds.add(node.id);
                 }
 
@@ -1154,17 +1168,17 @@ export const useEspansoStore = defineStore('espanso', () => {
     const expandParentNodes = (nodeId: string) => {
         const parentIds = new Set<string>();
 
-        // Find all parent nodes recursively
+        // 递归查找所有父节点
         const findParents = (nodes: ConfigTreeNode[], targetId: string, path: string[] = []): boolean => {
             for (const node of nodes) {
                 if (node.id === targetId) {
-                    // Found the target node, add all parents in the path
+                    // 找到目标节点，添加路径中的所有父节点
                     path.forEach(parentId => parentIds.add(parentId));
                     return true;
                 }
 
                 if (node.type === 'folder' && node.children) {
-                    // Check children with this node added to the path
+                    // 将当前节点添加到路径中，检查子节点
                     if (findParents(node.children, targetId, [...path, node.id])) {
                         return true;
                     }
@@ -1175,12 +1189,12 @@ export const useEspansoStore = defineStore('espanso', () => {
 
         findParents(state.value.configTree, nodeId);
 
-        // Add parent IDs to expanded set
+        // 将父节点ID添加到展开集合中
         parentIds.forEach(id => state.value.expandedNodeIds.add(id));
 
-        // Save changes
+        // 保存更改
         if (parentIds.size > 0) {
-            console.log('[Store] Expanded parent nodes:', parentIds.size, 'nodes');
+            console.log('[Store] 已展开父节点:', parentIds.size, '个节点');
             _saveExpansionState();
         }
     };
