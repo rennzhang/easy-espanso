@@ -9,42 +9,23 @@
         <!-- 触发词 -->
         <div class="w-full md:w-1/2 space-y-1.5">
           <div class="flex items-center">
-            <label
-              for="trigger"
-              class="text-sm font-medium text-foreground mr-2"
-              >{{ t("snippets.form.trigger.label") }}</label
-            >
+            <label for="trigger" class="text-sm font-medium text-foreground mr-2">{{ t("snippets.form.trigger.label")
+              }}</label>
             <HelpTip :content="t('snippets.form.trigger.help')" />
           </div>
-          <Textarea
-            id="trigger"
-            v-model="formState.trigger"
-            :placeholder="t('snippets.form.trigger.placeholder')"
-            required
-            rows="2"
-            spellcheck="false"
-            @blur="autoSave"
-          />
+          <Textarea id="trigger" v-model="formState.trigger" :placeholder="t('snippets.form.trigger.placeholder')"
+            required rows="2" spellcheck="false" @blur="autoSave" />
         </div>
 
         <!-- 名称 -->
         <div class="w-full md:w-1/2 space-y-1.5">
           <div class="flex items-center">
-            <label
-              for="label"
-              class="text-sm font-medium text-foreground mr-2"
-              >{{ t("snippets.form.label.label") }}</label
-            >
+            <label for="label" class="text-sm font-medium text-foreground mr-2">{{ t("snippets.form.label.label")
+              }}</label>
             <HelpTip :content="t('snippets.form.label.help')" />
           </div>
-          <Textarea
-            id="label"
-            v-model="formState.label"
-            :placeholder="t('snippets.form.label.placeholder')"
-            rows="2"
-            spellcheck="false"
-            @blur="autoSave"
-          />
+          <Textarea id="label" v-model="formState.label" :placeholder="t('snippets.form.label.placeholder')" rows="2"
+            spellcheck="false" @blur="autoSave" />
         </div>
       </div>
 
@@ -54,27 +35,20 @@
           <div class="flex items-center">
             <label class="text-sm font-medium leading-none mr-2">{{
               t("snippets.form.content.label")
-            }}</label>
+              }}</label>
             <HelpTip :content="t('snippets.form.content.help')" />
           </div>
 
           <Menubar class="flex py-1 cursor-pointer px-1 border rounded-md">
-            <MenubarMenu
-              v-for="option in contentTypeOptions"
-              :key="option.value"
-            >
-              <MenubarTrigger
-                class="rounded-md h-8 px-3 py-1 text-sm duration-150 focus:outline-none"
-                :class="{
-                  'bg-primary text-primary-foreground hover:bg-primary/90':
-                    currentContentType === option.value,
-                  'text-muted-foreground hover:bg-accent hover:text-accent-foreground':
-                    currentContentType !== option.value,
-                  'opacity-50 cursor-not-allowed': option.disabled,
-                }"
-                @click="!option.disabled && setContentType(option.value)"
-                :title="option.disabled ? '此功能正在开发中' : ''"
-              >
+            <MenubarMenu v-for="option in contentTypeOptions" :key="option.value">
+              <MenubarTrigger class="rounded-md h-8 px-3 py-1 text-sm duration-150 focus:outline-none" :class="{
+                'bg-primary text-primary-foreground hover:bg-primary/90':
+                  currentContentType === option.value,
+                'text-muted-foreground hover:bg-accent hover:text-accent-foreground':
+                  currentContentType !== option.value,
+                'opacity-50 cursor-not-allowed': option.disabled,
+              }" @click="!option.disabled && setContentType(option.value)"
+                :title="option.disabled ? '此功能正在开发中' : ''">
                 {{ option.label }}
               </MenubarTrigger>
             </MenubarMenu>
@@ -82,37 +56,23 @@
         </div>
 
         <!-- Editor Container -->
-        <div
-          v-if="currentContentType !== 'image'"
-          class=" shadow-xs border rounded-md overflow-hidden min-h-[300px] focus-within:border-primary focus-within:shadow-xl focus:border-primary focus:shadow-xl duration-150 flex-1 flex flex-col bg-card"
-        >
+        <div v-if="currentContentType !== 'image'"
+          class=" shadow-xs border rounded-md overflow-hidden min-h-[300px] focus-within:border-primary focus-within:shadow-xl focus:border-primary focus:shadow-xl duration-150 flex-1 flex flex-col bg-card">
           <!-- CodeMirror Editor (Replaces all previous textareas) -->
           <div class="h-full max-h-[calc(100%-40px)]">
-            <Codemirror
-              :border="false"
-              :class="{
-                'hidden-line-numbers':
-                  currentContentType !== 'html' &&
-                  currentContentType !== 'markdown',
-              }"
-              v-model:value="formState.content"
-              :options="cmOptions"
-              ref="cmRef"
-              :placeholder="
-                currentContentType === 'form'
+            <Codemirror :border="false" :class="{
+              'hidden-line-numbers':
+                currentContentType !== 'html' &&
+                currentContentType !== 'markdown',
+            }" v-model:value="formState.content" :options="cmOptions" ref="cmRef" :placeholder="currentContentType === 'form'
                   ? '输入表单定义 (YAML 格式)...'
                   : '输入替换内容...'
-              "
-              class="h-full codemirror-theme-enabled"
-              @blur="autoSave"
-            />
+                " class="h-full codemirror-theme-enabled" @blur="autoSave" />
           </div>
 
           <!-- Bottom Toolbar -->
           <TooltipProvider :delay-duration="200">
-            <div
-              class="flex items-center justify-between gap-1 p-1.5 border-t bg-muted/50"
-            >
+            <div class="flex items-center justify-between gap-1 p-1.5 border-t bg-muted/50">
               <div class="flex items-center gap-1">
                 <div class="flex-grow"></div>
                 <!-- Spacer -->
@@ -120,37 +80,27 @@
                 <!-- New Insert Dropdown -->
                 <DropdownMenu>
                   <DropdownMenuTrigger as-child>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      class="h-7 px-2 focus:outline-none"
-                      style="
+                    <Button type="button" variant="ghost" size="sm" class="h-7 px-2 focus:outline-none" style="
                         outline: none !important;
                         box-shadow: none !important;
-                      "
-                    >
+                      ">
                       <span>{{ t("snippets.form.insertButton.title") }}</span>
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem
-                      @click="insertCommonVariable('clipboard')"
-                    >
+                    <DropdownMenuItem @click="insertCommonVariable('clipboard')">
                       <ClipboardIcon class="mr-2 h-4 w-4" />
                       <span>{{
                         t("snippets.form.insertButton.clipboard")
-                      }}</span>
+                        }}</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem
-                      @click="
-                        insertVariable({
-                          id: '$|$',
-                          name: t('snippets.form.variables.cursor'),
-                          description: t('snippets.form.variables.cursor'),
-                        })
-                      "
-                    >
+                    <DropdownMenuItem @click="
+                      insertVariable({
+                        id: '$|$',
+                        name: t('snippets.form.variables.cursor'),
+                        description: t('snippets.form.variables.cursor'),
+                      })
+                      ">
                       <MousePointerClickIcon class="mr-2 h-4 w-4" />
                       <span>{{ t("snippets.form.insertButton.cursor") }}</span>
                     </DropdownMenuItem>
@@ -163,13 +113,10 @@
                       <MoreHorizontalIcon class="mr-2 h-4 w-4" />
                       <span>{{
                         t("snippets.form.insertButton.moreVariables")
+                        }}</span>
+                      <span class="ml-2 text-xs text-warning-foreground italic">{{
+                        t("snippets.form.insertButton.inDevelopment")
                       }}</span>
-                      <span
-                        class="ml-2 text-xs text-warning-foreground italic"
-                        >{{
-                          t("snippets.form.insertButton.inDevelopment")
-                        }}</span
-                      >
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
@@ -180,35 +127,25 @@
                 <div class="flex items-center mr-2">
                   <Label class="text-xs font-medium mr-1">{{
                     t("snippets.form.replacementMode.title")
-                  }}</Label>
+                    }}</Label>
                   <HelpTip :content="t('snippets.form.replacementMode.help')" />
                 </div>
 
                 <!-- Insertion Mode Menubar (Moved Left) -->
-                <Menubar
-                  class="border rounded-none overflow-hidden p-0 shadow-none mr-2"
-                >
-                  <template
-                    v-for="(option, index) in insertionModeOptions"
-                    :key="option.value"
-                  >
+                <Menubar class="border rounded-none overflow-hidden p-0 shadow-none mr-2">
+                  <template v-for="(option, index) in insertionModeOptions" :key="option.value">
                     <MenubarMenu>
-                      <TooltipProvider
-                        v-if="option.value === 'default'"
-                        :delay-duration="100"
-                      >
+                      <TooltipProvider v-if="option.value === 'default'" :delay-duration="100">
                         <Tooltip>
                           <TooltipTrigger as-child>
-                            <MenubarTrigger
-                              @click="setForceMode('')"
+                            <MenubarTrigger @click="setForceMode('')"
                               class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
                               :class="[
                                 { 'border-l': index > 0 },
                                 formState.forceMode === ''
                                   ? 'bg-primary text-primary-foreground'
                                   : 'hover:bg-muted',
-                              ]"
-                            >
+                              ]">
                               {{ option.label }}
                             </MenubarTrigger>
                           </TooltipTrigger>
@@ -219,17 +156,13 @@
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
-                      <MenubarTrigger
-                        v-else
-                        @click="setForceMode(option.value)"
-                        class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer"
-                        :class="[
+                      <MenubarTrigger v-else @click="setForceMode(option.value)"
+                        class="px-2 py-2 text-xs focus:outline-none shadow-none rounded-none cursor-pointer" :class="[
                           { 'border-l': index > 0 },
                           formState.forceMode === option.value
                             ? 'bg-primary text-primary-foreground'
                             : 'hover:bg-muted',
-                        ]"
-                      >
+                        ]">
                         {{ option.label }}
                       </MenubarTrigger>
                     </MenubarMenu>
@@ -241,37 +174,19 @@
         </div>
 
         <!-- Image Upload/Preview - REVISED -->
-        <div
-          v-else-if="currentContentType === 'image'"
+        <div v-else-if="currentContentType === 'image'"
           class="p-4 flex flex-col items-center justify-center border border-dashed rounded-md min-h-[300px] text-muted-foreground hover:border-primary/50 duration-150"
-          @dragover.prevent="handleDragOver"
-          @dragleave.prevent="handleDragLeave"
-          @drop.prevent="handleDrop"
-          :class="{ 'border-primary bg-primary/5': isDragging }"
-          @click="triggerFileInput"
-        >
+          @dragover.prevent="handleDragOver" @dragleave.prevent="handleDragLeave" @drop.prevent="handleDrop"
+          :class="{ 'border-primary bg-primary/5': isDragging }" @click="triggerFileInput">
           <!-- Hidden File Input -->
-          <Input
-            ref="imageInputRef"
-            type="file"
-            accept="image/*"
-            @change="handleImageUpload"
-            class="hidden"
-          />
+          <Input ref="imageInputRef" type="file" accept="image/*" @change="handleImageUpload" class="hidden" />
 
           <!-- State: Image Selected -->
-          <div
-            v-if="formState.content && isImageUrl(formState.content)"
-            class="text-center w-full"
-          >
+          <div v-if="formState.content && isImageUrl(formState.content)" class="text-center w-full">
             <p class="text-sm font-medium mb-2 text-foreground">
               {{ t("snippets.form.imageUpload.currentImage") }}
             </p>
-            <img
-              :src="formState.content"
-              alt="预览"
-              class="max-w-full max-h-[200px] rounded-md mb-3 mx-auto border"
-            />
+            <img :src="formState.content" alt="预览" class="max-w-full max-h-[200px] rounded-md mb-3 mx-auto border" />
             <div class="p-2 bg-muted/50 rounded mb-3 text-sm text-left">
               <p class="font-medium text-foreground text-xs">
                 {{ t("snippets.form.imageUpload.path") }}
@@ -280,13 +195,7 @@
                 {{ formState.content }}
               </p>
             </div>
-            <Button
-              type="button"
-              variant="destructive"
-              size="sm"
-              @click.stop="removeImage"
-              class="h-8 px-3 text-xs"
-            >
+            <Button type="button" variant="destructive" size="sm" @click.stop="removeImage" class="h-8 px-3 text-xs">
               <XIcon class="h-3 w-3 mr-1" />
               {{ t("snippets.form.imageUpload.removeImage") }}
             </Button>
@@ -294,19 +203,12 @@
 
           <!-- State: No Image Selected -->
           <div v-else class="text-center cursor-pointer">
-            <UploadCloudIcon
-              class="h-12 w-12 mx-auto mb-3 text-muted-foreground"
-            />
+            <UploadCloudIcon class="h-12 w-12 mx-auto mb-3 text-muted-foreground" />
             <p class="text-sm font-medium mb-1 text-foreground">
               {{ t("snippets.form.imageUpload.dragHere") }}
             </p>
             <p class="text-xs mb-2">{{ t("snippets.form.imageUpload.or") }}</p>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              class="h-8 px-3 text-xs pointer-events-none"
-            >
+            <Button type="button" variant="outline" size="sm" class="h-8 px-3 text-xs pointer-events-none">
               {{ t("snippets.form.imageUpload.selectFile") }}
             </Button>
             <p class="text-xs mt-2 text-muted-foreground">
@@ -318,34 +220,24 @@
     </div>
 
     <!-- 底部工具栏 (仅在右侧面板) -->
-    <div
-      class="absolute bottom-0 right-0 w-full bg-card border-t shadow-lg z-20 py-2 mt-0"
-    >
+    <div class="absolute bottom-0 right-0 w-full bg-card border-t shadow-lg z-20 py-2 mt-0">
       <div class="flex items-center justify-between px-4 space-x-3">
+        <Button variant="outline" size="sm" @click="showPlaygroundModal = true" class="flex gap-1 items-center">
+          <PlayIcon class="w-4 h-4" />
+          {{ t("snippets.form.playground.title") }}
+        </Button>
         <div class="flex items-center justify-end space-x-2">
-          <!-- Playground 按钮 -->
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            @click="showPlaygroundModal = true"
-            class="h-9 px-3 focus:outline-none"
-          >
-            <PlayIcon class="h-4 w-4 mr-2" />
-            <span>{{ t("snippets.form.playground.title") }}</span>
-          </Button>
-          
+
+
           <!-- 高级设置按钮 -->
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            @click="showAdvancedDialog = true"
-            class="h-9 px-3 focus:outline-none"
-          >
-            <SettingsIcon class="h-4 w-4 mr-2" />
-            <span>{{ t("snippets.form.advancedButton.title") }}</span>
-          </Button>
+          <div class="flex">
+            <Button variant="outline" size="sm" @click="showAdvancedDialog = true" class="flex gap-1 items-center mr-2">
+              <SettingsIcon class="w-4 h-4" />
+              {{ t("snippets.form.advancedButton.title") }}
+            </Button>
+
+
+          </div>
         </div>
       </div>
     </div>
@@ -354,23 +246,12 @@
     <div class="h-14"></div>
 
     <!-- 预览模态框 -->
-    <div
-      v-if="showPreviewModal"
-      class="fixed inset-0 z-50 flex items-center justify-center"
-    >
-      <div
-        class="absolute inset-0 bg-black/50"
-        @click="showPreviewModal = false"
-      ></div>
-      <div
-        class="relative bg-background rounded-none shadow-lg w-full max-w-xl max-h-[80vh] overflow-hidden"
-      >
+    <div v-if="showPreviewModal" class="fixed inset-0 z-50 flex items-center justify-center">
+      <div class="absolute inset-0 bg-black/50" @click="showPreviewModal = false"></div>
+      <div class="relative bg-background rounded-none shadow-lg w-full max-w-xl max-h-[80vh] overflow-hidden">
         <div class="flex items-center justify-between p-4 border-b">
           <h2 class="text-lg font-semibold">预览 "{{ formState.trigger }}"</h2>
-          <button
-            @click="showPreviewModal = false"
-            class="text-muted-foreground hover:text-foreground"
-          >
+          <button @click="showPreviewModal = false" class="text-muted-foreground hover:text-foreground">
             <XIcon class="h-5 w-5" />
           </button>
         </div>
@@ -384,12 +265,8 @@
             </div>
             <!-- 图片预览 -->
             <div class="flex justify-center">
-              <img
-                :src="previewContent"
-                alt="图片预览"
-                class="max-w-full max-h-[400px] object-contain border"
-                @error="onPreviewImageError"
-              />
+              <img :src="previewContent" alt="图片预览" class="max-w-full max-h-[400px] object-contain border"
+                @error="onPreviewImageError" />
             </div>
           </div>
           <!-- 文本类型预览 -->
@@ -412,9 +289,7 @@
           {{ t("snippets.form.advancedDialog.description") }}
         </DialogDescription>
       </DialogHeader>
-      <div
-        class="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto py-4"
-      >
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-8 max-h-[70vh] overflow-y-auto py-4">
         <!-- 左侧列 -->
         <div class="space-y-6">
           <!-- 词边界设置 -->
@@ -427,19 +302,19 @@
             </div>
             <div class="space-y-3 pl-1">
               <div class="flex items-center space-x-2">
-                <Checkbox id="word" v-model="formState.word" />
+                <Checkbox id="word" v-model="formState.word" @change="autoSave" />
                 <label for="word" class="text-sm font-medium leading-none">
                   {{ t("snippets.form.wordBoundary.word") }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
-                <Checkbox id="leftWord" v-model="formState.leftWord" />
+                <Checkbox id="leftWord" v-model="formState.leftWord" @change="autoSave" />
                 <label for="leftWord" class="text-sm font-medium leading-none">
                   {{ t("snippets.form.wordBoundary.leftWord") }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
-                <Checkbox id="rightWord" v-model="formState.rightWord" />
+                <Checkbox id="rightWord" v-model="formState.rightWord" @change="autoSave" />
                 <label for="rightWord" class="text-sm font-medium leading-none">
                   {{ t("snippets.form.wordBoundary.rightWord") }}
                 </label>
@@ -457,40 +332,24 @@
             </div>
             <div class="space-y-3 pl-1">
               <div class="flex items-center space-x-2">
-                <Checkbox
-                  id="propagateCase"
-                  v-model="formState.propagateCase"
-                />
-                <label
-                  for="propagateCase"
-                  class="text-sm font-medium leading-none"
-                >
+                <Checkbox id="propagateCase" v-model="formState.propagateCase" @change="autoSave" />
+                <label for="propagateCase" class="text-sm font-medium leading-none">
                   {{ t("snippets.form.caseHandling.propagateCase") }}
                 </label>
               </div>
               <div class="space-y-1.5">
-                <label
-                  for="uppercaseStyle"
-                  class="text-sm font-medium leading-none"
-                >
+                <label for="uppercaseStyle" class="text-sm font-medium leading-none">
                   {{ t("snippets.form.caseHandling.uppercaseStyle.label") }}
                 </label>
-                <Select v-model="formState.uppercaseStyle">
+                <Select v-model="formState.uppercaseStyle" @update:modelValue="autoSave">
                   <SelectTrigger id="uppercaseStyle" class="h-9">
-                    <SelectValue
-                      :placeholder="
-                        t(
-                          'snippets.form.caseHandling.uppercaseStyle.placeholder'
-                        )
-                      "
-                    />
+                    <SelectValue :placeholder="t(
+                      'snippets.form.caseHandling.uppercaseStyle.placeholder'
+                    )
+                      " />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem
-                      v-for="option in uppercaseStyleOptions"
-                      :key="option.value"
-                      :value="option.value"
-                    >
+                    <SelectItem v-for="option in uppercaseStyleOptions" :key="option.value" :value="option.value">
                       {{ option.label }}
                     </SelectItem>
                   </SelectContent>
@@ -510,48 +369,25 @@
               <!-- 优先级 -->
               <div class="space-y-1.5">
                 <div class="flex items-center">
-                  <label
-                    for="priority"
-                    class="text-sm font-medium leading-none mr-2"
-                  >
+                  <label for="priority" class="text-sm font-medium leading-none mr-2">
                     {{ t("snippets.form.otherSettings.priority.label") }}
                   </label>
-                  <HelpTip
-                    :content="t('snippets.form.otherSettings.priority.help')"
-                  />
+                  <HelpTip :content="t('snippets.form.otherSettings.priority.help')" />
                 </div>
-                <Input
-                  id="priority"
-                  v-model.number="formState.priority"
-                  type="number"
-                  :placeholder="
-                    t('snippets.form.otherSettings.priority.placeholder')
-                  "
-                  class="h-9 px-3 py-2"
-                />
+                <Input id="priority" v-model.number="formState.priority" type="number" :placeholder="t('snippets.form.otherSettings.priority.placeholder')
+                  " class="h-9 px-3 py-2" @blur="autoSave" />
               </div>
 
               <!-- 快捷键 -->
               <div class="space-y-1.5">
                 <div class="flex items-center">
-                  <label
-                    for="hotkey"
-                    class="text-sm font-medium leading-none mr-2"
-                  >
+                  <label for="hotkey" class="text-sm font-medium leading-none mr-2">
                     {{ t("snippets.form.otherSettings.hotkey.label") }}
                   </label>
-                  <HelpTip
-                    :content="t('snippets.form.otherSettings.hotkey.help')"
-                  />
+                  <HelpTip :content="t('snippets.form.otherSettings.hotkey.help')" />
                 </div>
-                <Input
-                  id="hotkey"
-                  v-model="formState.hotkey"
-                  :placeholder="
-                    t('snippets.form.otherSettings.hotkey.placeholder')
-                  "
-                  class="h-9 px-3 py-2"
-                />
+                <Input id="hotkey" v-model="formState.hotkey" :placeholder="t('snippets.form.otherSettings.hotkey.placeholder')
+                  " class="h-9 px-3 py-2" @blur="autoSave" />
               </div>
             </div>
           </div>
@@ -571,25 +407,20 @@
               <label class="text-sm font-medium leading-none">
                 {{ t("snippets.form.searchSettings.searchTerms.label") }}
               </label>
-              <TagInput
-                :modelValue="formState.search_terms || []"
-                @update:modelValue="(val: string[]) => formState.search_terms = val"
-                :placeholder="
-                  t('snippets.form.searchSettings.searchTerms.placeholder')
-                "
-                class="py-1"
-              />
+              <TagInput :modelValue="formState.search_terms || []"
+                @update:modelValue="(val: string[]) => { formState.search_terms = val; autoSave(); }" :placeholder="t('snippets.form.searchSettings.searchTerms.placeholder')
+                  " class="py-1" />
             </div>
           </div>
         </div>
       </div>
       <DialogFooter>
-        <Button
-          type="button"
-          variant="outline"
-          @click="showAdvancedDialog = false"
-        >
+        <Button type="button" variant="outline" @click="showAdvancedDialog = false">
           {{ t("common.close") }}
+        </Button>
+        <Button type="button" variant="default" @click="() => { autoSave(); showAdvancedDialog = false; }">
+          <Save class="w-4 h-4 mr-2" />
+          {{ t("common.save") }}
         </Button>
       </DialogFooter>
     </DialogContent>
@@ -604,45 +435,16 @@
           {{ t("snippets.form.playground.description") }}
         </DialogDescription>
       </DialogHeader>
-      <div class="max-h-[40vh] overflow-y-auto py-4 space-y-4">
-        <!-- 测试区 -->
-        <div class="space-y-2">
-          <Label for="playground-test-area">{{ t("snippets.form.playground.inputLabel") }}</Label>
-          <Textarea 
-            id="playground-test-area" 
-            v-model="playgroundText" 
-            :placeholder="t('snippets.form.playground.inputPlaceholder')"
-            class="min-h-[120px]"
-            @input="processPlaygroundText"
-          ></Textarea>
-        </div>
-        
-        <!-- 测试结果 -->
-        <div class="space-y-2" v-if="playgroundResult">
-          <div class="flex items-center gap-2">
-            <Label>{{ t("snippets.form.playground.resultLabel") }}</Label>
-            <Badge variant="outline" class="font-normal">
-              {{ playgroundMatched ? t("snippets.form.playground.matched") : t("snippets.form.playground.notMatched") }}
-            </Badge>
-          </div>
-          <div class="p-3 border rounded-md bg-muted/10">
-            <p class="whitespace-pre-wrap" v-html="playgroundResult"></p>
-          </div>
-        </div>
-
-        <!-- 当前片段信息 -->
-        <div class="p-3 border rounded-md bg-muted/10">
-          <div class="text-sm space-y-1">
-            <p>
-              <span class="font-medium">{{ t("snippets.form.playground.currentTrigger") }}</span> 
-              <code class="px-1 py-0.5 bg-muted rounded">{{ formState.trigger || t("snippets.noTrigger") }}</code>
-            </p>
-            <p v-if="formState.word">
-              <span class="font-medium">{{ t("snippets.form.playground.wordBoundary") }}</span>
-            </p>
-          </div>
-        </div>
+      <div class="max-h-[40vh] overflow-y-auto p-2">
+        <Textarea id="playground-test-area" v-model="playgroundText"
+          :placeholder="t('snippets.form.playground.inputPlaceholder')" class="min-h-[280px]"
+          @input="processPlaygroundText"></Textarea>
       </div>
+      <DialogFooter>
+        <Button variant="outline" @click="showPlaygroundModal = false">
+          {{ t("common.close") }}
+        </Button>
+      </DialogFooter>
     </DialogContent>
   </Dialog>
 </template>
@@ -694,6 +496,8 @@ import {
   SettingsIcon,
   UploadCloudIcon,
   PlayIcon,
+  Save,
+  CheckIcon,
 } from "lucide-vue-next";
 import type { Match } from "@/types/core/espanso.types";
 import {
@@ -1446,29 +1250,30 @@ const onSubmit = async (): Promise<void> => {
         // <--- 明确包含 contentType
         // Process trigger/triggers
         ...(formState.value.trigger.includes("\n") ||
-        formState.value.trigger.includes(",")
+          formState.value.trigger.includes(",")
           ? {
-              triggers: formState.value.trigger
-                .split(/[\n,]/)
-                .map((t) => t.trim())
-                .filter((t) => t),
-            }
+            triggers: formState.value.trigger
+              .split(/[\n,]/)
+              .map((t) => t.trim())
+              .filter((t) => t),
+          }
           : { trigger: formState.value.trigger.trim() }),
         // Explicitly delete the other trigger field if one exists
         ...(formState.value.trigger.includes("\n") ||
-        formState.value.trigger.includes(",")
+          formState.value.trigger.includes(",")
           ? { trigger: undefined }
           : { triggers: undefined }),
 
         label: formState.value.label || undefined,
-        word: formState.value.word || undefined,
-        left_word: formState.value.leftWord || undefined,
-        right_word: formState.value.rightWord || undefined,
-        propagate_case: formState.value.propagateCase || undefined,
+        // 布尔值需要明确设置，而不是用 || undefined 的方式
+        word: formState.value.word,
+        left_word: formState.value.leftWord,
+        right_word: formState.value.rightWord,
+        propagate_case: formState.value.propagateCase,
         uppercase_style: formState.value.uppercaseStyle || undefined,
         force_mode:
           formState.value.forceMode === "" ||
-          formState.value.forceMode === "default"
+            formState.value.forceMode === "default"
             ? undefined
             : formState.value.forceMode, // Map empty/default back to undefined for saving
         apps:
@@ -1477,12 +1282,12 @@ const onSubmit = async (): Promise<void> => {
             : undefined,
         exclude_apps:
           formState.value.exclude_apps &&
-          formState.value.exclude_apps.length > 0
+            formState.value.exclude_apps.length > 0
             ? formState.value.exclude_apps
             : undefined,
         search_terms:
           formState.value.search_terms &&
-          formState.value.search_terms.length > 0
+            formState.value.search_terms.length > 0
             ? formState.value.search_terms
             : undefined,
         priority: formState.value.priority || undefined,
@@ -1727,25 +1532,28 @@ const getFormData = (): Partial<Match> => {
     // 基本字段
     label: formState.value.label || undefined,
     description: formState.value.description || undefined,
-    word: formState.value.word || undefined,
-    left_word: formState.value.leftWord || undefined,
-    right_word: formState.value.rightWord || undefined,
-    propagate_case: formState.value.propagateCase || undefined,
+    // 布尔值明确设置
+    word: formState.value.word,
+    left_word: formState.value.leftWord,
+    right_word: formState.value.rightWord,
+    propagate_case: formState.value.propagateCase,
+    // 其他选填字段
     uppercase_style: formState.value.uppercaseStyle || undefined,
     force_mode:
       formState.value.forceMode === "" ||
-      formState.value.forceMode === "default"
+        formState.value.forceMode === "default"
         ? undefined
         : formState.value.forceMode,
-    search_terms:
-      formState.value.search_terms && formState.value.search_terms.length > 0
-        ? formState.value.search_terms
-        : undefined,
     priority: formState.value.priority || undefined,
     hotkey: formState.value.hotkey || undefined,
+    search_terms:
+      Array.isArray(formState.value.search_terms) &&
+        formState.value.search_terms.length > 0
+        ? [...formState.value.search_terms]
+        : undefined,
     vars:
-      formState.value.vars && formState.value.vars.length > 0
-        ? formState.value.vars
+      Array.isArray(formState.value.vars) && formState.value.vars.length > 0
+        ? [...formState.value.vars]
         : undefined,
     contentType: currentContentType.value, // 确保包含 contentType
 
@@ -1827,9 +1635,15 @@ const autoSave = async () => {
     saveState.value = "idle";
 
     try {
+      // 输出词边界设置的当前值，用于调试
+      console.log(`[RuleEditForm] 保存前的词边界设置 - word: ${formState.value.word}, leftWord: ${formState.value.leftWord}, rightWord: ${formState.value.rightWord}`);
+
       await onSubmit();
       saveState.value = "success";
       toast.success(t("snippets.form.autoSave.success"));
+
+      // 确认是否成功保存词边界设置
+      console.log(`[RuleEditForm] 保存后词边界设置确认 - word: ${formState.value.word}, leftWord: ${formState.value.leftWord}, rightWord: ${formState.value.rightWord}`);
 
       // 确保修改状态被重置
       isFormModified.value = false;
@@ -2048,67 +1862,70 @@ const processPlaygroundText = () => {
   const text = playgroundText.value;
   // 获取触发词 - 可能是单个触发词或多个触发词（用逗号或换行符分隔）
   const rawTrigger = formState.value.trigger;
-  
+
   if (!rawTrigger || !text) {
     playgroundResult.value = "";
     playgroundMatched.value = false;
     return;
   }
-  
+
   // 解析所有可能的触发词
   const triggers = rawTrigger
     .split(/[,\n]/)
     .map(t => t.trim())
     .filter(t => t.length > 0);
-  
+
   // 如果没有有效的触发词，直接返回
   if (triggers.length === 0) {
-    playgroundResult.value = t("snippets.form.playground.noTrigger");
+    playgroundResult.value = "";
     playgroundMatched.value = false;
     return;
   }
-  
+
   // 检查是否匹配任何触发词
   let result = text;
   let matched = false;
   let matchedTrigger = "";
-  
+
   // 遍历所有触发词，检查是否匹配
   for (const trigger of triggers) {
     // 根据词边界设置创建正则表达式
-    let pattern = trigger;
-    if (formState.value.word) {
-      pattern = `\\b${escapeRegExp(trigger)}\\b`;
-    } else {
-      // 如果只启用左词边界或右词边界
-      if (formState.value.leftWord) {
-        pattern = `\\b${escapeRegExp(trigger)}`;
-      } 
-      if (formState.value.rightWord) {
-        pattern = `${escapeRegExp(trigger)}\\b`;
-      }
+    let pattern = escapeRegExp(trigger);
+
+    const wordBoundaryLeft = formState.value.word || formState.value.leftWord;
+    const wordBoundaryRight = formState.value.word || formState.value.rightWord;
+
+    // 添加适当的词边界标记
+    if (wordBoundaryLeft) {
+      pattern = `\\b${pattern}`;
     }
-    
+    if (wordBoundaryRight) {
+      pattern = `${pattern}\\b`;
+    }
+
     const regex = new RegExp(pattern, "g");
-    
+
     // 检查是否匹配
     if (regex.test(text)) {
       matched = true;
       matchedTrigger = trigger;
-      
+
+      // 重置正则表达式以便替换
+      const replaceRegex = new RegExp(pattern, "g");
+
       // 模拟替换效果
       const replacement = formState.value.content || "替换内容";
-      result = text.replace(regex, `<span class="bg-primary/20 px-1 rounded">${replacement}</span>`);
+      result = text.replace(replaceRegex, `<span class="bg-primary/20 px-1 rounded">${replacement}</span>`);
       break;
     }
   }
-  
+
   // 更新结果
   playgroundMatched.value = matched;
   if (matched) {
     playgroundResult.value = result;
   } else {
-    playgroundResult.value = `<span class="text-muted-foreground">${t("snippets.form.playground.noMatch")} ${triggers.join(", ")}</span>`;
+    playgroundResult.value = "";
   }
 };
 
@@ -2124,6 +1941,7 @@ const escapeRegExp = (string: string): string => {
 .codemirror-container .CodeMirror-gutters {
   display: none !important;
 }
+
 /* .codemirror-container.hidden-line-numbers .CodeMirror-sizer {
   margin-left: 0 !important;
 } */
@@ -2131,9 +1949,12 @@ const escapeRegExp = (string: string): string => {
 /* 使光标在失焦状态下也可见并闪烁 */
 .CodeMirror {
   /* 设置字体大小为14px */
-  font-size: 14px !important; /* 圆角边框 */
-  height: 100% !important; /* 确保编辑器占满父容器 */
+  font-size: 14px !important;
+  /* 圆角边框 */
+  height: 100% !important;
+  /* 确保编辑器占满父容器 */
 }
+
 .CodeMirror-cursors {
   visibility: visible !important;
 }
@@ -2141,17 +1962,17 @@ const escapeRegExp = (string: string): string => {
 .CodeMirror-cursor {
   /* Use an animation independent of focus state */
   animation: codemirror-blink 1.06s steps(1) infinite !important;
-  border-left-color: rgba(
-    255,
-    255,
-    255,
-    0.7
-  ) !important; /* 使用亮色光标适配暗色主题 */
+  border-left-color: rgba(255,
+      255,
+      255,
+      0.7) !important;
+  /* 使用亮色光标适配暗色主题 */
 }
 
 /* 适配深色/浅色主题的光标颜色 */
 .light-theme .CodeMirror-cursor {
-  border-left-color: rgba(0, 0, 0, 0.7) !important; /* 浅色主题下使用深色光标 */
+  border-left-color: rgba(0, 0, 0, 0.7) !important;
+  /* 浅色主题下使用深色光标 */
 }
 
 /* Define the blink animation if not already defined elsewhere */
@@ -2159,21 +1980,26 @@ const escapeRegExp = (string: string): string => {
   0% {
     opacity: 1;
   }
+
   50% {
     opacity: 0;
   }
+
   100% {
     opacity: 1;
   }
 }
+
 .CodeMirror-scroll {
   padding: 4px;
 }
 
 /* 确保背景和边框在暗色主题下更协调 */
 .dark .codemirror-container .CodeMirror {
-  background-color: hsl(var(--card)) !important; /* 使用卡片背景色 */
-  border-color: hsl(var(--border)) !important; /* 使用边框颜色 */
+  background-color: hsl(var(--card)) !important;
+  /* 使用卡片背景色 */
+  border-color: hsl(var(--border)) !important;
+  /* 使用边框颜色 */
 }
 
 /* 调整滚动条样式 */
@@ -2220,6 +2046,7 @@ const escapeRegExp = (string: string): string => {
 .CodeMirror-selected {
   background-color: hsla(var(--primary) / 0.1) !important;
 }
+
 .dark .CodeMirror-selected {
   background-color: hsla(var(--primary) / 0.25) !important;
 }

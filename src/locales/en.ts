@@ -158,16 +158,16 @@ export default {
       },
       "playground": {
         "title": "Playground",
-        "description": "Test your snippet triggers and replacement content here",
-        "inputLabel": "Enter test content (including trigger):",
-        "inputPlaceholder": "Type text here, including your trigger, e.g.: I want to test :hello trigger",
+        "description": "Test your snippet triggers and replacements here",
+        "inputLabel": "Input test content (containing trigger):",
+        "inputPlaceholder": "Input test content",
         "resultLabel": "Result:",
-        "matched": "Triggered",
-        "notMatched": "Not Triggered",
+        "matched": "Matched",
+        "notMatched": "Not Matched",
         "noTrigger": "Please set a valid trigger first",
-        "noMatch": "No triggers matched. Current valid triggers:",
+        "noMatch": "No trigger matched. Current triggers:",
         "currentTrigger": "Current trigger:",
-        "wordBoundary": "Word boundary: Enabled"
+        "wordBoundary": "Word Boundary: Enabled"
       },
       "autoSave": {
         "success": "Auto-save successful!",

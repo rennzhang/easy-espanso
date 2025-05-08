@@ -139,6 +139,14 @@ export const processMatch = (
  * @returns 清理后的、适合写入 YAML 的对象。
  */
 export const cleanMatchForSaving = (match: Match): EspansoMatchYaml => {
+    // 添加调试日志
+    console.log("[cleanMatchForSaving] 输入对象的词边界设置:", {
+        word: match.word,
+        left_word: match.left_word,
+        right_word: match.right_word,
+        propagate_case: match.propagate_case
+    });
+    
     // 显式复制需要保存的字段
     const cleaned: EspansoMatchYaml = {
         // Trigger/Triggers (优先 triggers)
@@ -155,25 +163,55 @@ export const cleanMatchForSaving = (match: Match): EspansoMatchYaml => {
         // 可选字段 (仅当它们有非默认值或非空时才包含)
         ...(match.label ? { label: match.label } : {}),
         ...(match.description ? { description: match.description } : {}),
-        ...(match.word === true ? { word: true } : {}), // 只在为 true 时写入
-        ...(match.left_word === true ? { left_word: true } : {}),
-        ...(match.right_word === true ? { right_word: true } : {}),
-        ...(match.propagate_case === true ? { propagate_case: true } : {}),
-        ...(match.uppercase_style ? { uppercase_style: match.uppercase_style } : {}), // 如果存在则写入
-        ...(match.force_mode && match.force_mode !== 'default' ? { force_mode: match.force_mode } : {}), // 仅写入非默认值
-        ...(match.apps && match.apps.length > 0 ? { apps: match.apps } : {}), // 仅写入非空数组
-        ...(match.exclude_apps && match.exclude_apps.length > 0 ? { exclude_apps: match.exclude_apps } : {}),
-        ...(match.vars && match.vars.length > 0 ? { vars: match.vars } : {}),
-        ...(match.search_terms && match.search_terms.length > 0 ? { search_terms: match.search_terms } : {}),
-        ...(match.priority !== undefined && match.priority !== 0 ? { priority: match.priority } : {}), // 仅写入非零优先级
-        ...(match.hotkey ? { hotkey: match.hotkey } : {}),
-        // lineNumber 是内部字段，不保存
+        
+        // 对布尔值设置，明确保存（无论是 true 还是 false）
+        word: match.word ?? false,
+        left_word: match.left_word ?? false,
+        right_word: match.right_word ?? false,
+        propagate_case: match.propagate_case ?? false,
     };
+    
+    // 单独处理类型复杂的字段
+    if (match.uppercase_style && ["", "uppercase", "capitalize", "capitalize_words"].includes(match.uppercase_style)) {
+        cleaned.uppercase_style = match.uppercase_style as "" | "uppercase" | "capitalize" | "capitalize_words";
+    }
+    
+    if (match.force_mode && match.force_mode !== 'default') {
+        cleaned.force_mode = match.force_mode;
+    }
+    
+    if (match.apps && Array.isArray(match.apps) && match.apps.length > 0) {
+        cleaned.apps = match.apps;
+    }
+    
+    if (match.exclude_apps && Array.isArray(match.exclude_apps) && match.exclude_apps.length > 0) {
+        cleaned.exclude_apps = match.exclude_apps;
+    }
+    
+    if (match.vars && Array.isArray(match.vars) && match.vars.length > 0) {
+        // 验证每个 var 项都有 name 属性
+        const validVars = match.vars.filter(v => v && typeof v === 'object' && 'name' in v);
+        if (validVars.length > 0) {
+            cleaned.vars = validVars as { name: string; params?: Record<string, any> }[];
+        }
+    }
+    
+    if (match.search_terms && Array.isArray(match.search_terms) && match.search_terms.length > 0) {
+        cleaned.search_terms = match.search_terms;
+    }
+    
+    if (match.priority !== undefined && match.priority !== 0) {
+        cleaned.priority = match.priority;
+    }
+    
+    if (match.hotkey) {
+        cleaned.hotkey = match.hotkey;
+    }
 
-     // 特殊处理：如果 replace, markdown, html, image_path 都没有定义，但 content 有值，则写入 replace
-     if (cleaned.replace === undefined && cleaned.markdown === undefined && cleaned.html === undefined && cleaned.image_path === undefined && match.content !== undefined) {
-         cleaned.replace = String(match.content); // 将 content 转为字符串写入 replace
-     }
+    // 特殊处理：如果 replace, markdown, html, image_path 都没有定义，但 content 有值，则写入 replace
+    if (cleaned.replace === undefined && cleaned.markdown === undefined && cleaned.html === undefined && cleaned.image_path === undefined && match.content !== undefined) {
+        cleaned.replace = String(match.content); // 将 content 转为字符串写入 replace
+    }
 
     return cleaned;
 };
