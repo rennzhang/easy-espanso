@@ -617,13 +617,14 @@ export const useEspansoStore = defineStore('espanso', () => {
 
             // 7. 选中新创建的项
             selectItem(newItem.id, newItem.type);
-
+            
             _setStatus(`已添加: ${(newItem.trigger || newItem.label || '新片段')}`);
             setTimeout(() => { if (state.value.statusMessage === `已添加: ${(newItem.trigger || newItem.label || '新片段')}`) _setStatus(null); }, 2000);
-
+            return newItem;
         } catch (err: any) {
             console.error(`[addItem] Error adding ${itemType}:`, err);
             _setError(`添加失败: ${err.message}`);
+            return null;
         }
     };
 
