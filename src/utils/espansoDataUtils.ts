@@ -236,6 +236,7 @@ export const processMatch = (
  * @returns 清理后的、适合写入 YAML 的对象。
  */
 export const cleanMatchForSaving = (match: Match): EspansoMatchYaml => {
+
     const cleaned: EspansoMatchYaml = {};
 
     // Trigger/Triggers (优先 triggers)
@@ -254,25 +255,27 @@ export const cleanMatchForSaving = (match: Match): EspansoMatchYaml => {
             // 避免将 content (可能是 'complex_form_definition' 或 YAML 字符串) 错误地写入 replace
             break;
         case 'markdown':
-            cleaned.markdown = match.content; // Content is king for internal representation
+            cleaned.markdown = match.content ?? match.markdown ?? ''; // Prefer content if available
             break;
         case 'html':
-            cleaned.html = match.content;
+            cleaned.html = match.content ?? match.html ?? ''; // Prefer content if available
             break;
         case 'image':
-            cleaned.image_path = match.content;
+            cleaned.image_path = match.content ?? match.image_path ?? ''; // Prefer content if available
             break;
-        case 'plain':
-        default:
+        case 'plain': // Explicitly handle plain
+        default:      // Handles undefined contentType (like new snippets)
             // 对于 'plain' 或未指定类型，优先使用 match.replace，然后是 match.content
-            cleaned.replace = match.content;
+            cleaned.replace = match.replace ?? ''; // Use match.replace! Provide fallback ''
             break;
     }
     // Clean up other specific content fields if contentType doesn't match them
     if (match.contentType !== 'markdown') delete cleaned.markdown; // if we wrote via match.content to replace, etc.
     if (match.contentType !== 'html') delete cleaned.html;
     if (match.contentType !== 'image') delete cleaned.image_path;
-    if (match.contentType !== 'plain' && match.contentType !== 'form') delete cleaned.replace;
+    if (match.contentType && match.contentType !== 'plain') { 
+        delete cleaned.replace;
+    }
     if (match.contentType !== 'form' && match.form) delete cleaned.form; // if somehow form exists but type is not form
 
 

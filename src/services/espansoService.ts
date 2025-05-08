@@ -361,13 +361,12 @@ export const saveConfigurationFile = async (
         // 序列化
         console.log(`[EspansoService] 开始序列化YAML...`);
         
-        // 如果没有数据，直接写入空文件
-        const yamlContent = Object.keys(saveData).length === 0
-            ? '' // 如果没有键，则写入空文件
-            : await yamlService.serializeYaml(dataToSerialize);
+        // 序列化最终的 saveData 对象为 YAML 字符串
+        const yamlString = await yamlService.serializeYaml(dataToSerialize);
+        console.log(`[EspansoService] YAML 序列化完成，准备写入文件: ${filePath}`);
 
-        console.log(`[EspansoService] 序列化成功，长度: ${yamlContent.length}，写入文件: ${filePath}`);
-        await platformService.writeFile(filePath, yamlContent);
+        // 写入文件
+        await platformService.writeFile(filePath, yamlString);
         console.log(`[EspansoService] 文件保存成功: ${filePath}`);
     } catch (err: any) {
         console.error(`[EspansoService] 保存文件 ${filePath} 失败: ${err.message}`, err);

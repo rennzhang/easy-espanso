@@ -34,15 +34,10 @@
               '--node-level': nodeLevel,
             }"
           >
-            <!-- 添加左侧空白区域点击处理 -->
-            <div
-              class="absolute left-0 h-full"
-              :style="{ width: nodeLevel * 12 + 'px' }"
-              @click.stop="toggleFolder"
-            ></div>
+
 
             <span
-              class="mr-1 ml-4 text-muted-foreground cursor-pointer"
+              class="mr-1 ml-3 text-muted-foreground cursor-pointer"
               :class="{ 'text-primary-gradient-text': isSelected }"
               @click.stop="toggleFolder"
             >
@@ -118,18 +113,17 @@
               'hover:bg-accent hover:text-accent-foreground bg-card': !isSelected,
             }"
             :style="{
-              paddingLeft: nodeLevel * 12 + 8 + 'px',
               '--node-level': nodeLevel,
             }"
           >
-            <!-- 添加左侧空白区域点击处理 -->
-            <div
-              class="absolute left-0 h-full"
-              :style="{ width: nodeLevel * 12 + 'px' }"
-              @click.stop="toggleParentFolder"
-            ></div>
 
-            <span class="w-4 inline-block"></span>
+
+            <span class="inline-block"
+            :style="{
+              width: nodeLevel * 20 + 16 + 'px',
+              '--node-level': nodeLevel,
+            }"
+            ></span>
             <!-- Indent space -->
             <ZapIcon
               :class="[
