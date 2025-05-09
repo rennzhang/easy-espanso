@@ -145,68 +145,73 @@
           </div>
 
           <!-- 列表视图 -->
-          <div v-else class="p-0">
-            <Card
-              v-for="item in filteredItems"
-              :key="item.id"
-              :class="{
-                'bg-primary-gradient text-primary-gradient-text':
-                  selectedItemId === item.id,
-              }"
-              class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md rounded-none mb-2"
+          <div v-else class="p-3">
+            <div 
+              v-for="item in filteredItems" 
+              :key="item.id" 
+              :class="[
+                'group cursor-pointer border-l-2 rounded-md mb-2.5 transition-all bg-card shadow-xs border border-border/30',
+                selectedItemId === item.id 
+                  ? 'border-l-primary shadow-sm bg-accent/10 border-primary/20' 
+                  : 'border-l-transparent hover:border-l-primary/40 hover:shadow-sm hover:bg-accent/5 hover:border-border/60'
+              ]"
               @click="selectItem(item.id, item.type)"
             >
-              <CardContent class="p-4 flex items-start gap-2">
-                <div class="flex-1">
-                  <div v-if="item.type === 'match'">
-                    <div class="flex justify-between items-start">
-                      <span class="font-semibold text-foreground">
-                        <HighlightText
-                          v-if="searchQuery.trim()"
-                          :text="(item as Match).trigger || ''"
-                          :searchQuery="searchQuery.trim()"
-                        />
-                        <template v-else>{{ (item as Match).trigger }}</template>
-                      </span>
-                      <div
-                        class="flex flex-wrap gap-1"
-                        v-if="(item as Match).tags && ((item as Match)?.tags?.length||0) > 0"
-                      >
-                        <Badge
-                          v-for="tag in (item as Match).tags"
-                          :key="tag"
-                          @click.stop="addTagFilter(tag)"
+              <div class="py-2.5 px-3">
+                <div class="flex items-center gap-2">
+                  <!-- 触发词和标签 -->
+                  <div class="flex-1 min-w-0">
+                    <div v-if="item.type === 'match'" class="flex flex-col gap-1">
+                      <!-- 触发词和标签 -->
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="text-sm font-medium" :class="selectedItemId === item.id ? 'text-primary' : 'text-foreground'">
+                          <HighlightText
+                            v-if="searchQuery.trim()"
+                            :text="(item as Match).trigger || ''"
+                            :searchQuery="searchQuery.trim()"
+                          />
+                          <template v-else>{{ (item as Match).trigger }}</template>
+                        </h3>
+                        
+                        <div 
+                          v-if="(item as Match).label"
+                          class="text-xs px-1.5 rounded truncate max-w-[120px]"
+                          :class="selectedItemId === item.id 
+                            ? 'bg-primary/10 text-primary' 
+                            : 'bg-muted text-muted-foreground'"
                         >
-                          {{ tag }}
-                        </Badge>
+                          {{ (item as Match).label }}
+                        </div>
+                      </div>
+                      
+                      <!-- 简短描述或内容预览 -->
+                      <div
+                        class="text-xs"
+                        :class="selectedItemId === item.id ? 'text-foreground/90' : 'text-muted-foreground'"
+                      >
+                        {{ (item as Match).description || getContentPreview(item as Match) }}
                       </div>
                     </div>
-                    <div
-                      class="text-sm text-muted-foreground my-1 whitespace-pre-line"
+                  </div>
+                  
+                  <!-- 右侧标签 -->
+                  <div 
+                    class="flex gap-1 flex-wrap justify-end flex-shrink-0"
+                    v-if="(item as Match).tags && ((item as Match)?.tags?.length||0) > 0"
+                  >
+                    <Badge
+                      v-for="tag in (item as Match).tags"
+                      :key="tag"
+                      variant="outline"
+                      class="text-xs border-0 bg-muted/50 px-1.5 py-0 whitespace-nowrap"
+                      @click.stop="addTagFilter(tag)"
                     >
-                      <HighlightText
-                        v-if="searchQuery.trim()"
-                        :text="getContentPreview(item as Match)"
-                        :searchQuery="searchQuery.trim()"
-                      />
-                      <template v-else>{{
-                        getContentPreview(item as Match)
-                      }}</template>
-                    </div>
-                    <div
-                      class="flex justify-between text-xs text-muted-foreground mt-1"
-                    >
-                      <Badge variant="outline" class="bg-muted">{{
-                        getContentTypeLabel((item as Match).contentType)
-                      }}</Badge>
-                      <span v-if="(item as Match).updatedAt">{{
-                        formatDate((item as Match).updatedAt!)
-                      }}</span>
-                    </div>
+                      {{ tag }}
+                    </Badge>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -231,6 +236,8 @@ import {
   XIcon,
   ListIcon,
   FolderTreeIcon,
+  ZapIcon,
+  ClockIcon,
 } from "lucide-vue-next";
 import { Match } from "@/types/core/espanso.types";
 import { useI18n } from 'vue-i18n';
@@ -402,9 +409,18 @@ const filteredItems = computed(() => {
   // Handle no query/tags case
   if (!query && tags.length === 0) {
     allItems.sort((a, b) => {
+      // 首先按日期排序（最新的在前）
       const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
       const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-      return dateB - dateA; // Newest first
+      
+      if (dateA !== dateB) {
+        return dateB - dateA; // 最新的在前
+      }
+      
+      // 仅当日期相同时才考虑guiOrder
+      const orderA = a.guiOrder ?? Infinity;
+      const orderB = b.guiOrder ?? Infinity;
+      return orderA - orderB;
     });
     return allItems;
   }
@@ -465,19 +481,20 @@ const filteredItems = computed(() => {
   // 4. Convert Map back to Array and Sort
   let finalItems = Array.from(finalItemMap.values());
 
-  // Sort: guiOrder first, then date
+  // 修改排序优先级：始终优先按修改日期排序（最新的在前）
   finalItems.sort((a, b) => {
-    const orderA = a.guiOrder ?? Infinity; // Treat undefined as lowest order
-    const orderB = b.guiOrder ?? Infinity;
-
-    if (orderA !== orderB) {
-      return orderA - orderB; // Lower guiOrder number comes first
-    }
-
-    // If guiOrders are the same or both undefined, sort by date
+    // 首先按日期排序（最新的在前）
     const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
     const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-    return dateB - dateA; // Newest date first
+    
+    if (dateA !== dateB) {
+      return dateB - dateA; // 最新的在前
+    }
+    
+    // 仅当日期相同时才考虑guiOrder
+    const orderA = a.guiOrder ?? Infinity;
+    const orderB = b.guiOrder ?? Infinity;
+    return orderA - orderB;
   });
 
   return finalItems;
@@ -525,6 +542,22 @@ const formatDate = (dateString: string) => {
     month: "2-digit",
     day: "2-digit",
   });
+};
+
+// 获取简化的文件路径显示
+const getFilePathDisplay = (filePath?: string) => {
+  if (!filePath) return '';
+  
+  // 从路径中提取文件名
+  const parts = filePath.split('/');
+  const fileName = parts[parts.length - 1];
+  
+  // 如果路径很长，显示简化版本
+  if (parts.length > 2) {
+    return `${parts[0]}/.../${fileName}`;
+  }
+  
+  return filePath;
 };
 
 // 选择项目 (列表视图点击)
