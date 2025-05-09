@@ -87,7 +87,7 @@
               />
               <template v-else>{{ displayName }}</template>
             </span>
-            <span
+            <!-- <span
               v-if="visibleChildCount > 0 && shouldShowCount"
               class="mx-2 text-xs px-1.5 py-0.5 rounded-full"
               :class="
@@ -97,7 +97,7 @@
               "
             >
               {{ visibleChildCount }}
-            </span>
+            </span> -->
           </div>
         </div>
       </div>
@@ -144,7 +144,8 @@
               class="ml-auto flex-1 text-right"
             >
               <span
-                class="text-xs text-muted-foreground truncate max-w-[200px] inline-block"
+                class="text-xs truncate max-w-[200px] inline-block"
+                :class="{ 'text-white/80': isSelected, 'text-muted-foreground': !isSelected }"
                 :title="node.match.description"
               >
                 <HighlightText
@@ -154,6 +155,27 @@
                 />
                 <template v-else>{{ node.match.description }}</template>
               </span>
+            </div>
+            <div
+              v-if="node.match?.label"
+              class="mr-2 flex-shrink-0"
+            >
+              <div
+                class="text-xs px-1.5 min-w-[20px] h-[18px] overflow-hidden whitespace-nowrap text-ellipsis max-w-[120px]"
+                :class="{ 
+                  'bg-white/15 text-white border-white/10 border': isSelected,
+                  'bg-accent/50 text-muted-foreground border-0': !isSelected
+                }"
+                style="border-radius: 4px;"
+                :title="node.match.label"
+              >
+                <HighlightText
+                  v-if="searchQuery"
+                  :text="node.match.label"
+                  :searchQuery="selfMatchesSearch ? searchQuery : ''"
+                />
+                <template v-else>{{ node.match.label }}</template>
+              </div>
             </div>
           </div>
         </div>
