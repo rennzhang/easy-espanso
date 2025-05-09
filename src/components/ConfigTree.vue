@@ -591,8 +591,8 @@ const createNewSnippet = async () => {
   // 创建新片段数据
   const newMatchData = {
     trigger: ':new',
-    replace: t('snippets.form.content.placeholder.plain'),
-    label: t('snippets.form.label.placeholder'),
+    replace: "",
+    label: "",
   };
 
   try {

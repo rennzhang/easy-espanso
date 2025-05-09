@@ -528,6 +528,8 @@ import "codemirror/mode/yaml/yaml.js";
 import "codemirror/lib/codemirror.css"; // Base CSS
 import "codemirror/theme/dracula.css"; // 添加dracula主题
 import "codemirror/theme/elegant.css"; // 浅色主题
+// placeholder
+import "codemirror/addon/display/placeholder.js";
 import { Editor } from "codemirror";
 // Optional: Add a theme CSS
 // import 'codemirror/theme/material-darker.css';
@@ -1935,6 +1937,13 @@ const escapeRegExp = (string: string): string => {
 };
 </script>
 <style>
+/* 占位符样式 */
+.CodeMirror-placeholder {
+  color: rgba(128, 128, 128, 0.6) !important;
+  padding-left: 10px !important;
+}
+
+
 /* .codemirror-container.hidden-line-numbers .CodeMirror-gutters {
   display: none !important;
 } */
