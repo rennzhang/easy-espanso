@@ -412,13 +412,6 @@ const handleRootSortEnd = (event: Sortable.SortableEvent) => {
   }
 };
 
-// 监听选中ID的变化
-watch(() => props.selectedId, (newId) => {
-  if (newId) {
-    // 可以在这里实现自动展开到选中项的逻辑
-  }
-});
-
 // 在组件挂载后输出树结构并设置键盘事件监听
 onMounted(() => {
   // console.log('ConfigTree组件挂载完成');

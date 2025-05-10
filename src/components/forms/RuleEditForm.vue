@@ -293,29 +293,29 @@
         <!-- 左侧列 -->
         <div class="space-y-6">
           <!-- 词边界设置 -->
-          <div class="space-y-3">
+          <div class="space-y-3 bg-muted/10 p-4 rounded-lg border">
             <div class="flex items-center">
               <h3 class="text-base font-medium mr-2">
                 {{ t("snippets.form.wordBoundary.title") }}
               </h3>
               <HelpTip :content="t('snippets.form.wordBoundary.help')" />
             </div>
-            <div class="space-y-3 pl-1">
+            <div class="grid grid-cols-1 gap-2.5">
               <div class="flex items-center space-x-2">
                 <Checkbox id="word" v-model="formState.word" @change="autoSave" />
-                <label for="word" class="text-sm font-medium leading-none">
+                <label for="word" class="text-sm font-medium leading-none cursor-pointer">
                   {{ t("snippets.form.wordBoundary.word") }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
                 <Checkbox id="leftWord" v-model="formState.leftWord" @change="autoSave" />
-                <label for="leftWord" class="text-sm font-medium leading-none">
+                <label for="leftWord" class="text-sm font-medium leading-none cursor-pointer">
                   {{ t("snippets.form.wordBoundary.leftWord") }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
                 <Checkbox id="rightWord" v-model="formState.rightWord" @change="autoSave" />
-                <label for="rightWord" class="text-sm font-medium leading-none">
+                <label for="rightWord" class="text-sm font-medium leading-none cursor-pointer">
                   {{ t("snippets.form.wordBoundary.rightWord") }}
                 </label>
               </div>
@@ -323,21 +323,21 @@
           </div>
 
           <!-- 大小写处理 -->
-          <div class="space-y-3">
+          <div class="space-y-3 bg-muted/10 p-4 rounded-lg border">
             <div class="flex items-center">
               <h3 class="text-base font-medium mr-2">
                 {{ t("snippets.form.caseHandling.title") }}
               </h3>
               <HelpTip :content="t('snippets.form.caseHandling.help')" />
             </div>
-            <div class="space-y-3 pl-1">
+            <div class="space-y-4">
               <div class="flex items-center space-x-2">
                 <Checkbox id="propagateCase" v-model="formState.propagateCase" @change="autoSave" />
-                <label for="propagateCase" class="text-sm font-medium leading-none">
+                <label for="propagateCase" class="text-sm font-medium leading-none cursor-pointer">
                   {{ t("snippets.form.caseHandling.propagateCase") }}
                 </label>
               </div>
-              <div class="space-y-1.5">
+              <div class="space-y-1.5 pt-1 border-t border-border/30">
                 <label for="uppercaseStyle" class="text-sm font-medium leading-none">
                   {{ t("snippets.form.caseHandling.uppercaseStyle.label") }}
                 </label>
@@ -359,13 +359,13 @@
           </div>
 
           <!-- 其他设置 -->
-          <div class="space-y-3">
+          <div class="space-y-3 bg-muted/10 p-4 rounded-lg border">
             <div class="flex items-center">
               <h3 class="text-base font-medium mr-2">
                 {{ t("snippets.form.otherSettings.title") }}
               </h3>
             </div>
-            <div class="grid grid-cols-1 gap-4 pl-1">
+            <div class="grid grid-cols-1 gap-4">
               <!-- 优先级 -->
               <div class="space-y-1.5">
                 <div class="flex items-center">
@@ -379,7 +379,7 @@
               </div>
 
               <!-- 快捷键 -->
-              <div class="space-y-1.5">
+              <div class="space-y-1.5 pt-2 border-t border-border/30">
                 <div class="flex items-center">
                   <label for="hotkey" class="text-sm font-medium leading-none mr-2">
                     {{ t("snippets.form.otherSettings.hotkey.label") }}
@@ -396,14 +396,14 @@
         <!-- 右侧列 -->
         <div class="space-y-6">
           <!-- 搜索设置 -->
-          <div class="space-y-3">
+          <div class="space-y-3 bg-muted/10 p-4 rounded-lg border">
             <div class="flex items-center">
               <h3 class="text-base font-medium mr-2">
                 {{ t("snippets.form.searchSettings.title") }}
               </h3>
               <HelpTip :content="t('snippets.form.searchSettings.help')" />
             </div>
-            <div class="space-y-1.5 pl-1">
+            <div class="space-y-1.5">
               <label class="text-sm font-medium leading-none">
                 {{ t("snippets.form.searchSettings.searchTerms.label") }}
               </label>
@@ -412,9 +412,31 @@
                   " class="py-1" />
             </div>
           </div>
+          
+          <!-- 标签设置 -->
+          <div v-if="'tags' in formState" class="space-y-3 bg-muted/10 p-4 rounded-lg border">
+            <div class="flex items-center">
+              <h3 class="text-base font-medium mr-2">
+                {{ t("snippets.form.tags.title") || "标签" }}
+              </h3>
+              <HelpTip :content="t('snippets.form.tags.help') || '为此片段添加标签，以便于搜索和分类'" />
+            </div>
+            <div class="space-y-1.5">
+              <TagInput 
+                :modelValue="formState.tags || []"
+                @update:modelValue="(val: string[]) => { 
+                  // @ts-ignore - 忽略类型检查，因为tags字段可能在运行时存在
+                  formState.tags = val; 
+                  autoSave(); 
+                }" 
+                :placeholder="t('snippets.form.tags.placeholder') || '添加标签...'" 
+                class="py-1" 
+              />
+            </div>
+          </div>
         </div>
       </div>
-      <DialogFooter>
+      <DialogFooter class="gap-2 px-4 py-3 bg-muted/30 border-t">
         <Button type="button" variant="outline" @click="showAdvancedDialog = false">
           {{ t("common.close") }}
         </Button>
