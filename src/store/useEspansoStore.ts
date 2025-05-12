@@ -46,6 +46,8 @@ export interface EspansoState {
     error: string | null;
     statusMessage: string | null; // For non-error feedback like "Saving..."
     expandedNodeIds: Set<string>; // Store expanded node IDs for persistence
+    modifiedNodeIds: Set<string>; // 存储已修改但未保存的节点 ID
+    justSavedNodeIds: Set<string>; // 存储刚刚保存的节点 ID，用于显示绿色指示器
 }
 
 export const useEspansoStore = defineStore('espanso', () => {
@@ -65,6 +67,8 @@ export const useEspansoStore = defineStore('espanso', () => {
         error: null,
         statusMessage: null,
         expandedNodeIds: new Set<string>(),
+        modifiedNodeIds: new Set<string>(), // 初始化修改节点集合
+        justSavedNodeIds: new Set<string>(), // 初始化刚保存节点集合
     });
 
     // --- Getters (Computed Properties) ---
@@ -108,6 +112,30 @@ export const useEspansoStore = defineStore('espanso', () => {
 
 
     // --- Internal Helper ---
+    // 节点状态管理
+    const markNodeAsModified = (nodeId: string) => {
+        state.value.modifiedNodeIds.add(nodeId);
+        state.value.justSavedNodeIds.delete(nodeId); // 确保不同时在两个集合中
+    };
+
+    const markNodeAsSaved = (nodeId: string) => {
+        state.value.modifiedNodeIds.delete(nodeId);
+        state.value.justSavedNodeIds.add(nodeId);
+
+        // 设置定时器，2秒后自动从 justSavedNodeIds 中移除
+        setTimeout(() => {
+            state.value.justSavedNodeIds.delete(nodeId);
+        }, 2000);
+    };
+
+    const isNodeModified = (nodeId: string): boolean => {
+        return state.value.modifiedNodeIds.has(nodeId);
+    };
+
+    const isNodeJustSaved = (nodeId: string): boolean => {
+        return state.value.justSavedNodeIds.has(nodeId);
+    };
+
     // Centralized error/status handling
     const _setLoading = (isLoading: boolean, message: string | null = null) => {
         state.value.loading = isLoading;
@@ -514,12 +542,18 @@ export const useEspansoStore = defineStore('espanso', () => {
              return;
         }
 
+        // 标记节点为已修改状态
+        markNodeAsModified(matchId);
+
         // Apply updates directly to the reactive reference in the tree
         Object.assign(matchRef, updates);
         matchRef.updatedAt = new Date().toISOString(); // Update timestamp
 
         try {
             await _saveFileByPath(filePath); // Save the containing file
+
+            // 标记节点为已保存状态
+            markNodeAsSaved(matchId);
         } catch {
             // _saveFileByPath already sets the error
         }
@@ -573,20 +607,20 @@ export const useEspansoStore = defineStore('espanso', () => {
             if (!targetFileNode || !targetFilePath) {
                 throw new Error("未能确定有效的文件目标来添加片段。");
             }
-            
+
             // 使用 ! 断言 targetFileNode 和 targetFilePath 在此之后非 null
             const finalTargetFileNode = targetFileNode!;
             const finalTargetFilePath = targetFilePath!;
 
             // 2. 确定新片段的 guiOrder
             const existingMatches = finalTargetFileNode.matches || [];
-            const newGuiOrder = existingMatches.length > 0 
-                ? Math.max(...existingMatches.map(m => m.guiOrder ?? 0)) + 1 
+            const newGuiOrder = existingMatches.length > 0
+                ? Math.max(...existingMatches.map(m => m.guiOrder ?? 0)) + 1
                 : 1;
 
             // 3. 生成新的确定性 ID
             const newMatchId = generateMatchId(
-                itemData, 
+                itemData,
                 finalTargetFilePath, // 使用确定的路径
                 newGuiOrder
             );
@@ -611,13 +645,13 @@ export const useEspansoStore = defineStore('espanso', () => {
             } else {
                 finalTargetFileNode.matches.push(newItem);
             }
-            
+
             // 6. 保存包含新片段的文件
             await _saveFileByPath(finalTargetFilePath); // 使用确定的路径
 
             // 7. 选中新创建的项
             selectItem(newItem.id, newItem.type);
-            
+
             _setStatus(`已添加: ${(newItem.trigger || newItem.label || '新片段')}`);
             setTimeout(() => { if (state.value.statusMessage === `已添加: ${(newItem.trigger || newItem.label || '新片段')}`) _setStatus(null); }, 2000);
             return newItem;
@@ -1246,7 +1280,7 @@ export const useEspansoStore = defineStore('espanso', () => {
                               item.filePath = newPath;
                               // IMPORTANT: Match ID 依赖 filePath，也需要更新！
                               // 重新生成 Match ID
-                              item.id = generateMatchId(item, newPath, item.guiOrder ?? 0); 
+                              item.id = generateMatchId(item, newPath, item.guiOrder ?? 0);
                           }
                       });
                   };
@@ -1377,6 +1411,8 @@ export const useEspansoStore = defineStore('espanso', () => {
         selectedItem,
         selectedFileNode,
         isNodeExpanded, // Expose node expansion state getter
+        isNodeModified, // 暴露节点修改状态检查方法
+        isNodeJustSaved, // 暴露节点刚保存状态检查方法
         // Actions
         initializeStore,
         loadConfig,
@@ -1394,6 +1430,9 @@ export const useEspansoStore = defineStore('espanso', () => {
         deleteFileNode,
         deleteFolderNode,
         renameNode,
+        // Node state management
+        markNodeAsModified,
+        markNodeAsSaved,
         // Node expansion actions
         toggleNodeExpansion,
         expandAllNodes,

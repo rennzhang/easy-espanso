@@ -125,7 +125,15 @@
             }"
             ></span>
             <!-- Indent space -->
+            <!-- 未保存状态指示器 -->
+            <div v-if="isNodeModified" class="h-3 w-3 rounded-full bg-red-500 animate-pulse-slow mr-1" :title="t('common.modified')"></div>
+
+            <!-- 刚保存状态指示器 -->
+            <div v-else-if="isNodeJustSaved" class="h-3 w-3 rounded-full bg-green-500 animate-fade-out mr-1" :title="t('common.saved')"></div>
+
+            <!-- 默认图标 -->
             <ZapIcon
+              v-else
               :class="[
                 'h-4 w-4 mr-1',
                 isSelected ? 'text-white' : 'text-primary',
@@ -162,7 +170,7 @@
             >
               <div
                 class="text-xs px-1.5 min-w-[20px] h-[18px] overflow-hidden whitespace-nowrap text-ellipsis max-w-[120px]"
-                :class="{ 
+                :class="{
                   'bg-white/15 text-white border-white/10 border': isSelected,
                   'bg-accent/50 text-muted-foreground border-0': !isSelected
                 }"
@@ -251,7 +259,7 @@ import NodeContextMenu from "@/components/NodeContextMenu.vue";
 import { useEspansoStore } from "@/store/useEspansoStore";
 import TreeNodeRegistry from "@/utils/TreeNodeRegistry";
 import { toast } from "vue-sonner";
-import { isFileNode, isFolderNode } from "@/utils/configTreeUtils";
+import { useI18n } from "vue-i18n";
 
 const props = defineProps<{
   node: TreeNodeItem;
@@ -284,6 +292,16 @@ const emit = defineEmits<{
 }>();
 
 const store = useEspansoStore();
+const { t } = useI18n();
+
+// 节点状态计算属性
+const isNodeModified = computed(() => {
+  return store.isNodeModified(props.node.id);
+});
+
+const isNodeJustSaved = computed(() => {
+  return store.isNodeJustSaved(props.node.id);
+});
 
 // 编辑相关的状态
 const isEditing = ref(false);

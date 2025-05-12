@@ -14,7 +14,7 @@
             <HelpTip :content="t('snippets.form.trigger.help')" />
           </div>
           <Textarea id="trigger" v-model="formState.trigger" :placeholder="t('snippets.form.trigger.placeholder')"
-            required rows="2" spellcheck="false" @blur="autoSave" />
+            required rows="2" spellcheck="false" @blur="autoSave({ showToast: false })" />
         </div>
 
         <!-- 名称 -->
@@ -25,7 +25,7 @@
             <HelpTip :content="t('snippets.form.label.help')" />
           </div>
           <Textarea id="label" v-model="formState.label" :placeholder="t('snippets.form.label.placeholder')" rows="2"
-            spellcheck="false" @blur="autoSave" />
+            spellcheck="false" @blur="autoSave({ showToast: false })" />
         </div>
       </div>
 
@@ -67,7 +67,7 @@
             }" v-model:value="formState.content" :options="cmOptions" ref="cmRef" :placeholder="currentContentType === 'form'
                   ? '输入表单定义 (YAML 格式)...'
                   : '输入替换内容...'
-                " class="h-full codemirror-theme-enabled" @blur="autoSave" />
+                " class="h-full codemirror-theme-enabled" @blur="autoSave({ showToast: false })" />
           </div>
 
           <!-- Bottom Toolbar -->
@@ -302,19 +302,19 @@
             </div>
             <div class="grid grid-cols-1 gap-2.5">
               <div class="flex items-center space-x-2">
-                <Checkbox id="word" v-model="formState.word" @change="autoSave" />
+                <Checkbox id="word" v-model="formState.word" @change="autoSave({ showToast: false })" />
                 <label for="word" class="text-sm font-medium leading-none cursor-pointer">
                   {{ t("snippets.form.wordBoundary.word") }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
-                <Checkbox id="leftWord" v-model="formState.leftWord" @change="autoSave" />
+                <Checkbox id="leftWord" v-model="formState.leftWord" @change="autoSave({ showToast: false })" />
                 <label for="leftWord" class="text-sm font-medium leading-none cursor-pointer">
                   {{ t("snippets.form.wordBoundary.leftWord") }}
                 </label>
               </div>
               <div class="flex items-center space-x-2">
-                <Checkbox id="rightWord" v-model="formState.rightWord" @change="autoSave" />
+                <Checkbox id="rightWord" v-model="formState.rightWord" @change="autoSave({ showToast: false })" />
                 <label for="rightWord" class="text-sm font-medium leading-none cursor-pointer">
                   {{ t("snippets.form.wordBoundary.rightWord") }}
                 </label>
@@ -332,7 +332,7 @@
             </div>
             <div class="space-y-4">
               <div class="flex items-center space-x-2">
-                <Checkbox id="propagateCase" v-model="formState.propagateCase" @change="autoSave" />
+                <Checkbox id="propagateCase" v-model="formState.propagateCase" @change="autoSave({ showToast: false })" />
                 <label for="propagateCase" class="text-sm font-medium leading-none cursor-pointer">
                   {{ t("snippets.form.caseHandling.propagateCase") }}
                 </label>
@@ -341,7 +341,7 @@
                 <label for="uppercaseStyle" class="text-sm font-medium leading-none">
                   {{ t("snippets.form.caseHandling.uppercaseStyle.label") }}
                 </label>
-                <Select v-model="formState.uppercaseStyle" @update:modelValue="autoSave">
+                <Select v-model="formState.uppercaseStyle" @update:modelValue="autoSave({ showToast: false })">
                   <SelectTrigger id="uppercaseStyle" class="h-9">
                     <SelectValue :placeholder="t(
                       'snippets.form.caseHandling.uppercaseStyle.placeholder'
@@ -375,7 +375,7 @@
                   <HelpTip :content="t('snippets.form.otherSettings.priority.help')" />
                 </div>
                 <Input id="priority" v-model.number="formState.priority" type="number" :placeholder="t('snippets.form.otherSettings.priority.placeholder')
-                  " class="h-9 px-3 py-2" @blur="autoSave" />
+                  " class="h-9 px-3 py-2" @blur="autoSave({ showToast: false })" />
               </div>
 
               <!-- 快捷键 -->
@@ -387,7 +387,7 @@
                   <HelpTip :content="t('snippets.form.otherSettings.hotkey.help')" />
                 </div>
                 <Input id="hotkey" v-model="formState.hotkey" :placeholder="t('snippets.form.otherSettings.hotkey.placeholder')
-                  " class="h-9 px-3 py-2" @blur="autoSave" />
+                  " class="h-9 px-3 py-2" @blur="autoSave({ showToast: false })" />
               </div>
             </div>
           </div>
@@ -408,11 +408,11 @@
                 {{ t("snippets.form.searchSettings.searchTerms.label") }}
               </label>
               <TagInput :modelValue="formState.search_terms || []"
-                @update:modelValue="(val: string[]) => { formState.search_terms = val; autoSave(); }" :placeholder="t('snippets.form.searchSettings.searchTerms.placeholder')
+                @update:modelValue="(val: string[]) => { formState.search_terms = val; autoSave({ showToast: false }); }" :placeholder="t('snippets.form.searchSettings.searchTerms.placeholder')
                   " class="py-1" />
             </div>
           </div>
-          
+
           <!-- 标签设置 -->
           <div v-if="'tags' in formState" class="space-y-3 bg-muted/10 p-4 rounded-lg border">
             <div class="flex items-center">
@@ -422,15 +422,14 @@
               <HelpTip :content="t('snippets.form.tags.help') || '为此片段添加标签，以便于搜索和分类'" />
             </div>
             <div class="space-y-1.5">
-              <TagInput 
+              <TagInput
                 :modelValue="formState.tags || []"
-                @update:modelValue="(val: string[]) => { 
-                  // @ts-ignore - 忽略类型检查，因为tags字段可能在运行时存在
-                  formState.tags = val; 
-                  autoSave(); 
-                }" 
-                :placeholder="t('snippets.form.tags.placeholder') || '添加标签...'" 
-                class="py-1" 
+                @update:modelValue="(val: string[]) => {
+                  formState.tags = val;
+                  autoSave({ showToast: false });
+                }"
+                :placeholder="t('snippets.form.tags.placeholder') || '添加标签...'"
+                class="py-1"
               />
             </div>
           </div>
@@ -440,7 +439,7 @@
         <Button type="button" variant="outline" @click="showAdvancedDialog = false">
           {{ t("common.close") }}
         </Button>
-        <Button type="button" variant="default" @click="() => { autoSave(); showAdvancedDialog = false; }">
+        <Button type="button" variant="default" @click="() => { autoSave({ showToast: true }); showAdvancedDialog = false; }">
           <Save class="w-4 h-4 mr-2" />
           {{ t("common.save") }}
         </Button>
@@ -511,7 +510,6 @@ import HelpTip from "../common/HelpTip.vue";
 import {
   CalendarIcon,
   ClipboardIcon,
-  EyeIcon,
   XIcon,
   MousePointerClickIcon,
   MoreHorizontalIcon,
@@ -519,7 +517,6 @@ import {
   UploadCloudIcon,
   PlayIcon,
   Save,
-  CheckIcon,
 } from "lucide-vue-next";
 import type { Match } from "@/types/core/espanso.types";
 import {
@@ -533,7 +530,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "../ui/dropdown-menu";
@@ -552,7 +548,7 @@ import "codemirror/theme/dracula.css"; // 添加dracula主题
 import "codemirror/theme/elegant.css"; // 浅色主题
 // placeholder
 import "codemirror/addon/display/placeholder.js";
-import { Editor } from "codemirror";
+// import { Editor } from "codemirror";
 // Optional: Add a theme CSS
 // import 'codemirror/theme/material-darker.css';
 
@@ -573,6 +569,8 @@ const emit = defineEmits<{
   (e: "modified", value: boolean): void;
   // 添加 save 事件定义，假设 rule.id 是字符串或数字
   (e: "save", ruleId: string | number | undefined, data: Partial<Match>): void;
+  // 添加保存成功事件，用于触发视觉反馈
+  (e: "save-success"): void;
 }>();
 
 // 获取 store
@@ -672,6 +670,7 @@ const mapRuleToFormData = (rule: Match | null): RuleFormState => {
     priority: rule.priority || 0,
     hotkey: rule.hotkey || "",
     vars: Array.isArray(rule.vars) ? [...rule.vars] : [],
+    tags: Array.isArray(rule.tags) ? [...rule.tags] : [], // 添加 tags 字段处理
     // 如果需要，可以保留内部字段，例如用于图片预览的原始 image_path
     image_path: rule.image_path || "", // 保留此项以用于预览逻辑
     // 注意: 如果 content 是核心, 不要在 formState 中直接包含 markdown/html/replace
@@ -710,6 +709,7 @@ interface RuleFormState {
   hotkey?: string;
   vars?: { name: string; params?: Record<string, any> }[];
   contentType?: ContentType;
+  tags?: string[]; // 添加 tags 字段
 }
 
 // 表单状态
@@ -729,6 +729,7 @@ const formState = ref<RuleFormState>({
   search_terms: [],
   priority: 0,
   hotkey: "",
+  tags: [], // 添加 tags 字段初始化
 });
 
 // 在 setup 中获取 t 函数
@@ -767,7 +768,7 @@ const insertionModeOptions = [
 const cmRef = ref<CmComponentRef>();
 
 // 获取主题状态
-const { theme, isDarkMode } = useTheme();
+const { isDarkMode } = useTheme();
 
 const cmOptions = computed(() => {
   let mode = "text/plain";
@@ -858,6 +859,8 @@ const showPreview = () => {
 };
 
 // 辅助函数：根据 Match 数据确定初始 contentType
+// 注意：此函数当前未直接使用，但在注释掉的代码中被引用，保留为参考
+/*
 const determineInitialContentType = (
   ruleData: Match
 ): "plain" | "markdown" | "html" | "image" | "form" => {
@@ -877,8 +880,11 @@ const determineInitialContentType = (
   // 默认或当只有 replace 时，认为是 plain
   return "plain";
 };
+*/
 
 // 辅助函数：根据 Match 数据确定初始 content
+// 注意：此函数当前未使用，但保留为参考
+/*
 const determineInitialContent = (ruleData: Match): string | undefined => {
   const contentType = determineInitialContentType(ruleData);
   switch (contentType) {
@@ -895,6 +901,10 @@ const determineInitialContent = (ruleData: Match): string | undefined => {
       return ruleData.content || ruleData.replace; // Fallback to replace if content is missing
   }
 };
+*/
+
+// 注意：此函数当前未使用，但保留为参考
+/*
 const resetForm = (formData: Partial<Match>) => {
   formState.value = JSON.parse(JSON.stringify(formData));
   // 确保设置正确的内容类型
@@ -906,6 +916,7 @@ const resetForm = (formData: Partial<Match>) => {
     );
   }
 };
+*/
 
 // 初始化表单
 onMounted(() => {
@@ -1012,9 +1023,11 @@ const checkFormModified = () => {
   // 触发 modified 事件，将修改状态传递给父组件
   emit("modified", hasChanged);
 
-  // 如果有修改，保存到 FormStore
+  // 如果有修改，保存到 FormStore 并标记节点为已修改状态
   if (hasChanged && props.rule?.id) {
     formStore.saveFormData(props.rule.id, formState.value);
+    // 标记节点为已修改状态
+    store.markNodeAsModified(props.rule.id);
     console.log(
       `[RuleEditForm] 已保存修改后的表单数据到 FormStore: ${props.rule.id}`
     );
@@ -1032,12 +1045,12 @@ const triggerFileInput = () => {
 };
 
 // Handle drag over event
-const handleDragOver = (event: DragEvent) => {
+const handleDragOver = (_event: DragEvent) => {
   isDragging.value = true;
 };
 
 // Handle drag leave event
-const handleDragLeave = (event: DragEvent) => {
+const handleDragLeave = (_event: DragEvent) => {
   isDragging.value = false;
 };
 
@@ -1249,15 +1262,17 @@ const insertCommonVariable = (variableId: string) => {
 const onSubmit = async (): Promise<void> => {
   return new Promise((resolve, reject) => {
     try {
-      // 简单验证
-      if (
-        !formState.value.trigger ||
-        (!formState.value.content && currentContentType.value !== "image")
-      ) {
-        const error = new Error("触发词和替换内容不能为空");
+      // 简单验证，只检查触发词是否为空
+      if (!formState.value.trigger) {
+        const error = new Error("触发词不能为空");
         toast.error(error.message);
         reject(error);
         return;
+      }
+
+      // 如果替换内容为空，将其设置为空字符串而不是阻止保存
+      if (formState.value.content === undefined || formState.value.content === null) {
+        formState.value.content = "";
       }
 
       // 添加 null 检查
@@ -1402,7 +1417,8 @@ const onSubmit = async (): Promise<void> => {
   });
 };
 
-// 取消编辑
+// 取消编辑 - 当前未使用，但保留为参考
+/*
 const onCancel = () => {
   if (isFormModified.value) {
     if (confirm(t("snippets.form.autoSave.unsavedChanges"))) {
@@ -1411,6 +1427,7 @@ const onCancel = () => {
     }
   }
 };
+*/
 
 // 组件卸载前检查未保存的修改
 onBeforeUnmount(() => {
@@ -1498,12 +1515,17 @@ watch(
 );
 
 // Helper function to check if content looks like a form (simple check)
+// 注意：此函数当前未使用，但保留为参考
+/*
 function isLikelyForm(content: string): boolean {
   if (!content) return false;
   return content.trim().startsWith("form:") || content.includes("fields:");
 }
+*/
 
 // --- Computed Properties ---
+// 注意：此计算属性当前未使用，但保留为参考
+/*
 const isTextBasedContent = computed(() => {
   const type = formData.value.contentType;
   // Include all types that should use the text editor
@@ -1514,6 +1536,7 @@ const isTextBasedContent = computed(() => {
     type === "form"
   );
 });
+*/
 
 // --- resetModifiedState 함수 선언 (defineExpose 앞으로 이동) ---
 const resetModifiedState = (savedData: Partial<Match>) => {
@@ -1645,9 +1668,12 @@ const saveState = ref<"idle" | "success" | "error">("idle");
 let saveStateTimeout: ReturnType<typeof setTimeout> | null = null;
 
 // 自动保存方法
-const autoSave = async () => {
+const autoSave = async (options: { showToast?: boolean } = {}) => {
+  // 默认显示 toast，除非明确设置为 false
+  const showToast = options.showToast !== false;
+
   if (isFormModified.value && props.rule?.id) {
-    console.log(`[RuleEditForm] 自动保存触发`);
+    console.log(`[RuleEditForm] 自动保存触发，showToast: ${showToast}`);
 
     // 清除可能存在的保存状态反馈
     if (saveStateTimeout) {
@@ -1664,7 +1690,11 @@ const autoSave = async () => {
 
       await onSubmit();
       saveState.value = "success";
-      toast.success(t("snippets.form.autoSave.success"));
+
+      // 只在需要时显示 toast 提示
+      if (showToast) {
+        toast.success(t("snippets.form.autoSave.success"));
+      }
 
       // 确认是否成功保存词边界设置
       console.log(`[RuleEditForm] 保存后词边界设置确认 - word: ${formState.value.word}, leftWord: ${formState.value.leftWord}, rightWord: ${formState.value.rightWord}`);
@@ -1680,6 +1710,8 @@ const autoSave = async () => {
       // 从 FormStore 中删除保存的表单数据
       if (props.rule?.id) {
         formStore.deleteFormData(props.rule.id);
+        // 标记节点为已保存状态
+        store.markNodeAsSaved(props.rule.id);
         console.log(
           `[RuleEditForm] 自动保存成功，已从 FormStore 中删除表单数据: ${props.rule.id}`
         );
@@ -1909,7 +1941,7 @@ const processPlaygroundText = () => {
   // 检查是否匹配任何触发词
   let result = text;
   let matched = false;
-  let matchedTrigger = "";
+  // let matchedTrigger = ""; // 当前未使用，但可能在将来的功能中使用
 
   // 遍历所有触发词，检查是否匹配
   for (const trigger of triggers) {
@@ -1932,13 +1964,17 @@ const processPlaygroundText = () => {
     // 检查是否匹配
     if (regex.test(text)) {
       matched = true;
-      matchedTrigger = trigger;
+      // 记录匹配的触发词（当前未使用）
+      // const matchedTrigger = trigger;
 
       // 重置正则表达式以便替换
       const replaceRegex = new RegExp(pattern, "g");
 
       // 模拟替换效果
-      const replacement = formState.value.content || "替换内容";
+      // 如果替换内容为空，显示为空字符串，否则使用内容或默认文本
+      const replacement = formState.value.content !== undefined && formState.value.content !== null
+        ? formState.value.content
+        : "替换内容";
       result = text.replace(replaceRegex, `<span class="bg-primary/20 px-1 rounded">${replacement}</span>`);
       break;
     }

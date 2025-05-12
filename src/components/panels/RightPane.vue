@@ -3,22 +3,7 @@
     <div class="py-2 px-4 border-b">
       <div class="flex justify-between items-center">
         <div class="flex items-center">
-          <div v-if="isFormModified && !userPreferences.preferences.hideUnsavedChangesWarning"
-               class="mr-2 flex items-center"
-          >
-            <TooltipProvider :delay-duration="100">
-              <Tooltip>
-                <TooltipTrigger as-child>
-                  <div class="flex items-center">
-                    <div class="w-3 h-3 rounded-full bg-red-500 animate-pulse-slow" :title="t('common.modified')"></div>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent side="bottom">
-                   <p>{{ t('common.modified') }}</p>
-                   </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+          <!-- 状态指示器已移至片段列表节点 -->
           <h3 class="text-lg font-semibold text-foreground m-0" v-html="headerTitle"></h3>
         </div>
         <div class="flex gap-2" v-if="selectedItem">
@@ -56,6 +41,7 @@
           :rule="selectedItem"
           @modified="handleFormModified"
           @delete="deleteRule(selectedItem.id)"
+          @save-success="handleSaveSuccess"
         />
       </div>
       <div v-else-if="selectedItem.type === 'file' || selectedItem.type === 'folder'" class="flex flex-col h-full">
@@ -135,6 +121,10 @@ const previewTrigger = ref("");
 const previewIsImage = ref(false);
 const middlePaneRef = ref<any>(null); // 用于接收 MiddlePane 引用
 
+// 保存成功指示器状态
+const showSaveSuccess = ref(false);
+let saveSuccessTimeout: ReturnType<typeof setTimeout> | null = null;
+
 // --- 计算属性 ---
 const selectedItem = computed(() => store.selectedItem as Match | ConfigTreeNode | null); // 类型断言
 const selectedId = computed(() => store.state.selectedItemId);
@@ -143,11 +133,11 @@ const selectedId = computed(() => store.state.selectedItemId);
 const selectedNodeAsTreeNode = computed(() => {
   const item = selectedItem.value;
   if (!item) return null;
-  
+
   if (item.type === 'file' || item.type === 'folder') {
     return item as ConfigTreeNode;
   }
-  
+
   return null;
 });
 
@@ -174,19 +164,37 @@ const handleFormModified = (modified: boolean) => {
   isFormModified.value = modified;
 };
 
+// 处理保存成功事件
+const handleSaveSuccess = () => {
+  console.log('[RightPane] 保存成功，显示绿色指示器');
+
+  // 清除可能存在的超时
+  if (saveSuccessTimeout) {
+    clearTimeout(saveSuccessTimeout);
+  }
+
+  // 显示绿色保存成功指示器
+  showSaveSuccess.value = true;
+
+  // 设置超时，2秒后自动隐藏指示器
+  saveSuccessTimeout = setTimeout(() => {
+    showSaveSuccess.value = false;
+  }, 2000);
+};
+
 // 监听不再提示选项
 watch(hideWarning, (newValue) => {
   userPreferences.updatePreference('hideUnsavedChangesWarning', newValue);
 });
 
 // 监听选中项变化，检查是否有未保存的修改
-watch(()=>store.state.selectedItemId, async (newId, oldId) => {
+watch(()=>store.state.selectedItemId, async (_newId, oldId) => {
   // 如果有未保存的修改，自动保存
   if (isFormModified.value && oldId && ruleFormRef.value) {
     console.log('[RightPane] 检测到节点切换且有未保存修改，自动保存');
     try {
-      // 调用表单的自动保存方法
-      await ruleFormRef.value.autoSave();
+      // 调用表单的自动保存方法，并显示 toast 提示
+      await ruleFormRef.value.autoSave({ showToast: true });
       console.log('[RightPane] 切换节点时自动保存成功');
     } catch (error) {
       console.error('[RightPane] 切换节点时自动保存失败:', error);
@@ -328,7 +336,7 @@ const handleGlobalKeyDown = (event: KeyboardEvent) => {
     if (selectedItem.value && isFormModified.value && !isSaving.value) { // 只有在有修改且未保存时才触发
       console.log('[RightPane Shortcut] Save triggered.');
       if (ruleFormRef.value) {
-        ruleFormRef.value.autoSave();
+        ruleFormRef.value.autoSave({ showToast: true });
       }
     } else {
       console.log('[RightPane Shortcut] Save ignored (no changes or already saving).');
@@ -503,6 +511,42 @@ defineExpose({
 });
 
 </script>
+
+<style>
+/* 渐隐动画 */
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+
+.animate-fade-out {
+  animation: fadeOut 2s ease-out forwards;
+}
+
+/* 慢速脉冲动画 */
+@keyframes pulseSlow {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+.animate-pulse-slow {
+  animation: pulseSlow 2s infinite;
+}
+</style>
 
 <style scoped> /* 使用 scoped 防止样式污染 */
 .fade-enter-active,

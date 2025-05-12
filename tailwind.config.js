@@ -1,7 +1,7 @@
 /** @type {import('tailwindcss').Config} */
 const { fontFamily } = require("tailwindcss/defaultTheme")
 // Import Tailwind colors
-const colors = require('tailwindcss/colors') 
+const colors = require('tailwindcss/colors')
 
 module.exports = {
   darkMode: ["class"],
@@ -146,6 +146,10 @@ module.exports = {
           "0%": { opacity: 1, transform: "scale(1)" },
           "100%": { opacity: 0, transform: "scale(0.95)" }
         },
+        "pulse-slow": {
+          "0%, 100%": { opacity: 1 },
+          "50%": { opacity: 0.5 }
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -156,6 +160,8 @@ module.exports = {
         "fade-out": "fade-out 0.2s ease-in",
         "scale-in": "scale-in 0.2s ease-out",
         "scale-out": "scale-out 0.2s ease-in",
+        "pulse-slow": "pulse-slow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",
+        "fade-out-slow": "fade-out 2s ease-in forwards",
       },
     },
   },
