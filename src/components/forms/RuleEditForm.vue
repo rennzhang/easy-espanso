@@ -2016,14 +2016,14 @@ const escapeRegExp = (string: string): string => {
 /* 使光标在失焦状态下也可见并闪烁 */
 .CodeMirror {
   /* 设置字体大小为14px */
-  font-size: 14px !important;
+  font-size: 15px !important;
   /* 圆角边框 */
   height: 100% !important;
   /* 确保编辑器占满父容器 */
 }
 
 .CodeMirror-cursors {
-  visibility: visible !important;
+  /* visibility: visible !important; */
 }
 
 .CodeMirror-cursor {

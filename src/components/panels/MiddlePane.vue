@@ -1,49 +1,51 @@
 <template>
   <div class="middle-pane flex flex-col h-full bg-card">
-    <div class="flex flex-col py-2 px-4 border-b">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center">
-          <h3 class="text-lg font-semibold text-foreground m-0">{{ t('snippets.listTitle') }}</h3>
-          <Badge variant="outline" class="ml-2">
-            {{ totalItemCount }} 项
-          </Badge>
+    <RootContextMenu>
+      <div class="flex flex-col py-2 px-4 border-b">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <h3 class="text-lg font-semibold text-foreground m-0">{{ t('snippets.listTitle') }}</h3>
+            <Badge variant="outline" class="ml-2">
+              {{ totalItemCount }} 项
+            </Badge>
+          </div>
+          <div class="flex items-center gap-2">
+            <Button
+              @click="toggleSearchBar"
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
+              :class="showSearchBar ? 'bg-accent' : ''"
+            >
+              <SearchIcon class="h-4 w-4" />
+            </Button>
+            <Button
+              @click="toggleViewMode"
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
+              :class="viewMode === 'list' ? 'bg-accent' : ''"
+              :title="viewMode === 'tree' ? '切换到列表视图' : '切换到树视图'"
+            >
+              <ListIcon v-if="viewMode === 'tree'" class="h-4 w-4" />
+              <FolderTreeIcon v-else class="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <Button
-            @click="toggleSearchBar"
-            variant="ghost"
-            size="icon"
-            class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
-            :class="showSearchBar ? 'bg-accent' : ''"
-          >
-            <SearchIcon class="h-4 w-4" />
-          </Button>
-          <Button
-            @click="toggleViewMode"
-            variant="ghost"
-            size="icon"
-            class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
-            :class="viewMode === 'list' ? 'bg-accent' : ''"
-            :title="viewMode === 'tree' ? '切换到列表视图' : '切换到树视图'"
-          >
-            <ListIcon v-if="viewMode === 'tree'" class="h-4 w-4" />
-            <FolderTreeIcon v-else class="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
 
-      <div v-show="showSearchBar" class="mt-2">
-        <Input
-          v-model="searchQuery"
-          :placeholder="t('snippets.searchPlaceholder')"
-          class="w-full h-8 text-sm"
-          ref="searchInputRef"
-          id="search-input"
-          autofocus
-          @keydown.esc="hideSearchBar"
-        />
+        <div v-show="showSearchBar" class="mt-2">
+          <Input
+            v-model="searchQuery"
+            :placeholder="t('snippets.searchPlaceholder')"
+            class="w-full h-8 text-sm"
+            ref="searchInputRef"
+            id="search-input"
+            autofocus
+            @keydown.esc="hideSearchBar"
+          />
+        </div>
       </div>
-    </div>
+    </RootContextMenu>
 
     <div class="p-3 bg-muted" v-if="filterTags && filterTags.length > 0">
       <div class="flex items-center flex-wrap gap-2">
@@ -146,13 +148,13 @@
 
           <!-- 列表视图 -->
           <div v-else class="p-3">
-            <div 
-              v-for="item in filteredItems" 
-              :key="item.id" 
+            <div
+              v-for="item in filteredItems"
+              :key="item.id"
               :class="[
                 'group cursor-pointer border-l-2 rounded-md mb-2.5 transition-all bg-card shadow-xs border border-border/30',
-                selectedItemId === item.id 
-                  ? 'border-l-primary shadow-sm bg-accent/10 border-primary/20' 
+                selectedItemId === item.id
+                  ? 'border-l-primary shadow-sm bg-accent/10 border-primary/20'
                   : 'border-l-transparent hover:border-l-primary/40 hover:shadow-sm hover:bg-accent/5 hover:border-border/60'
               ]"
               @click="selectItem(item.id, item.type)"
@@ -172,18 +174,18 @@
                           />
                           <template v-else>{{ (item as Match).trigger }}</template>
                         </h3>
-                        
-                        <div 
+
+                        <div
                           v-if="(item as Match).label"
                           class="text-xs px-1.5 rounded truncate max-w-[120px]"
-                          :class="selectedItemId === item.id 
-                            ? 'bg-primary/10 text-primary' 
+                          :class="selectedItemId === item.id
+                            ? 'bg-primary/10 text-primary'
                             : 'bg-muted text-muted-foreground'"
                         >
                           {{ (item as Match).label }}
                         </div>
                       </div>
-                      
+
                       <!-- 简短描述或内容预览 -->
                       <div
                         class="text-xs"
@@ -193,9 +195,9 @@
                       </div>
                     </div>
                   </div>
-                  
+
                   <!-- 右侧标签 -->
-                  <div 
+                  <div
                     class="flex gap-1 flex-wrap justify-end flex-shrink-0"
                     v-if="(item as Match).tags && ((item as Match)?.tags?.length||0) > 0"
                   >
@@ -225,7 +227,7 @@ import { EspansoState, useEspansoStore } from "../../store/useEspansoStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { Card, CardContent } from "../ui/card";
+
 import ConfigTree from "@/components/ConfigTree.vue";
 import HighlightText from "@/components/common/HighlightText.vue";
 import RootContextMenu from "@/components/RootContextMenu.vue";
@@ -236,8 +238,7 @@ import {
   XIcon,
   ListIcon,
   FolderTreeIcon,
-  ZapIcon,
-  ClockIcon,
+
 } from "lucide-vue-next";
 import { Match } from "@/types/core/espanso.types";
 import { useI18n } from 'vue-i18n';
@@ -412,11 +413,11 @@ const filteredItems = computed(() => {
       // 首先按日期排序（最新的在前）
       const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
       const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-      
+
       if (dateA !== dateB) {
         return dateB - dateA; // 最新的在前
       }
-      
+
       // 仅当日期相同时才考虑guiOrder
       const orderA = a.guiOrder ?? Infinity;
       const orderB = b.guiOrder ?? Infinity;
@@ -486,11 +487,11 @@ const filteredItems = computed(() => {
     // 首先按日期排序（最新的在前）
     const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
     const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-    
+
     if (dateA !== dateB) {
       return dateB - dateA; // 最新的在前
     }
-    
+
     // 仅当日期相同时才考虑guiOrder
     const orderA = a.guiOrder ?? Infinity;
     const orderB = b.guiOrder ?? Infinity;
@@ -547,16 +548,16 @@ const formatDate = (dateString: string) => {
 // 获取简化的文件路径显示
 const getFilePathDisplay = (filePath?: string) => {
   if (!filePath) return '';
-  
+
   // 从路径中提取文件名
   const parts = filePath.split('/');
   const fileName = parts[parts.length - 1];
-  
+
   // 如果路径很长，显示简化版本
   if (parts.length > 2) {
     return `${parts[0]}/.../${fileName}`;
   }
-  
+
   return filePath;
 };
 
