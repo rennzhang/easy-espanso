@@ -204,7 +204,7 @@ export class ElectronAdapter implements IPlatformAdapter {
     console.warn(
       `[ElectronAdapter] openExternal('${url}') is not available in preloadApi. Falling back to window.open.`
     );
-    
+
     // 备用方案：使用 window.open
     try {
       window.open(url, "_blank", "noopener,noreferrer");
@@ -213,6 +213,18 @@ export class ElectronAdapter implements IPlatformAdapter {
       console.error(`[ElectronAdapter] 打开链接 ${url} 失败:`, error);
       return false;
     }
+  }
+
+  async openInExplorer(filePath: string): Promise<boolean> {
+    // 检查 preloadApi 是否有 openInExplorer 方法
+    if (typeof (this.preloadApi as any).openInExplorer === "function") {
+      return (this.preloadApi as any).openInExplorer(filePath);
+    }
+
+    console.warn(
+      `[ElectronAdapter] openInExplorer('${filePath}') is not available in preloadApi.`
+    );
+    return false;
   }
 
   // --- YAML 操作 ---

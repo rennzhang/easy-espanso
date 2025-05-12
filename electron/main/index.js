@@ -56,6 +56,7 @@ const CHANNELS = {
     FS_DELETE_FILE: 'fs:deleteFile',
     FS_DELETE_DIR: 'fs:deleteDirectory',
     FS_RENAME: 'fs:rename',
+    FS_OPEN_IN_EXPLORER: 'fs:openInExplorer',
     // 路径
     PATH_JOIN: 'path:join',
     // 对话框
@@ -277,6 +278,59 @@ function registerIpcHandlers(mw) {
         }
     });
 
+    ipcMain.handle(CHANNELS.FS_OPEN_IN_EXPLORER, async (event, filePath) => {
+        console.log(`[Main IPC] 在文件管理器中打开: ${filePath}`);
+        try {
+            // 检查路径是否存在
+            try {
+                await fs.access(filePath, fs.constants.F_OK);
+            } catch (error) {
+                console.error(`[Main IPC] 路径 ${filePath} 不存在或无法访问`);
+                throw new Error(`路径不存在或无法访问: ${filePath}`);
+            }
+
+            // 检查是否是目录
+            const stats = await fs.stat(filePath);
+            const isDirectory = stats.isDirectory();
+
+            if (isDirectory) {
+                // 如果是目录，根据不同操作系统采取不同的行为
+                if (process.platform === 'darwin') {
+                    // macOS: 使用 open 命令打开目录
+                    const { exec } = require('child_process');
+                    exec(`open "${filePath}"`, (error) => {
+                        if (error) {
+                            console.error(`[Main IPC] 打开目录失败: ${error.message}`);
+                        }
+                    });
+                } else if (process.platform === 'win32') {
+                    // Windows: 使用 explorer 命令打开目录
+                    const { exec } = require('child_process');
+                    exec(`explorer "${filePath.replace(/\//g, '\\')}"`, (error) => {
+                        if (error) {
+                            console.error(`[Main IPC] 打开目录失败: ${error.message}`);
+                        }
+                    });
+                } else {
+                    // Linux: 使用 xdg-open 命令打开目录
+                    const { exec } = require('child_process');
+                    exec(`xdg-open "${filePath}"`, (error) => {
+                        if (error) {
+                            console.error(`[Main IPC] 打开目录失败: ${error.message}`);
+                        }
+                    });
+                }
+            } else {
+                // 如果是文件，使用 showItemInFolder 方法
+                await shell.showItemInFolder(filePath);
+            }
+            return true;
+        } catch (error) {
+            console.error(`[Main IPC] 在文件管理器中打开 ${filePath} 失败:`, error);
+            throw error;
+        }
+    });
+
     // --- 路径处理器 ---
     ipcMain.handle(CHANNELS.PATH_JOIN, async (event, ...paths) => {
         console.log(`[Main IPC] 连接路径: ${paths.join(', ')}`);
@@ -367,10 +421,10 @@ function registerIpcHandlers(mw) {
             // 对象结构日志
             const topLevelKeys = Object.keys(data);
             console.log(`[Main IPC] YAML顶级键: ${topLevelKeys.join(', ')}`);
-            
+
             // 预处理数据，确保可序列化
             const cleanData = prepareDataForSerialization(data);
-            
+
             // 使用js-yaml序列化
             const result = yaml.dump(cleanData);
             console.log(`[Main IPC] YAML序列化成功，结果长度: ${result.length}`);
@@ -390,12 +444,12 @@ function registerIpcHandlers(mw) {
      */
     function prepareDataForSerialization(data) {
         const seen = new WeakSet();
-        
+
         function clean(obj) {
             // 基本类型直接返回
             if (obj === null || obj === undefined) return obj;
             if (typeof obj !== 'object') return obj;
-            
+
             // 处理数组
             if (Array.isArray(obj)) {
                 if (seen.has(obj)) {
@@ -405,14 +459,14 @@ function registerIpcHandlers(mw) {
                 seen.add(obj);
                 return obj.map(item => clean(item)).filter(Boolean);
             }
-            
+
             // 处理对象
             if (seen.has(obj)) {
                 console.warn('[Main IPC] 发现对象循环引用，返回空对象');
                 return {};
             }
             seen.add(obj);
-            
+
             // 创建清理后的对象
             const result = {};
             for (const key in obj) {
@@ -429,7 +483,7 @@ function registerIpcHandlers(mw) {
             }
             return result;
         }
-        
+
         return clean(data);
     }
 
@@ -521,7 +575,7 @@ function createWindow() {
             // 尝试备选路径
             const altPath = path.join(__dirname, '../../dist/electron/renderer/index.html');
             console.log('尝试备选路径:', altPath);
-            
+
             if (fsSync.existsSync(altPath)) {
                 console.log('备选路径文件存在，开始加载');
                 mainWindow.loadFile(altPath);
@@ -532,7 +586,7 @@ function createWindow() {
                     path.join(app.getAppPath(), 'dist/index.html'),
                     path.join(app.getAppPath(), 'dist/electron/renderer/index.html')
                 ];
-                
+
                 let found = false;
                 for (const tryPath of possiblePaths) {
                     console.log('尝试路径:', tryPath);
@@ -543,7 +597,7 @@ function createWindow() {
                         break;
                     }
                 }
-                
+
                 if (!found) {
                     // 显示错误页面
                     mainWindow.loadURL(`data:text/html;charset=utf-8,
@@ -576,7 +630,7 @@ function createWindow() {
         // 错误代码-3通常是刷新时的路径问题
         if (errorCode === -3 || errorCode === -6) {
             console.log('[Main] Detected refresh error, reloading app...');
-            
+
             // 重新加载应用
             if (process.env.VITE_DEV_SERVER_URL) {
                 mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
@@ -584,7 +638,7 @@ function createWindow() {
                 // 尝试重新加载，避免相对路径#/路径问题
                 const indexPath = path.join(__dirname, '../renderer/index.html');
                 const altPath = path.join(__dirname, '../../dist/electron/renderer/index.html');
-                
+
                 if (fsSync.existsSync(indexPath)) {
                     mainWindow.loadFile(indexPath);
                 } else if (fsSync.existsSync(altPath)) {
@@ -603,11 +657,11 @@ function createWindow() {
             console.error('[Main] Window was closed before content finished loading');
             return;
         }
-        
+
         // 解析当前URL
         const currentURL = mainWindow.webContents.getURL();
         console.log('[Main] Current URL:', currentURL);
-        
+
         // 检查URL是否包含chrome-error，如果是则重新加载应用
         if (currentURL.includes('chrome-error:') || currentURL.includes('chrome-extension:')) {
             console.log('[Main] Detected chrome error, reloading app...');
@@ -622,7 +676,7 @@ function createWindow() {
                 }
             }
         }
-        
+
         // 延迟显示窗口以避免白屏
         setTimeout(() => {
             mainWindow.show();
@@ -631,14 +685,14 @@ function createWindow() {
     });
 
     // --- 全屏事件监听 ---
-    mainWindow.on('enter-full-screen', () => { 
+    mainWindow.on('enter-full-screen', () => {
         console.log('[Main] Entered full screen');
         if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
             mainWindow.webContents.send(CHANNELS.APP_FULLSCREEN_CHANGED, true);
         }
     });
-    
-    mainWindow.on('leave-full-screen', () => { 
+
+    mainWindow.on('leave-full-screen', () => {
         console.log('[Main] Left full screen');
         if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
             mainWindow.webContents.send(CHANNELS.APP_FULLSCREEN_CHANGED, false);
@@ -646,10 +700,10 @@ function createWindow() {
     });
 
     // --- DOM Ready & Console Message ---
-    mainWindow.webContents.on('dom-ready', () => { 
-        console.log('[Main] DOM ready event fired'); 
+    mainWindow.webContents.on('dom-ready', () => {
+        console.log('[Main] DOM ready event fired');
     });
-    
+
     mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
         const levels = ['log', 'warning', 'error', 'info'];
         const levelName = levels[level] || 'log';
@@ -670,14 +724,14 @@ function createWindow() {
 async function checkEspansoInstalled() {
     return new Promise((resolve) => {
         const command = process.platform === 'win32' ? 'where espanso' : 'which espanso';
-        
+
         exec(command, (error, stdout, stderr) => {
             if (error) {
                 console.log('[Main] Espanso 未安装或未在环境变量中:', error.message);
                 resolve(false);
                 return;
             }
-            
+
             // 使用 espanso status 命令来检查服务是否运行，而不仅仅是检查版本
             exec('espanso status', (error, stdout, stderr) => {
                 if (error) {
@@ -719,7 +773,7 @@ app.whenReady().then(async () => {
     // **在这里调用 IPC 处理器注册函数**
     if (mainWindow) {
         registerIpcHandlers(mainWindow);
-        
+
         // 窗口准备好后发送 Espanso 安装状态
         mainWindow.webContents.on('did-finish-load', () => {
             if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {

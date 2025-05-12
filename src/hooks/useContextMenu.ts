@@ -380,6 +380,34 @@ export function useContextMenu(props: { node: TreeNodeItem | null } | { getNode:
     handleCreateMatch,
     handleCreateConfigFile,
 
+    // 在文件管理器中打开
+    handleOpenInExplorer: async () => {
+      try {
+        const node = getCurrentNode();
+        if (!node) return;
+
+        let pathToOpen = '';
+        if (node.type === 'file' || node.type === 'folder') {
+          pathToOpen = node.path || '';
+        } else if (node.type === 'match' && node.match?.filePath) {
+          pathToOpen = node.match.filePath;
+        }
+
+        if (!pathToOpen) {
+          toast.error('无法获取路径');
+          return;
+        }
+
+        const success = await platformService.openInExplorer(pathToOpen);
+        if (!success) {
+          toast.error('无法在文件管理器中打开');
+        }
+      } catch (error: any) {
+        console.error('在文件管理器中打开失败:', error);
+        toast.error(`打开失败: ${error.message || '未知错误'}`);
+      }
+    },
+
     // 添加创建文件夹的函数
     handleCreateFolder: async () => {
       try {

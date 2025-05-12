@@ -32,6 +32,14 @@
 
       <ContextMenuSeparator />
 
+      <!-- 在文件管理器中打开 -->
+      <ContextMenuItem @select="handleOpenInExplorer">
+        <component :is="icons.FolderOpen" class="mr-2 h-4 w-4" />
+        {{ t('contextMenu.openInExplorer') }}
+      </ContextMenuItem>
+
+      <ContextMenuSeparator />
+
       <!-- 浏览官方包（链接到Espanso Hub） -->
       <ContextMenuItem @select="handleOpenPackageHub">
         <component :is="icons.ExternalLink" class="mr-2 h-4 w-4" />
@@ -60,6 +68,7 @@ import {
   Plus as PlusIcon,
   File as FileIcon,
   FolderPlus as FolderPlusIcon,
+  FolderOpen as FolderOpenIcon,
   ChevronsDown as ChevronsDownIcon,
   ChevronsUp as ChevronsUpIcon,
   ExternalLink as ExternalLinkIcon,
@@ -70,6 +79,7 @@ const icons = {
   Plus: PlusIcon,
   File: FileIcon,
   FolderPlus: FolderPlusIcon,
+  FolderOpen: FolderOpenIcon,
   ChevronsDown: ChevronsDownIcon,
   ChevronsUp: ChevronsUpIcon,
   ExternalLink: ExternalLinkIcon,
@@ -343,6 +353,25 @@ const handleCollapseAll = () => {
 // 打开Espanso官方包网站
 const handleOpenPackageHub = () => {
   window.open('https://hub.espanso.org/', '_blank');
+};
+
+// 在文件管理器中打开
+const handleOpenInExplorer = async () => {
+  try {
+    const rootDir = store.state.configRootDir;
+    if (!rootDir) {
+      toast.error('未设置根目录');
+      return;
+    }
+
+    const success = await platformService.openInExplorer(rootDir);
+    if (!success) {
+      toast.error('无法在文件管理器中打开文件夹');
+    }
+  } catch (error: any) {
+    console.error('在文件管理器中打开文件夹失败:', error);
+    toast.error(`打开文件夹失败: ${error.message || '未知错误'}`);
+  }
 };
 
 // 更新上下文菜单状态

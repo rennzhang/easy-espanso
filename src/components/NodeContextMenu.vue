@@ -52,6 +52,7 @@ import {
   ChevronsUpDownIcon,
   ExternalLinkIcon,
   FileIcon,
+  FolderOpen as FolderOpenIcon,
 } from "lucide-vue-next";
 import {
   ContextMenu,
@@ -112,6 +113,7 @@ const {
   handleCreateConfigFile,
   handleExpandAll,
   handleCollapseAll,
+  handleOpenInExplorer,
   prepareDeleteMatch,
   prepareDeleteFile,
   prepareDeleteFolder,
@@ -208,6 +210,12 @@ const computedMenuItems = computed((): MenuItem[] => {
           separator: true,
         },
         {
+          label: t('contextMenu.openInExplorer'),
+          icon: FolderOpenIcon,
+          action: handleOpenInExplorer,
+          separator: true,
+        },
+        {
           label: t('contextMenu.browseOfficialPackages'),
           icon: ExternalLinkIcon,
           action: handleOpenPackageHub,
@@ -229,6 +237,12 @@ const computedMenuItems = computed((): MenuItem[] => {
           label: t('contextMenu.collapseAll'),
           icon: ChevronsUpDownIcon,
           action: handleCollapseAll,
+          separator: true,
+        },
+        {
+          label: t('contextMenu.openInExplorer'),
+          icon: FolderOpenIcon,
+          action: handleOpenInExplorer,
           separator: true,
         },
         {
@@ -256,6 +270,12 @@ const computedMenuItems = computed((): MenuItem[] => {
           label: t('contextMenu.collapseAll'),
           icon: ChevronsUpDownIcon,
           action: handleCollapseAll,
+          separator: true,
+        },
+        {
+          label: t('contextMenu.openInExplorer'),
+          icon: FolderOpenIcon,
+          action: handleOpenInExplorer,
           separator: true,
         },
         {
@@ -294,6 +314,12 @@ const computedMenuItems = computed((): MenuItem[] => {
           separator: true,
         },
         {
+          label: t('contextMenu.openInExplorer'),
+          icon: FolderOpenIcon,
+          action: handleOpenInExplorer,
+          separator: true,
+        },
+        {
           label: t('contextMenu.deleteFolder'),
           icon: Trash2Icon,
           action: prepareDeleteFolder,
@@ -305,9 +331,9 @@ const computedMenuItems = computed((): MenuItem[] => {
   } else if (type === "match") {
     // 匹配项类型的菜单项
     items.push(
-      { 
-        label: t('contextMenu.copySnippet'), 
-        icon: ClipboardCopyIcon, 
+      {
+        label: t('contextMenu.copySnippet'),
+        icon: ClipboardCopyIcon,
         action: handleCopyItem,
         shortcut: `${platformKey}+C`,
       },
@@ -316,6 +342,11 @@ const computedMenuItems = computed((): MenuItem[] => {
         icon: ScissorsIcon,
         action: handleCutItem,
         shortcut: `${platformKey}+X`,
+      },
+      {
+        label: t('contextMenu.openInExplorer'),
+        icon: FolderOpenIcon,
+        action: handleOpenInExplorer,
         separator: true,
       },
       {

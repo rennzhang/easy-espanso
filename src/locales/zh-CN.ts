@@ -349,6 +349,7 @@ export default {
     "copyPath": "复制路径",
     "expandAll": "展开全部",
     "collapseAll": "收起全部",
+    "openInExplorer": "在文件管理器中打开",
     "browseOfficialPackages": "浏览官方包库",
     "renameFile": "重命名文件",
     "deleteFile": "删除文件",

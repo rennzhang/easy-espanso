@@ -347,6 +347,7 @@ export default {
     "copyPath": "Copy Path",
     "expandAll": "Expand All",
     "collapseAll": "Collapse All",
+    "openInExplorer": "Open in File Explorer",
     "browseOfficialPackages": "Browse Official Packages",
     "renameFile": "Rename File",
     "deleteFile": "Delete File",
