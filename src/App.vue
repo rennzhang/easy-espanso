@@ -60,6 +60,7 @@ import * as configService from '@/services/configService';     // 引入重构�
 import { useTheme } from './hooks/useTheme'; // 正确导入useTheme
 import { checkEspansoInstalled } from '@/services/espansoInstallService'; // 导入 espanso 安装检测服务
 import EspansoInstallPrompt from '@/components/common/EspansoInstallPrompt.vue'; // 导入安装提示组件
+import { useTabKeyHandler } from './hooks/useTabKeyHandler'; // 导入 Tab 键处理钩子
 
 // 导入 UI 组件 (保持不变)
 import { Button } from './components/ui/button'; // 导入按钮组件
@@ -74,6 +75,9 @@ const { t } = useI18n(); // 使用国际化
 // 使用useTheme并记录一下主题状态，以防linter报错
 const { theme } = useTheme();
 console.log(`[App] Current theme: ${theme.value}`); // 使用theme变量，避免unused警告
+
+// 使用 Tab 键处理钩子，禁用右侧面板的 Tab 键默认行为
+useTabKeyHandler();
 
 // 处理 espanso 安装检测结果
 const handleInstallCheckComplete = (installed: boolean) => {
@@ -99,7 +103,7 @@ const setupEspansoStatusListener = () => {
     window.ipcRenderer.on('espanso:installStatus', (installed) => {
       console.log('[App] Received Espanso installation status from main process:', installed);
       espansoInstalled.value = installed;
-      
+
       if (installed) {
         // 如果检测到已安装，继续初始化流程
         if (!store.state.configRootDir && !store.state.loading) {
