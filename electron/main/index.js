@@ -422,13 +422,33 @@ function registerIpcHandlers(mw) {
             const topLevelKeys = Object.keys(data);
             console.log(`[Main IPC] YAML顶级键: ${topLevelKeys.join(', ')}`);
 
-            // 预处理数据，确保可序列化
-            const cleanData = prepareDataForSerialization(data);
+            // 预处理数据，确保可序列化，并确保 trigger 属性始终使用双引号
+            const cleanData = prepareDataForSerialization(data, true);
 
-            // 使用js-yaml序列化
-            const result = yaml.dump(cleanData);
-            console.log(`[Main IPC] YAML序列化成功，结果长度: ${result.length}`);
-            return result;
+            // 使用js-yaml序列化，添加配置确保特殊字符被正确处理
+            const result = yaml.dump(cleanData, {
+                indent: 2,
+                lineWidth: -1, // 不限制行宽
+                noRefs: true, // 避免使用引用标记
+                styles: {
+                    '!!str': 'double-quoted' // 强制所有字符串使用双引号，确保特殊字符被正确处理
+                },
+                forceQuotes: true, // 强制所有字符串使用引号
+                quotingType: '"' // 使用双引号而不是单引号
+            });
+
+            // 手动替换所有 trigger 属性的单引号为双引号
+            // 这里使用正则表达式匹配 trigger: '值' 的模式，并替换为 trigger: "值"
+            let resultWithDoubleQuotes = result;
+
+            // 替换单引号为双引号
+            resultWithDoubleQuotes = resultWithDoubleQuotes.replace(/(trigger:\s*)'([^']*)'/g, '$1"$2"');
+
+            // 替换没有引号的 trigger 值
+            resultWithDoubleQuotes = resultWithDoubleQuotes.replace(/(trigger:\s*)([^"'\s][^\s]*)/g, '$1"$2"');
+
+            console.log(`[Main IPC] YAML序列化成功，结果长度: ${resultWithDoubleQuotes.length}`);
+            return resultWithDoubleQuotes;
         } catch (error) {
             console.error(`[Main IPC] 序列化 YAML 失败:`, error);
             console.error(`[Main IPC] 错误信息: ${error.message}`);
@@ -440,14 +460,26 @@ function registerIpcHandlers(mw) {
     /**
      * 预处理数据，确保可以安全序列化
      * @param {any} data 要处理的数据
+     * @param {boolean} forceTriggerQuotes 是否强制 trigger 属性使用双引号
      * @returns {any} 处理后的数据
      */
-    function prepareDataForSerialization(data) {
+    function prepareDataForSerialization(data, forceTriggerQuotes = false) {
         const seen = new WeakSet();
 
         function clean(obj) {
             // 基本类型直接返回
             if (obj === null || obj === undefined) return obj;
+
+            // 处理字符串，确保特殊字符被正确处理
+            if (typeof obj === 'string') {
+                // 检查字符串是否包含控制字符（如 \x05）
+                if (/\\x[0-9a-fA-F]{2}/.test(obj) || /[\x00-\x1F]/.test(obj)) {
+                    console.log(`[Main IPC] 检测到包含控制字符的字符串: ${JSON.stringify(obj)}`);
+                    // 不需要特殊处理，因为我们已经在 yaml.dump 中设置了 forceQuotes: true
+                }
+                return obj;
+            }
+
             if (typeof obj !== 'object') return obj;
 
             // 处理数组
@@ -473,6 +505,21 @@ function registerIpcHandlers(mw) {
                 try {
                     // 跳过内部属性、函数、Symbol等
                     if (key.startsWith('_') || typeof obj[key] === 'function') continue;
+
+                    // 特殊处理 trigger 属性
+                    if (key === 'trigger' && typeof obj[key] === 'string') {
+                        // 如果是 trigger 属性，我们需要确保它使用双引号
+                        if (forceTriggerQuotes) {
+                            console.log(`[Main IPC] 强制 trigger 属性使用双引号: ${JSON.stringify(obj[key])}`);
+                            // 我们不需要添加特殊标记，因为我们已经在 yaml.dump 后手动替换了所有 trigger 属性
+                        }
+
+                        // 检查 trigger 是否包含控制字符
+                        if (/\\x[0-9a-fA-F]{2}/.test(obj[key]) || /[\x00-\x1F]/.test(obj[key])) {
+                            console.log(`[Main IPC] 检测到包含控制字符的 trigger: ${JSON.stringify(obj[key])}`);
+                        }
+                    }
+
                     const value = clean(obj[key]);
                     if (value !== undefined) {
                         result[key] = value;
