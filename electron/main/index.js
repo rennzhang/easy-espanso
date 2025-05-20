@@ -385,9 +385,28 @@ function registerIpcHandlers(mw) {
     ipcMain.handle(CHANNELS.SYS_CHECK_ESPANSO, async () => {
         console.log('[Main IPC] 检测 Espanso 是否安装');
         try {
-            return await checkEspansoInstalled();
+            const isInstalled = await checkEspansoInstalled();
+            console.log(`[Main IPC] Espanso 检测结果: ${isInstalled ? '已安装' : '未安装'}`);
+            
+            // 更新全局变量以便其他地方可以访问
+            global.espansoInstalled = isInstalled;
+            
+            // 如果主窗口存在，通知渲染进程
+            if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                console.log('[Main IPC] 通知渲染进程 Espanso 安装状态:', isInstalled);
+                mainWindow.webContents.send(CHANNELS.ESPANSO_INSTALL_STATUS, isInstalled);
+            }
+            
+            return isInstalled;
         } catch (error) {
             console.error('[Main IPC] 检测 Espanso 安装失败:', error);
+            console.error('[Main IPC] 错误堆栈:', error.stack);
+            
+            // 发送错误通知到渲染进程
+            if (mainWindow && mainWindow.webContents && !mainWindow.webContents.isDestroyed()) {
+                mainWindow.webContents.send(CHANNELS.ESPANSO_INSTALL_STATUS, false);
+            }
+            
             return false;
         }
     });
@@ -611,62 +630,59 @@ function createWindow() {
     } else {
         // 生产模式
         console.log('生产模式：加载本地文件');
-        const rendererPath = path.join(__dirname, '../renderer/index.html');
-        console.log('尝试加载主路径:', rendererPath);
-
-        if (fsSync.existsSync(rendererPath)) {
-            console.log('主路径文件存在，开始加载');
-            mainWindow.loadFile(rendererPath);
-        } else {
-            console.error('主路径文件不存在:', rendererPath);
-            // 尝试备选路径
-            const altPath = path.join(__dirname, '../../dist/electron/renderer/index.html');
-            console.log('尝试备选路径:', altPath);
-
-            if (fsSync.existsSync(altPath)) {
-                console.log('备选路径文件存在，开始加载');
-                mainWindow.loadFile(altPath);
-            } else {
-                console.error('备选路径文件也不存在，尝试更多备选项');
-                const possiblePaths = [
-                    path.join(__dirname, '../../dist/index.html'),
-                    path.join(app.getAppPath(), 'dist/index.html'),
-                    path.join(app.getAppPath(), 'dist/electron/renderer/index.html')
-                ];
-
-                let found = false;
-                for (const tryPath of possiblePaths) {
-                    console.log('尝试路径:', tryPath);
-                    if (fsSync.existsSync(tryPath)) {
-                        console.log('找到可用路径，加载:', tryPath);
-                        mainWindow.loadFile(tryPath);
-                        found = true;
-                        break;
-                    }
-                }
-
-                if (!found) {
-                    // 显示错误页面
-                    mainWindow.loadURL(`data:text/html;charset=utf-8,
-                        <html>
-                            <head>
-                                <title>加载错误</title>
-                                <style>
-                                    body { font-family: system-ui; text-align: center; padding: 2rem; }
-                                    h1 { color: #e53e3e; }
-                                    pre { text-align: left; background: #f8f8f8; padding: 1rem; border-radius: 4px; overflow: auto; }
-                                </style>
-                            </head>
-                            <body>
-                                <h1>无法加载应用</h1>
-                                <p>找不到应用主文件，请确保应用已正确构建。</p>
-                                <p>Electron 路径: ${__dirname}</p>
-                                <pre>${possiblePaths.join('\n')}</pre>
-                            </body>
-                        </html>
-                    `);
-                }
+        
+        // 打印更多调试信息
+        console.log('应用路径:', app.getAppPath());
+        console.log('__dirname:', __dirname);
+        console.log('process.resourcesPath:', process.resourcesPath);
+        
+        // 尝试各种可能的路径
+        const possiblePaths = [
+            path.join(__dirname, '../renderer/index.html'),
+            path.join(__dirname, '../../dist/electron/renderer/index.html'),
+            path.join(process.resourcesPath, 'app/dist/electron/renderer/index.html'),
+            path.join(app.getAppPath(), 'dist/electron/renderer/index.html')
+        ];
+        
+        console.log('尝试以下路径:');
+        possiblePaths.forEach(p => console.log(`- ${p} (${fsSync.existsSync(p) ? '存在' : '不存在'})`));
+        
+        // 尝试加载第一个存在的路径
+        let loaded = false;
+        for (const tryPath of possiblePaths) {
+            if (fsSync.existsSync(tryPath)) {
+                console.log('找到可用路径，加载:', tryPath);
+                
+                // 设置协议处理器以处理相对路径
+                mainWindow.loadFile(tryPath);
+                loaded = true;
+                break;
             }
+        }
+        
+        // 如果没有找到可用路径，显示错误页面
+        if (!loaded) {
+            console.error('未找到可用的index.html文件');
+            mainWindow.loadURL(`data:text/html;charset=utf-8,
+                <html>
+                    <head>
+                        <title>加载错误</title>
+                        <style>
+                            body { font-family: system-ui; text-align: center; padding: 2rem; }
+                            h1 { color: #e53e3e; }
+                            pre { text-align: left; background: #f8f8f8; padding: 1rem; border-radius: 4px; overflow: auto; }
+                        </style>
+                    </head>
+                    <body>
+                        <h1>无法加载应用</h1>
+                        <p>找不到应用主文件，请确保应用已正确构建。</p>
+                        <p>Electron 路径: ${__dirname}</p>
+                        <p>资源路径: ${process.resourcesPath}</p>
+                        <p>应用路径: ${app.getAppPath()}</p>
+                        <pre>${possiblePaths.map(p => `${p} - ${fsSync.existsSync(p) ? '存在' : '不存在'}`).join('\n')}</pre>
+                    </body>
+                </html>
+            `);
         }
     }
     // --- 加载应用结束 ---
@@ -770,19 +786,95 @@ function createWindow() {
  */
 async function checkEspansoInstalled() {
     return new Promise((resolve) => {
+        // 判断是否为打包环境
+        const isPackaged = app.isPackaged;
+        console.log(`[Main] 检测Espanso - 当前环境: ${isPackaged ? '已打包' : '开发环境'}`);
+        
+        // 在打包环境下，尝试使用更多方法查找espanso
+        if (isPackaged) {
+            // 记录更多调试信息
+            console.log(`[Main] 打包环境PATH: ${process.env.PATH}`);
+            console.log(`[Main] 应用路径: ${app.getAppPath()}`);
+            console.log(`[Main] 资源路径: ${process.resourcesPath}`);
+        }
+        
         const command = process.platform === 'win32' ? 'where espanso' : 'which espanso';
 
         exec(command, (error, stdout, stderr) => {
             if (error) {
-                console.log('[Main] Espanso 未安装或未在环境变量中:', error.message);
-                resolve(false);
+                console.log('[Main] Espanso 未在环境变量PATH中找到:', error.message);
+                
+                // 在打包环境下，尝试查找常见的安装位置
+                if (isPackaged) {
+                    let alternativePaths = [];
+                    
+                    if (process.platform === 'darwin') {
+                        // macOS常见安装位置
+                        alternativePaths = [
+                            '/usr/local/bin/espanso',
+                            '/opt/homebrew/bin/espanso',
+                            '/Applications/Espanso.app/Contents/MacOS/espanso'
+                        ];
+                    } else if (process.platform === 'win32') {
+                        // Windows常见安装位置
+                        alternativePaths = [
+                            'C:\\Program Files\\Espanso\\espanso.exe',
+                            'C:\\Program Files (x86)\\Espanso\\espanso.exe',
+                            `${process.env.LOCALAPPDATA}\\Programs\\Espanso\\espanso.exe`,
+                            `${process.env.APPDATA}\\Espanso\\espanso.exe`
+                        ];
+                    } else {
+                        // Linux常见安装位置
+                        alternativePaths = [
+                            '/usr/bin/espanso',
+                            '/usr/local/bin/espanso',
+                            '/opt/espanso/espanso'
+                        ];
+                    }
+                    
+                    console.log(`[Main] 尝试在常见位置查找Espanso: ${alternativePaths.join(', ')}`);
+                    
+                    // 检查这些路径是否存在
+                    for (const path of alternativePaths) {
+                        try {
+                            if (fsSync.existsSync(path)) {
+                                console.log(`[Main] 在替代位置找到Espanso: ${path}`);
+                                
+                                // 尝试用找到的路径执行status命令
+                                exec(`"${path}" status`, (statusError, statusStdout, statusStderr) => {
+                                    if (statusError) {
+                                        console.log(`[Main] Espanso在${path}存在但状态异常:`, statusError.message);
+                                        resolve(false);
+                                    } else {
+                                        console.log(`[Main] Espanso在${path}正常运行，状态:`, statusStdout.trim());
+                                        resolve(true);
+                                    }
+                                });
+                                return; // 找到一个可用路径后退出
+                            }
+                        } catch (err) {
+                            console.error(`[Main] 检查路径${path}时出错:`, err);
+                        }
+                    }
+                    
+                    // 如果所有替代路径都不存在
+                    console.log('[Main] 在所有常见位置均未找到Espanso');
+                    resolve(false);
+                } else {
+                    // 开发环境直接返回false
+                    resolve(false);
+                }
                 return;
             }
 
-            // 使用 espanso status 命令来检查服务是否运行，而不仅仅是检查版本
+            // 找到espanso命令，获取其路径
+            const espansoPath = stdout.trim();
+            console.log(`[Main] 在PATH中找到Espanso: ${espansoPath}`);
+
+            // 使用 espanso status 命令来检查服务是否运行
             exec('espanso status', (error, stdout, stderr) => {
                 if (error) {
-                    console.log('[Main] Espanso 安装异常，无法执行或未运行:', error.message);
+                    console.log('[Main] Espanso 已安装但可能未运行:', error.message);
                     resolve(false);
                 } else {
                     console.log('[Main] Espanso 已安装且正在运行，状态:', stdout.trim());
