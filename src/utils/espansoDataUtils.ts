@@ -218,8 +218,10 @@ export const processMatch = (
     // `force_clipboard: true` is an alternative for `force_mode: clipboard`.
     if (rawMatch.force_clipboard === true) {
         processed.forceMode = 'clipboard';
-    } else if (rawMatch.force_mode === "clipboard" || rawMatch.force_mode === "keys") {
+    } else if (rawMatch.force_mode === "clipboard" || rawMatch.force_mode === "keys" || rawMatch.force_mode === "default") {
         processed.forceMode = rawMatch.force_mode;
+        // 保存原始的force_mode值，以便在保存时使用
+        processed.force_mode = rawMatch.force_mode;
     } else {
         processed.forceMode = 'default'; // Espanso's default
     }
@@ -236,7 +238,7 @@ export const processMatch = (
  * @returns 清理后的、适合写入 YAML 的对象。
  */
 export const cleanMatchForSaving = (match: Match): EspansoMatchYaml => {
-
+    console.log('cleanMatchForSaving match', match);
     const cleaned: EspansoMatchYaml = {};
 
     // Trigger/Triggers (优先 triggers)
@@ -299,14 +301,21 @@ export const cleanMatchForSaving = (match: Match): EspansoMatchYaml => {
     } // 如果是 'default' 或 undefined，则不写入，让 espanso 使用默认行为
 
     // Map internal forceMode back to Espanso YAML (force_mode or force_clipboard)
-    if (match.forceMode === 'clipboard') {
-        cleaned.force_mode = 'clipboard'; // Or cleaned.force_clipboard = true; Espanso supports both.
-                                        // Let's be consistent with force_mode for clarity.
-        delete cleaned.force_clipboard; // Ensure only one is set
+    // 优先使用match.force_mode（如果存在），否则使用forceMode的映射
+    if (match.force_mode) {
+        // 如果match对象中已经有force_mode属性，直接使用它
+        cleaned.force_mode = match.force_mode;
+        delete cleaned.force_clipboard; // 确保只设置一个
+    } else if (match.forceMode === 'clipboard') {
+        cleaned.force_mode = 'clipboard';
+        delete cleaned.force_clipboard;
     } else if (match.forceMode === 'keys') {
         cleaned.force_mode = 'keys';
         delete cleaned.force_clipboard;
-    } // if 'default' or undefined, neither is written, which is Espanso's default.
+    } else if (match.forceMode === 'default') {
+        cleaned.force_mode = 'default';
+        delete cleaned.force_clipboard;
+    } // 如果都不存在，则不写入任何值
     
     // 数组字段 (仅当有元素时写入)
     if (match.apps && match.apps.length > 0) cleaned.apps = match.apps;
@@ -324,6 +333,7 @@ export const cleanMatchForSaving = (match: Match): EspansoMatchYaml => {
     // 字符串字段 (仅当非空时写入)
     if (match.hotkey) cleaned.hotkey = match.hotkey;
 
+    console.log('cleaned', cleaned);
     return cleaned;
 };
 
