@@ -1,11 +1,11 @@
 <template>
   <div class="config-tree" tabindex="0" @focus="treeHasFocus = true" @blur="treeHasFocus = false" @click="handleTreeClick">
-    <div v-if="loading" class="flex items-center justify-center p-4">
-      <div class="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mr-2"></div>
-      <span>加载中...</span>
+    <div v-if="loading" class="flex items-center justify-center p-4 text-muted-foreground">
+      <div class="animate-spin h-5 w-5 border-2 border-border border-t-primary rounded-full mr-2"></div>
+      <span>{{ t('common.loading') }}</span>
     </div>
     <div v-else-if="!treeData || treeData.length === 0" class="p-4 text-muted-foreground">
-      没有找到配置文件
+      {{ t('snippets.noSnippets') }}
     </div>
     <div v-else class="tree-container w-full drop-zone" v-sortable="rootSortableOptions" data-parent-id="root" data-container-type="root">
       <template v-for="node in treeData" :key="node.id">
@@ -37,6 +37,10 @@ import Sortable from 'sortablejs';
 import TreeNodeRegistry from '@/utils/TreeNodeRegistry';
 import { toast } from 'vue-sonner';
 import { determineSnippetPosition, focusTriggerInput } from '@/utils/snippetPositionUtils';
+import { useI18n } from 'vue-i18n';
+
+// 初始化 i18n
+const { t } = useI18n();
 
 // 定义树节点类型
 export interface TreeNodeItem {
@@ -71,7 +75,7 @@ const createMatchNode = (match: Match): TreeNodeItem => {
       displayName += '...'; // Indicate multiple triggers
     }
   } else if (!displayName) {
-    displayName = '[未命名触发词]'; // Fallback if neither exists
+    displayName = t('snippets.noTrigger'); // Fallback if neither exists
   }
 
   return {
@@ -93,7 +97,7 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
     const packagesNode: TreeNodeItem = {
       id: node.id || `folder-${node.path || 'packages'}`,
       type: 'folder',
-      name: 'Packages', // Rename to 'Packages'
+      name: t('fileDetails.packageFile'), // Rename to 'Packages'
       path: node.path,
       children: []
     };
@@ -184,7 +188,98 @@ const convertStoreNodeToTreeNodeItem = (node: any, isTopLevel: boolean = false):
 const treeData = computed(() => {
   const configTree = store.state.configTree || [];
   console.log('[ConfigTree] 原始 store.state.configTree:', JSON.stringify(configTree, null, 2));
-  const tree = configTree
+  
+  // 检查是否有重复的match文件夹节点
+  const matchFolderPaths = new Set<string>();
+  const uniqueConfigTree = configTree.filter(node => {
+    // 如果不是folder类型，或者不是match文件夹，直接保留
+    if (node.type !== 'folder' || node.name !== 'match') {
+      return true;
+    }
+    
+    // 如果是match文件夹，检查路径是否已经存在
+    if (matchFolderPaths.has(node.path)) {
+      console.log(`[ConfigTree] 发现重复的match文件夹节点，路径为: ${node.path}，已过滤`);
+      return false; // 过滤掉重复的
+    }
+    
+    matchFolderPaths.add(node.path);
+    return true;
+  });
+  
+  // 如果match文件夹存在，展平match文件夹的子节点到根级
+  // 也就是说，不显示match文件夹本身，而是直接显示其内容
+  const shouldFlattenMatchFolder = true; // 这可以根据需要改为配置项
+  
+  let processedTree;
+  if (shouldFlattenMatchFolder) {
+    processedTree = [];
+    for (const node of uniqueConfigTree) {
+      if (node.type === 'folder' && node.name === 'match') {
+        // 将match文件夹的子节点直接添加到根级
+        if (node.children && node.children.length > 0) {
+          // 排序子节点，使时间戳命名的文件和文件夹排序在前面
+          const sortedChildren = [...node.children].sort((a, b) => {
+            // 检查名称是否以时间戳开头
+            const aIsTimestamp = /^\d{13}_/.test(a.name);
+            const bIsTimestamp = /^\d{13}_/.test(b.name);
+            
+            // 如果两个都是时间戳命名，按从新到旧排序
+            if (aIsTimestamp && bIsTimestamp) {
+              // 提取时间戳部分进行比较
+              const aTimestamp = parseInt(a.name.split('_')[0], 10);
+              const bTimestamp = parseInt(b.name.split('_')[0], 10);
+              return bTimestamp - aTimestamp; // 从大到小排序，最新的在最前面
+            }
+            
+            // 时间戳命名的排在前面
+            if (aIsTimestamp) return -1;
+            if (bIsTimestamp) return 1;
+            
+            // 否则按文件名排序
+            return a.name.localeCompare(b.name);
+          });
+          
+          processedTree.push(...sortedChildren);
+        }
+      } else {
+        // 其他节点直接添加
+        processedTree.push(node);
+      }
+    }
+    console.log('[ConfigTree] 已展平match文件夹内容到根级');
+  } else {
+    processedTree = uniqueConfigTree;
+    
+    // 如果不展平match文件夹，也要对match文件夹内的内容进行排序
+    for (const node of processedTree) {
+      if (node.type === 'folder' && node.children && node.children.length > 0) {
+        node.children.sort((a, b) => {
+          // 检查名称是否以时间戳开头
+          const aIsTimestamp = /^\d{13}_/.test(a.name);
+          const bIsTimestamp = /^\d{13}_/.test(b.name);
+          
+          // 如果两个都是时间戳命名，按从新到旧排序
+          if (aIsTimestamp && bIsTimestamp) {
+            // 提取时间戳部分进行比较
+            const aTimestamp = parseInt(a.name.split('_')[0], 10);
+            const bTimestamp = parseInt(b.name.split('_')[0], 10);
+            return bTimestamp - aTimestamp; // 从大到小排序，最新的在最前面
+          }
+          
+          // 时间戳命名的排在前面
+          if (aIsTimestamp) return -1;
+          if (bIsTimestamp) return 1;
+          
+          // 否则按文件名排序
+          return a.name.localeCompare(b.name);
+        });
+      }
+    }
+  }
+  
+  // 转换为TreeNodeItem结构
+  const tree = processedTree
     .map((node: any) => convertStoreNodeToTreeNodeItem(node, true))
     .filter((item: TreeNodeItem | null): item is TreeNodeItem => item !== null)
     .filter((node: TreeNodeItem) => !(node.type === 'folder' && node.name === 'config'));
@@ -193,6 +288,28 @@ const treeData = computed(() => {
   const packagesNode = tree.find((node: TreeNodeItem) => node.type === 'folder' && node.name === 'Packages');
   const otherNodes = tree.filter((node: TreeNodeItem) => !(node.type === 'folder' && node.name === 'Packages'));
 
+  // 排序其他节点，确保时间戳命名的文件和文件夹排序在前面
+  otherNodes.sort((a, b) => {
+    // 检查名称是否以时间戳开头
+    const aIsTimestamp = /^\d{13}_/.test(a.name);
+    const bIsTimestamp = /^\d{13}_/.test(b.name);
+    
+    // 如果两个都是时间戳命名，按从新到旧排序
+    if (aIsTimestamp && bIsTimestamp) {
+      // 提取时间戳部分进行比较
+      const aTimestamp = parseInt(a.name.split('_')[0], 10);
+      const bTimestamp = parseInt(b.name.split('_')[0], 10);
+      return bTimestamp - aTimestamp; // 从大到小排序，最新的在最前面
+    }
+    
+    // 时间戳命名的排在前面
+    if (aIsTimestamp) return -1;
+    if (bIsTimestamp) return 1;
+    
+    // 否则按文件名排序
+    return a.name.localeCompare(b.name);
+  });
+  
   // 如果找到 Packages 节点，将其添加到数组末尾
   const sortedTree = [...otherNodes];
   if (packagesNode) {
@@ -295,13 +412,6 @@ const handleRootSortEnd = (event: Sortable.SortableEvent) => {
   }
 };
 
-// 监听选中ID的变化
-watch(() => props.selectedId, (newId) => {
-  if (newId) {
-    // 可以在这里实现自动展开到选中项的逻辑
-  }
-});
-
 // 在组件挂载后输出树结构并设置键盘事件监听
 onMounted(() => {
   // console.log('ConfigTree组件挂载完成');
@@ -381,7 +491,7 @@ const getAllSelectableNodes = (): { node: TreeNodeItem, element: HTMLElement }[]
 
         // 检查节点是否展开
         const nodeInfo = TreeNodeRegistry.get(node.id);
-        const isNodeOpen = nodeInfo?.isOpen?.value === true;
+        const isNodeOpen = nodeInfo?.info?.isOpen?.value === true;
 
         // 如果节点有子节点且是展开的，则递归处理子节点
         if (isNodeOpen && node.children && node.children.length > 0) {
@@ -400,7 +510,6 @@ const getAllSelectableNodes = (): { node: TreeNodeItem, element: HTMLElement }[]
 const handleKeyDown = (event: KeyboardEvent) => {
   // 只有当树组件有焦点时才处理键盘事件
   if (!treeHasFocus.value) {
-    // console.log('键盘导航: 树组件没有焦点，忽略键盘事件');
     return;
   }
 
@@ -417,20 +526,14 @@ const handleKeyDown = (event: KeyboardEvent) => {
   // 阻止默认行为（例如页面滚动）
   event.preventDefault();
 
-  console.log(`键盘导航: 检测到 ${event.key} 按键`);
-
   // 获取所有可选择的节点
   const selectableNodes = getAllSelectableNodes();
   if (selectableNodes.length === 0) {
-    console.log('键盘导航: 没有找到可选择的节点');
     return;
   }
 
-  console.log(`键盘导航: 找到 ${selectableNodes.length} 个可选择的节点`);
-
   // 找到当前选中节点的索引
   const currentIndex = selectableNodes.findIndex(item => item.node.id === props.selectedId);
-  console.log(`键盘导航: 当前选中节点索引: ${currentIndex}, ID: ${props.selectedId || '无'}`);
 
   // 计算下一个要选择的节点索引
   let nextIndex = currentIndex;
@@ -442,25 +545,19 @@ const handleKeyDown = (event: KeyboardEvent) => {
     nextIndex = currentIndex > 0 ? currentIndex - 1 : 0;
   }
 
-  console.log(`键盘导航: 下一个节点索引: ${nextIndex}`);
-
   // 如果索引没有变化，则不需要进一步处理
   if (nextIndex === currentIndex && currentIndex !== -1) {
-    console.log('键盘导航: 索引未变化，不进行选择');
     return;
   }
 
   // 如果没有选中项，则选择第一个节点
   if (currentIndex === -1) {
-    console.log('键盘导航: 没有当前选中项，选择第一个节点');
     nextIndex = 0;
   }
 
   // 获取下一个要选择的节点
   const nextNode = selectableNodes[nextIndex].node;
   const nextElement = selectableNodes[nextIndex].element;
-
-  console.log(`键盘导航: 选择节点 ${nextNode.id} (${nextNode.type}: ${nextNode.name})`);
 
   // 选择节点
   handleSelect(nextNode);
@@ -478,7 +575,7 @@ const createNewSnippet = async () => {
 
   if (!targetParentNodeId) {
     console.error('创建新片段: 无法确定目标父节点');
-    toast.error('无法确定创建新片段的位置');
+    toast.error(t('snippets.form.autoSave.error', { error: t('snippets.noSelection') }));
     return;
   }
 
@@ -487,8 +584,8 @@ const createNewSnippet = async () => {
   // 创建新片段数据
   const newMatchData = {
     trigger: ':new',
-    replace: '新片段内容',
-    label: '新片段',
+    replace: "",
+    label: "",
   };
 
   try {
@@ -497,7 +594,7 @@ const createNewSnippet = async () => {
 
     if (addedItem) {
       console.log('创建新片段: 成功创建新片段', addedItem.id);
-      toast.success('新片段已创建，请编辑触发词');
+      toast.success(t('snippets.form.autoSave.success'));
 
       // 在下一个 tick 中开始尝试聚焦
       nextTick(() => {
@@ -506,13 +603,16 @@ const createNewSnippet = async () => {
       });
     } else {
       console.error('创建新片段: 创建失败');
-      toast.error('创建新片段失败');
+      toast.error(t('snippets.form.autoSave.error', { error: t('common.error') }));
     }
   } catch (error: any) {
     console.error('创建新片段: 错误', error);
-    toast.error(`创建新片段失败: ${error.message || '未知错误'}`);
+    toast.error(t('snippets.form.autoSave.error', { error: error.message || t('common.error') }));
   }
 };
+
+// 默认收起所有节点
+const isOpen = ref(false);
 
 </script>
 
@@ -525,11 +625,13 @@ const createNewSnippet = async () => {
   padding: 0;
   margin: 0;
   outline: none; /* 移除默认的焦点轮廓 */
+  @apply bg-background; /* Use theme background */
 }
 
 /* 树组件获得焦点时的样式 */
 .tree-has-focus {
-  box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3); /* 添加内阴影作为焦点指示器 */
+  /* box-shadow: inset 0 0 0 2px rgba(59, 130, 246, 0.3); */ /* 改用 ring */
+  @apply ring-2 ring-ring ring-inset;
 }
 
 .tree-container {
@@ -541,19 +643,14 @@ const createNewSnippet = async () => {
 /* 拖拽样式 */
 .tree-ghost {
   opacity: 0.5;
-  background-color: #f1f5f9 !important;
-  border: 1px dashed #64748b !important;
+  /* background-color: #f1f5f9 !important; */
+  /* border: 1px dashed #64748b !important; */
+  @apply bg-accent/50 border border-dashed border-border !important;
 }
 
 .tree-drag {
-  /* 可以保留基本的拖拽样式，例如透明度 */
   opacity: 0.7;
   z-index: 10;
-  /* 移除强制高度和溢出隐藏 */
-  /* height: 28px !important; */
-  /* overflow: hidden !important; */
-  /* 移除背景色 */
-  /* background-color: rgba(230, 230, 230, 0.8) !important; */
 }
 
 /* 确保被拖拽节点的直接子元素（例如图标和名称的容器）不会破坏高度 */

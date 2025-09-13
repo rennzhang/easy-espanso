@@ -23,10 +23,16 @@ const router = useRouter();
   align-items: center;
   justify-content: center;
   gap: 16px;
+  @apply bg-background text-foreground;
 }
 
 h1 {
   font-size: 4rem;
   margin: 0;
+  @apply text-muted-foreground;
+}
+
+p {
+  @apply text-lg text-muted-foreground;
 }
 </style>

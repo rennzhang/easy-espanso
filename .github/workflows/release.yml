@@ -1,10 +1,17 @@
 name: Build and Release
 
+# on:
+#   push:
+#     tags:
+#       - 'v*.*.*' # 当一个 v 开头的 tag 被推送时触发，例如 v1.0.0
 on:
+  # 临时修改：任何提交都触发工作流，测试成功后将恢复为仅标签触发
   push:
-    tags:
-      - 'v*.*.*' # 当一个 v 开头的 tag 被推送时触发，例如 v1.0.0
-
+    branches:
+      - "**" # 任何分支的提交都会触发
+    # tags:
+    #   - 'v*.*.*' # 当一个 v 开头的 tag 被推送时触发，例如 v1.0.0
+    
 jobs:
   release:
     runs-on: ${{ matrix.os }} # 根据 matrix 中的 os 运行在不同的操作系统上
@@ -18,38 +25,82 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
       - name: Setup Node.js ${{ matrix.node-version }}
         uses: actions/setup-node@v3
         with:
           node-version: ${{ matrix.node-version }}
-          cache: 'pnpm' # 如果你使用 pnpm，可以缓存依赖
+          # 移除内置的 pnpm 缓存
+          # cache: "pnpm"
+          # cache-dependency-path: pnpm-lock.yaml
+
+      # 新增：获取 pnpm store 路径
+      - name: Get pnpm store directory
+        id: pnpm-cache
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path)" >> $GITHUB_OUTPUT
+
+      # 新增：配置 pnpm 缓存
+      - name: Cache pnpm dependencies
+        uses: actions/cache@v3
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: ${{ runner.os }}-node-${{ matrix.node-version }}-pnpm-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-node-${{ matrix.node-version }}-pnpm-
 
       - name: Install dependencies
         run: pnpm install # 或者 npm install / yarn install
 
-      - name: Build application
-        run: |
-          if [ "${{ matrix.os }}" == "macos-latest" ]; then
-            pnpm run electron:build:mac
-          elif [ "${{ matrix.os }}" == "windows-latest" ]; then
-            pnpm run electron:build:win
-          elif [ "${{ matrix.os }}" == "ubuntu-latest" ]; then
-            pnpm run electron:build:linux
-          fi
+      - name: Build for macOS
+        if: matrix.os == 'macos-latest'
+        run: pnpm run electron:build:ci:mac
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }} # electron-builder 可能需要这个来发布
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Release Asset
-        uses: actions/upload-release-asset@v1
+      - name: Build for Windows
+        if: matrix.os == 'windows-latest'
+        run: pnpm run electron:build:ci:win
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build for Linux
+        if: matrix.os == 'ubuntu-latest'
+        run: pnpm run electron:build:ci:linux
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # 替换为 upload-artifact
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v3
         with:
-          upload_url: ${{ github.event.release.upload_url }} # 获取 Release 的上传 URL
-          asset_path: | # 这里需要根据 electron-builder 的输出路径和文件名来调整
+          name: ${{ matrix.os }}-build
+          path: |
             dist_electron/**/*.dmg
             dist_electron/**/*.exe
             dist_electron/**/*.AppImage
             dist_electron/**/*.deb
             dist_electron/**/*.rpm
             dist_electron/**/*.snap
-          asset_content_type: application/octet-stream
+          retention-days: 5
+
+      # 注释掉原有的 upload-release-asset
+      # - name: Upload Release Asset
+      #   uses: actions/upload-release-asset@v1
+      #   env:
+      #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   with:
+      #     upload_url: ${{ github.event.release.upload_url }} # 获取 Release 的上传 URL
+      #     asset_path: | # 这里需要根据 electron-builder 的输出路径和文件名来调整
+      #       dist_electron/**/*.dmg
+      #       dist_electron/**/*.exe
+      #       dist_electron/**/*.AppImage
+      #       dist_electron/**/*.deb
+      #       dist_electron/**/*.rpm
+      #       dist_electron/**/*.snap
+      #     asset_content_type: application/octet-stream

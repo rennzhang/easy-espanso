@@ -1,10 +1,12 @@
 /* 自定义 Tooltip 样式 */
 [data-slot="tooltip-content"] {
   /* 基础样式 */
-  background-color: rgba(50, 50, 50, 0.95) !important;
-  color: #ffffff !important;
-  border-radius: 4px !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+  /* background-color: rgba(50, 50, 50, 0.95) !important; */ /* 使用 popover 变量 */
+  /* color: #ffffff !important; */ /* 使用 popover 变量 */
+  background-color: hsl(var(--popover)) !important;
+  color: hsl(var(--popover-foreground)) !important;
+  border-radius: var(--radius) !important; /* 使用 shadcn 变量 */
+  box-shadow: var(--shadow-md) !important; /* 使用 main.css 移除的变量，暂用 shadow-md */
   font-size: 12px !important;
   line-height: 1.4 !important;
   padding: 8px 10px !important;
@@ -17,30 +19,25 @@
   white-space: normal !important;
   
   /* 边框 */
-  border: none !important;
+  border: 1px solid hsl(var(--border)) !important; /* 使用 border 变量 */
   
   /* 确保内容居中 */
   text-align: left !important;
 }
 
-/* Tooltip 箭头样式 */
-[data-slot="tooltip-content"] > .bg-primary {
-  background-color: rgba(50, 50, 50, 0.95) !important;
-  fill: rgba(50, 50, 50, 0.95) !important;
+/* Tooltip 箭头样式 - 假设箭头也是用popover背景色 */
+[data-slot="tooltip-content"] > .bg-primary { /* 需要确认这个选择器是否正确 */
+  background-color: hsl(var(--popover)) !important;
+  fill: hsl(var(--popover)) !important;
 }
 
 /* 复选框样式 */
-[data-slot="tooltip-content"] .flex.items-center {
-  margin-top: 8px !important;
-}
+/* [data-slot="tooltip-content"] .flex.items-center { ... } */
 
 [data-slot="tooltip-content"] label {
-  color: #ffffff !important;
+  color: hsl(var(--popover-foreground)) !important; /* 使用 popover 变量 */
   font-size: 12px !important;
 }
 
 /* 确保内容不会被截断 */
-[data-slot="tooltip-content"] p {
-  margin: 0 !important;
-  padding: 0 !important;
-}
+/* [data-slot="tooltip-content"] p { ... } */

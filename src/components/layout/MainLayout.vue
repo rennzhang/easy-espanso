@@ -1,5 +1,5 @@
 <template>
-  <div :class="['main-layout', 'flex', 'h-screen', 'overflow-hidden', 'bg-main-bg']">
+  <div :class="['main-layout', 'flex', 'h-screen', 'overflow-hidden', 'bg-background']">
 
     <!-- Main Content Area -->
     <!-- Revert to static class temporarily -->
@@ -8,11 +8,11 @@
     <div class="main-content-area flex flex-1 overflow-hidden">
       <MiddlePane 
         ref="middlePaneRef" 
-        class="w-[350px] overflow-y-auto border-r border-border-color bg-main-bg" 
+        class="w-[350px] overflow-y-auto border-r border-border bg-muted"
       />
       <RightPane 
         ref="rightPaneRef" 
-        class="flex-1 overflow-y-auto bg-card" 
+        class="flex-1 overflow-y-auto bg-card"
       />
     </div>
   </div>

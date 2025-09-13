@@ -1,21 +1,27 @@
 {
   "name": "easy-espanso",
-  "version": "0.1.0",
+  "version": "1.0.1",
+  "author": {
+    "name": "Easy Espanso Team",
+    "email": "906155099@qq.com"
+  },
   "private": true,
   "main": "dist/electron/main/index.js",
   "scripts": {
-    "vite-dev": "vite",
-    "vite-build": "vite build",
-    "dev": "node node_modules/electron/install.js && electron-vite dev",
-    "build": "node node_modules/electron/install.js && electron-vite build && bash scripts/play-build-sound.sh",
-    "build:quiet": "node node_modules/electron/install.js && electron-vite build",
-    "preview": "node node_modules/electron/install.js && electron-vite preview",
-    "electron:dev": "node node_modules/electron/install.js && electron-vite dev",
-    "electron:build": "node node_modules/electron/install.js && electron-vite build && electron-builder --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
-    "electron:build:mac": "node node_modules/electron/install.js && electron-vite build && electron-builder --mac --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
-    "electron:build:win": "node node_modules/electron/install.js && electron-vite build && electron-builder --win --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
-    "electron:build:linux": "node node_modules/electron/install.js && electron-vite build && electron-builder --linux --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
-    "electron:build:quiet": "node node_modules/electron/install.js && electron-vite build && electron-builder --config electron/electron-builder.json"
+    "prepare": "node node_modules/electron/install.js",
+    "dev": "pnpm prepare && electron-vite dev",
+    "build": "pnpm prepare && electron-vite build && bash scripts/play-build-sound.sh",
+    "build:quiet": "pnpm prepare && electron-vite build",
+    "preview": "pnpm prepare && electron-vite preview",
+    "electron:dev": "pnpm dev",
+    "electron:build": "pnpm build:quiet && electron-builder --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
+    "electron:build:mac": "pnpm build:quiet && electron-builder --mac --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
+    "electron:build:win": "pnpm build:quiet && electron-builder --win --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
+    "electron:build:linux": "pnpm build:quiet && electron-builder --linux --config electron/electron-builder.json && bash scripts/play-build-sound.sh",
+    "electron:build:quiet": "pnpm build:quiet && electron-builder --config electron/electron-builder.json",
+    "electron:build:ci:mac": "pnpm build:quiet && electron-builder --mac --config electron/electron-builder.json",
+    "electron:build:ci:win": "pnpm build:quiet && electron-builder --win --config electron/electron-builder.json",
+    "electron:build:ci:linux": "pnpm build:quiet && electron-builder --linux --config electron/electron-builder.json"
   },
   "dependencies": {
     "@headlessui/vue": "^1.7.23",

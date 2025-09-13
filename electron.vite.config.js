@@ -34,14 +34,17 @@ module.exports = defineConfig({
   },
   renderer: {
     root: '.',
-    base: './',
+    base: process.env.ELECTRON_RENDERER_URL || './',
     build: {
       outDir: 'dist/electron/renderer',
+      assetsDir: 'assets',
       rollupOptions: {
         input: {
           index: path.resolve(__dirname, 'index.html')
         }
-      }
+      },
+      minify: true,
+      cssCodeSplit: false
     },
     plugins: [vue()],
     resolve: {

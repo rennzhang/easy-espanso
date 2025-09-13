@@ -2,7 +2,7 @@
   <span>
     <template v-if="highlightedText">
       <span v-for="(part, index) in highlightedText" :key="index">
-        <span v-if="part.highlight" class="text-red-500 font-medium">{{ part.text }}</span>
+        <span v-if="part.highlight" class="text-primary font-medium">{{ part.text }}</span>
         <span v-else>{{ part.text }}</span>
       </span>
     </template>

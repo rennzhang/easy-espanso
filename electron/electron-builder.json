@@ -6,7 +6,7 @@
     "output": "dist_electron"
   },
   "files": [
-    "dist/**/*"
+    "dist/electron/**/*"
   ],
   "mac": {
     "category": "public.app-category.utilities",
@@ -18,5 +18,6 @@
   "linux": {
     "target": ["AppImage", "deb", "rpm"],
     "category": "Utility"
-  }
+  },
+  "publish": null
 }

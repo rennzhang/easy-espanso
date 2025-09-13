@@ -4,65 +4,87 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    /* 亮色主题 - 更精致的颜色方案 */
+    --background: 210 40% 98%; /* 微蓝色调的白色背景 */
+    --foreground: 222.2 47.4% 11.2%; /* 深蓝灰色文本 */
 
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%; /* 纯白色卡片 */
+    --card-foreground: 222.2 47.4% 11.2%; /* 同前景色 */
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%; /* 纯白色弹出框 */
+    --popover-foreground: 222.2 47.4% 11.2%; /* 同前景色 */
 
-    --primary: 222.2 47.4% 11.2%;
-    --primary-foreground: 210 40% 98%;
+    /* 主色调 - 优雅的蓝色 */
+    --primary: 224 76% 48%; /* 鲜明的蓝色 */
+    --primary-foreground: 210 40% 98%; /* 几乎白色的文本 */
+    --primary-gradient-start: 224 76% 48%; /* 同primary */
+    --primary-gradient-end: 226 71% 40%; /* 略深的蓝色 */
+    --primary-gradient-text: 210 40% 98%; /* 同primary-foreground */
 
-    --secondary: 210 40% 96.1%;
+    /* 次要颜色 - 微妙的灰色 */
+    --secondary: 214 32% 91%;
     --secondary-foreground: 222.2 47.4% 11.2%;
 
+    /* 静音色调 - 柔和的背景 */
     --muted: 210 40% 96.1%;
     --muted-foreground: 215.4 16.3% 46.9%;
 
-    --accent: 210 40% 96.1%;
+    /* 强调色 - 微妙的灰蓝色 */
+    --accent: 214 32% 91%;
     --accent-foreground: 222.2 47.4% 11.2%;
 
+    /* 危险色 - 更柔和的红色 */
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 210 40% 98%;
 
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 222.2 84% 4.9%; /* Adjusted ring for light theme based on foreground */
+    /* 边框和表单 - 更微妙但可见 */
+    --border: 214.3 31.8% 85%; /* 淡蓝灰色边框 */
+    --input: 214.3 31.8% 85%; /* 匹配边框 */
+    --ring: 224 76% 48%; /* 匹配主色调 */
 
     --radius: 0.5rem;
   }
 
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
+    /* 暗色主题 - 精致的深色调 */
+    --background: 222.2 47.4% 11.2%; /* 深蓝灰色背景 */
+    --foreground: 210 40% 98%; /* 几乎白色的文本 */
 
-    --card: 222.2 84% 4.9%;
+    /* 卡片 - 略微淡一点的背景 */
+    --card: 222.2 47.4% 13.2%; /* 比背景略浅 */
     --card-foreground: 210 40% 98%;
 
-    --popover: 222.2 84% 4.9%;
+    /* 弹出框 - 略微深一点的背景 */
+    --popover: 222.2 47.4% 9.2%; /* 比背景略深 */
     --popover-foreground: 210 40% 98%;
 
-    --primary: 210 40% 98%;
+    /* 主色调 - 明亮但不刺眼的蓝色 */
+    --primary: 217.2 91.2% 59.8%; /* 明亮的蓝色 */
     --primary-foreground: 222.2 47.4% 11.2%;
+    --primary-gradient-start: 217.2 91.2% 59.8%; /* 同primary */
+    --primary-gradient-end: 215 90% 67%; /* 略淡的蓝色 */
+    --primary-gradient-text: 222.2 47.4% 11.2%; /* 同primary-foreground */
 
+    /* 次要颜色 - 暗蓝灰色 */
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
 
+    /* 静音色调 - 深灰蓝色 */
     --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
+    --muted-foreground: 215 20.2% 75%; /* 更明亮的文本提高可读性 */
 
-    --accent: 217.2 32.6% 17.5%;
+    /* 强调色 - 深灰蓝色 */
+    --accent: 217.2 32.6% 22%; /* 比背景稍亮 */
     --accent-foreground: 210 40% 98%;
 
-    --destructive: 0 62.8% 30.6%;
+    /* 危险色 - 柔和的红色 */
+    --destructive: 0 62.8% 42.6%; /* 更亮的红色 */
     --destructive-foreground: 210 40% 98%;
 
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 215 20.2% 65.1%; /* Standard Shadcn dark ring */
+    /* 边框和表单 - 深灰色带蓝色调 */
+    --border: 217.2 32.6% 22%; /* 可见但不刺眼的边框 */
+    --input: 217.2 32.6% 22%; /* 匹配边框 */
+    --ring: 217.2 91.2% 59.8%; /* 匹配主色调 */
   }
 }
 

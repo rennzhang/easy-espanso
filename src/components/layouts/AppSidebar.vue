@@ -15,7 +15,7 @@
           @click.prevent="handleNavClick(route)"
         >
           <component :is="getRouteIcon(route)" class="nav-icon" />
-          <span class="nav-text">{{ $t(route.meta.title as string) }}</span>
+          <span class="nav-text">{{ t(route.meta.title as string) }}</span>
         </RouterLink>
       </nav>
     </div>
@@ -30,7 +30,7 @@ import { ScissorsIcon, SettingsIcon } from 'lucide-vue-next';
 import type { FunctionalComponent } from 'vue';
 
 // 初始化国际化
-const { t, locale } = useI18n();
+const { t } = useI18n();
 
 // // 调试日志：检查 t 函数和 locale
 // console.log('[AppSidebar] i18n initialized:', { t: typeof t, locale: locale.value });
@@ -142,8 +142,9 @@ const getRouteIcon = (route: RouteRecordNormalized) => {
 .app-sidebar {
   width: 75px;
   height: 100%;
-  background-color: #f5f5f5;
-  border-right: 1px solid #e0e0e0;
+  background-color: hsl(var(--muted) / 0.8);
+  border-right-width: 1px;
+  border-color: hsl(var(--border));
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -166,21 +167,22 @@ const getRouteIcon = (route: RouteRecordNormalized) => {
 .logo-placeholder {
   width: 40px;
   height: 40px;
-  background-color: #1a73e8;
-  color: white;
+  background-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
   font-size: 24px;
   font-weight: bold;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 8px;
+  border-radius: 10px;
 }
 
 .nav-links {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16px;
+  gap: 8px; /* 减小间距更紧凑 */
   width: 100%;
 }
 
@@ -190,28 +192,45 @@ const getRouteIcon = (route: RouteRecordNormalized) => {
   align-items: center;
   justify-content: center;
   width: 100%;
-  padding: 8px 0;
-  color: #666;
+  padding: 10px 0;
+  color: hsl(var(--muted-foreground));
   text-decoration: none;
   transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .nav-link:hover {
-  color: #333;
+  color: hsl(var(--foreground));
+  background-color: hsl(var(--accent) / 0.8);
 }
 
 .nav-link.active {
-  color: #1a73e8;
+  color: hsl(var(--primary));
+  background-color: hsl(var(--primary) / 0.05);
+  font-weight: 500;
+}
+
+.nav-link.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 100%;
+  background-color: hsl(var(--primary));
+  transition: all 0.2s ease;
 }
 
 .nav-icon {
-  width: 24px;
-  height: 24px;
+  width: 22px;
+  height: 22px;
   margin-bottom: 4px;
 }
 
 .nav-text {
-  font-size: 12px;
+  font-size: 11px;
   text-align: center;
+  font-weight: 500;
 }
 </style>

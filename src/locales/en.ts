@@ -1,5 +1,25 @@
 export default {
   "greeting": "Hello!",
+  "installation": {
+    "notDetected": "Espanso Not Detected",
+    "needInstall": "To use this application, you need to install Espanso first",
+    "needStart": "Espanso is installed but not running, please start the service",
+    "description": "Espanso is a cross-platform text expander that helps you type common phrases quickly.",
+    "detectedOS": "Detected Operating System",
+    "viewInstallGuide": "View Installation Guide",
+    "checkAgain": "Check Again",
+    "checking": "Checking Espanso installation status...",
+    "installed": "Espanso is installed!",
+    "notInstalled": "Espanso is not installed. Please install it first.",
+    "checkFailed": "Detection failed, please install Espanso manually.",
+    "espansoNotFound": "Espanso command not found in system path.",
+    "espansoNotInstalled": "Espanso is not installed. Please install it first.",
+    "serviceNotRunning": "Espanso service is not running. Please start the service.",
+    "startService": "Start Espanso Service",
+    "serviceStarted": "Espanso service started!",
+    "startFailed": "Failed to start Espanso service. Please start it manually.",
+    "openLinkFailed": "Failed to open link, please visit manually:"
+  },
   "common": {
     "save": "Save",
     "cancel": "Cancel",
@@ -21,7 +41,11 @@ export default {
     "yes": "Yes",
     "no": "No",
     "modified": "Content Modified",
-    "details": "Details"
+    "details": "Details",
+    "noSelection": "No Item Selected",
+    "selectFromListDetails": "Please select a file or folder from the list on the left",
+    "unknownError": "Unknown Error",
+    "unknown": "Unknown"
   },
   "sidebar": {
     "snippets": "Snippets",
@@ -40,7 +64,6 @@ export default {
     "previewTitle": "Preview \"{trigger}\"",
     "imagePreview": "Image Preview",
     "imagePreviewError": "Failed to load image preview. Please check the path.",
-    "noSelection": "No Item Selected",
     "selectFromList": "Please select a rule or group from the list on the left to edit",
     "noTrigger": "[No Trigger]",
     "confirmDelete": "Are you sure you want to delete this rule? This action cannot be undone.",
@@ -155,6 +178,19 @@ export default {
       "advancedButton": {
         "title": "Advanced Settings"
       },
+      "playground": {
+        "title": "Playground",
+        "description": "Test your snippet triggers and replacements here",
+        "inputLabel": "Input test content (containing trigger):",
+        "inputPlaceholder": "Input test content",
+        "resultLabel": "Result:",
+        "matched": "Matched",
+        "notMatched": "Not Matched",
+        "noTrigger": "Please set a valid trigger first",
+        "noMatch": "No trigger matched. Current triggers:",
+        "currentTrigger": "Current trigger:",
+        "wordBoundary": "Word Boundary: Enabled"
+      },
       "autoSave": {
         "success": "Auto-save successful!",
         "error": "Auto-save failed: {error}",
@@ -176,12 +212,26 @@ export default {
     "loadingConfig": "Loading Configuration...",
     "retryLoad": "Retry Loading",
     "loadError": "Failed to load config: {error}",
+    "loadErrorGeneric": "Error loading settings: {error}",
     "settingsSaved": "Settings saved",
     "settingsSaveFailed": "Failed to save settings: {error}",
     "restoredToLastSave": "Restored to last saved settings",
+    "selectConfigFolder": "Please select Espanso configuration folder",
+    "invalidPath": "Failed to get a valid file path",
+    "configLoadSuccess": "Configuration loaded successfully!",
+    "operationFailed": "Operation failed: {error}",
+    "configLoadFailed": "Failed to select or load configuration: {error}",
     "language": "Language",
     "languageTooltip": "Select the display language for the application.",
     "selectLanguagePlaceholder": "Select Language",
+    "theme": "App Theme",
+    "themeTooltip": "Select the display theme for the application.",
+    "selectThemePlaceholder": "Select Theme",
+    "themes": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "System Default"
+    },
     "sections": {
       "basic": "Basic Settings",
       "paste": "Paste Behavior",
@@ -237,15 +287,67 @@ export default {
       "inject": "Inject",
       "clipboard": "Clipboard",
       "keyboard": "Keyboard"
+    },
+    "macSettings": {
+      "useAppleScriptBackend": "Use AppleScript Backend",
+      "useAppleScriptBackendTooltip": "Use AppleScript for text replacement, better compatibility with some macOS apps but may be slower.",
+      "useEventsBackend": "Use Events Backend",
+      "useEventsBackendTooltip": "Use macOS native event system to simulate keyboard input, faster but limited in some secure apps.",
+      "experimentalAccessibility": "Experimental Accessibility",
+      "experimentalAccessibilityTooltip": "Use macOS Accessibility API to enhance text input compatibility, may require additional system permissions. Experimental feature, may be unstable."
+    },
+    "windowsSettings": {
+      "useLegacyInject": "Use Legacy Inject",
+      "useLegacyInjectTooltip": "Use older text injection method, may improve compatibility with some apps on newer Windows versions.",
+      "useSendInputBackend": "Use SendInput Backend",
+      "useSendInputBackendTooltip": "Use Windows SendInput API for text input, typically faster and more compatible."
+    },
+    "linuxSettings": {
+      "useXdotoolBackend": "Use xdotool Backend (X11)",
+      "useXdotoolBackendTooltip": "Use xdotool utility to simulate keyboard input, usually has good compatibility in X11 environments but requires xdotool installation.",
+      "useXselBackend": "Use xsel Backend (X11)",
+      "useXselBackendTooltip": "Use xsel tool to manage clipboard operations, helps improve text replacement reliability in X11 environments but requires xsel installation.",
+      "x11KeyDelay": "X11 Key Delay (ms)",
+      "x11KeyDelayTooltip": "Delay time between keyboard keypresses in X11 environment, in milliseconds. Increasing this value may improve stability in some Linux applications.",
+      "waylandPasteMethod": "Wayland Paste Method",
+      "waylandPasteMethodTooltip": "Paste method used in Wayland environment. 'Clipboard' uses system clipboard, 'Keyboard' inputs text by simulating keyboard."
+    },
+    "advancedSettings": {
+      "injectDelay": "Inject Delay (ms)",
+      "injectDelayTooltip": "Delay time between each character during text injection, in milliseconds. Increasing this value may improve stability in slow-responding applications.",
+      "abortKey": "Abort Key",
+      "abortKeyTooltip": "Hotkey used to cancel an ongoing text replacement operation. Pressing this key will stop the replacement and restore the original input.",
+      "selectAbortKey": "Select Abort Key",
+      "filterClass": "Filter Window Class",
+      "filterClassTooltip": "Specify window class names to disable Espanso in, using regular expressions. Separate multiple values with commas. Example: \".*password.*,.*secret.*\"",
+      "filterTitle": "Filter Window Title",
+      "filterTitleTooltip": "Specify window titles to disable Espanso in, using regular expressions. Separate multiple values with commas. Example: \".*sensitive.*,.*password.*\"",
+      "configPath": "Config Path",
+      "configPathTooltip": "Custom storage path for Espanso configuration files. Leave empty to use default path. Changing this requires restarting Espanso.",
+      "packagesPath": "Packages Path",
+      "packagesPathTooltip": "Custom storage path for Espanso packages. Leave empty to use default path. Changing this requires restarting Espanso."
+    },
+    "loggingSettings": {
+      "verbose": "Verbose Logging",
+      "verboseTooltip": "Enable more detailed logging with additional debug information. Helpful for troubleshooting but increases log file size.",
+      "logLevel": "Log Level",
+      "logLevelTooltip": "Detail level of logging. Trace is most detailed, Error is least. Info is usually sufficient, use Debug when troubleshooting.",
+      "selectLogLevel": "Select Log Level",
+      "logFile": "Log File Path",
+      "logFileTooltip": "Custom path for log file storage. Leave empty to use default path. Can use absolute path or relative to config directory.",
+      "logFilter": "Log Filter",
+      "logFilterTooltip": "Rules for filtering log output, following env_logger syntax. Example: \"espanso=debug,X11=info\" shows debug logs for espanso and info logs for X11."
     }
   },
   "contextMenu": {
     "newSnippet": "New Snippet",
     "newConfigFile": "New Config File",
+    "newFolder": "New Folder",
     "paste": "Paste",
     "copyPath": "Copy Path",
     "expandAll": "Expand All",
     "collapseAll": "Collapse All",
+    "openInExplorer": "Open in File Explorer",
     "browseOfficialPackages": "Browse Official Packages",
     "renameFile": "Rename File",
     "deleteFile": "Delete File",
@@ -262,5 +364,22 @@ export default {
       "remove": "Remove",
       "screenReaderRemove": "Remove tag"
     }
+  },
+  "fileDetails": {
+    "fileInfo": "File Information",
+    "folderInfo": "Folder Information",
+    "path": "Path",
+    "type": "Type",
+    "snippetsCount": "Snippets Count",
+    "lastUpdated": "Last Updated",
+    "containsFiles": "Contains Files",
+    "matchFile": "Match Configuration File",
+    "configFile": "Configuration File",
+    "packageFile": "Packages",
+    "folder": "Folder",
+    "unknown": "Unknown Type",
+    "never": "Never",
+    "snippets": "snippets",
+    "files": "files"
   }
-} 
+}

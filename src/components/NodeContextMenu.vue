@@ -3,17 +3,17 @@
     <ContextMenuTrigger>
       <div
         :class="{
-          'outline outline-2 outline-offset-[-2px] outline-blue-700':
-            isContextMenuOpen && !props.isSelected,
-          'outline outline-2 outline-offset-[-2px] outline-blue-300':
-            isContextMenuOpen && props.isSelected,
+          /* 'outline outline-2 outline-offset-[-2px] outline-blue-700': isContextMenuOpen && !props.isSelected, */
+          /* 'outline outline-2 outline-offset-[-2px] outline-blue-300': isContextMenuOpen && props.isSelected, */
+          'outline outline-2 outline-offset-[-2px] outline-ring': isContextMenuOpen && !props.isSelected, /* Use theme ring color */
+          'outline outline-2 outline-offset-[-2px] outline-primary/50': isContextMenuOpen && props.isSelected, /* Use lighter primary for selected */
         }"
         class="w-full"
       >
         <slot></slot>
       </div>
     </ContextMenuTrigger>
-    <ContextMenuContent class="w-48 !rounded-none">
+    <ContextMenuContent class="min-w-[12rem] !rounded-none">
       <!-- Dynamically render menu items -->
       <template v-for="(item, index) in computedMenuItems" :key="index">
         <ContextMenuItem
@@ -48,11 +48,11 @@ import {
   Trash2Icon,
   ClipboardCopyIcon,
   ScissorsIcon,
-  ClipboardPasteIcon,
   PencilIcon,
   ChevronsUpDownIcon,
   ExternalLinkIcon,
   FileIcon,
+  FolderOpen as FolderOpenIcon,
 } from "lucide-vue-next";
 import {
   ContextMenu,
@@ -68,6 +68,7 @@ import ClipboardManager from "@/utils/ClipboardManager";
 import type { TreeNodeItem } from "./ConfigTree.vue";
 import { useI18n } from "vue-i18n";
 
+const t = useI18n().t;
 
 // --- MenuItem Interface ---
 interface MenuItem {
@@ -108,15 +109,14 @@ const {
   handleCopyNodePath,
   handleCopyItem,
   handleCutItem,
-  handlePasteItem,
   handleCreateMatch,
   handleCreateConfigFile,
   handleExpandAll,
   handleCollapseAll,
+  handleOpenInExplorer,
   prepareDeleteMatch,
   prepareDeleteFile,
   prepareDeleteFolder,
-  canPaste,
 } = useContextMenu({
   getNode: () => props.node,
 });
@@ -164,26 +164,22 @@ const computedMenuItems = computed((): MenuItem[] => {
   const type = props.node.type;
   let items: MenuItem[] = [];
 
-  const t = useI18n().t;
 
   // --- Common Items (Top) ---
-  items.push({
-    label: t('contextMenu.newSnippet'),
-    icon: PlusIcon,
-    action: handleCreateMatch,
-    separator: true,
-  });
+  // 只有当节点是文件类型时才添加"新建片段"菜单项
+  if (type === 'file') {
+    items.push({
+      label: t('contextMenu.newSnippet'),
+      icon: PlusIcon,
+      action: handleCreateMatch,
+      separator: true,
+    });
+  }
 
   // 检查是否是 Packages 相关节点
   const isPackageNode = props.node.name === "Packages" ||
                         (props.node.path && props.node.path.includes("/packages/")) ||
                         (props.node.path && props.node.path.includes("packages/"));
-
-  // 只在 Packages 根节点时移除"新建片段"菜单项
-  if (props.node.name === "Packages") {
-    // 移除"新建片段"菜单项
-    items.pop();
-  }
 
   // 只在文件夹类型下且不是 Packages 相关节点时添加"新建配置文件"菜单项
   if (type === "folder" && !isPackageNode) {
@@ -191,18 +187,6 @@ const computedMenuItems = computed((): MenuItem[] => {
       label: t('contextMenu.newConfigFile'),
       icon: FileIcon,
       action: handleCreateConfigFile,
-      separator: true,
-    });
-  }
-
-  // --- Paste (仅在非文件夹类型节点可用) ---
-  if (type !== "folder") {
-    items.push({
-      label: t('contextMenu.paste'),
-      icon: ClipboardPasteIcon,
-      action: handlePasteItem,
-      disabled: !canPaste.value,
-      shortcut: `${platformKey}+V`,
       separator: true,
     });
   }
@@ -223,6 +207,12 @@ const computedMenuItems = computed((): MenuItem[] => {
           label: t('contextMenu.collapseAll'),
           icon: ChevronsUpDownIcon,
           action: handleCollapseAll,
+          separator: true,
+        },
+        {
+          label: t('contextMenu.openInExplorer'),
+          icon: FolderOpenIcon,
+          action: handleOpenInExplorer,
           separator: true,
         },
         {
@@ -250,6 +240,12 @@ const computedMenuItems = computed((): MenuItem[] => {
           separator: true,
         },
         {
+          label: t('contextMenu.openInExplorer'),
+          icon: FolderOpenIcon,
+          action: handleOpenInExplorer,
+          separator: true,
+        },
+        {
           label: t('contextMenu.deleteFile'),
           icon: Trash2Icon,
           action: prepareDeleteFile,
@@ -274,6 +270,12 @@ const computedMenuItems = computed((): MenuItem[] => {
           label: t('contextMenu.collapseAll'),
           icon: ChevronsUpDownIcon,
           action: handleCollapseAll,
+          separator: true,
+        },
+        {
+          label: t('contextMenu.openInExplorer'),
+          icon: FolderOpenIcon,
+          action: handleOpenInExplorer,
           separator: true,
         },
         {
@@ -312,6 +314,12 @@ const computedMenuItems = computed((): MenuItem[] => {
           separator: true,
         },
         {
+          label: t('contextMenu.openInExplorer'),
+          icon: FolderOpenIcon,
+          action: handleOpenInExplorer,
+          separator: true,
+        },
+        {
           label: t('contextMenu.deleteFolder'),
           icon: Trash2Icon,
           action: prepareDeleteFolder,
@@ -321,56 +329,44 @@ const computedMenuItems = computed((): MenuItem[] => {
       );
     }
   } else if (type === "match") {
-    // 片段类型的菜单项
-    if (isPackageNode) {
-      // Packages 相关节点的片段菜单项
-      items.push(
-        {
-          label: t('contextMenu.copyPath'),
-          icon: ClipboardCopyIcon,
-          action: handleCopyNodePath,
-        },
-        {
-          label: t('contextMenu.copySnippet'),
-          icon: ClipboardCopyIcon,
-          action: handleCopyItem,
-          shortcut: `${platformKey}+C`,
-        },
-      );
-    } else {
-      // 普通片段的菜单项
-      items.push(
-        {
-          label: t('contextMenu.copyPath'),
-          icon: ClipboardCopyIcon,
-          action: handleCopyNodePath,
-        },
-        {
-          label: t('contextMenu.copySnippet'),
-          icon: ClipboardCopyIcon,
-          action: handleCopyItem,
-          shortcut: `${platformKey}+C`,
-        },
-        {
-          label: t('contextMenu.cutSnippet'),
-          icon: ScissorsIcon,
-          action: handleCutItem,
-          shortcut: `${platformKey}+X`,
-          separator: true,
-        },
-        {
-          label: t('contextMenu.deleteSnippet'),
-          icon: Trash2Icon,
-          action: prepareDeleteMatch,
-          variant: "destructive",
-          shortcut: deleteShortcut,
-        }
-      );
-    }
+    // 匹配项类型的菜单项
+    items.push(
+      {
+        label: t('contextMenu.copySnippet'),
+        icon: ClipboardCopyIcon,
+        action: handleCopyItem,
+        shortcut: `${platformKey}+C`,
+      },
+      {
+        label: t('contextMenu.cutSnippet'),
+        icon: ScissorsIcon,
+        action: handleCutItem,
+        shortcut: `${platformKey}+X`,
+      },
+      {
+        label: t('contextMenu.openInExplorer'),
+        icon: FolderOpenIcon,
+        action: handleOpenInExplorer,
+        separator: true,
+      },
+      {
+        label: t('contextMenu.deleteSnippet'),
+        icon: Trash2Icon,
+        action: prepareDeleteMatch,
+        variant: "destructive",
+        shortcut: deleteShortcut,
+      }
+    );
   }
 
   return items;
 });
 </script>
 
-<style scoped></style>
+<style>
+/* 添加自定义样式以确保菜单项悬停效果更明显 */
+:deep(.context-menu-item:hover) {
+  background-color: hsl(var(--accent)); /* 使用主题变量 */
+  color: hsl(var(--accent-foreground)); /* 使用主题变量 */
+}
+</style>

@@ -163,7 +163,7 @@
                   </Tooltip>
                 </TooltipProvider>
               </div>
-              <Select v-model="locale">
+              <Select v-model="localConfig.language">
                 <SelectTrigger id="language" class="w-full">
                   <SelectValue :placeholder="t('settings.selectLanguagePlaceholder')" />
                 </SelectTrigger>
@@ -171,6 +171,35 @@
                   <SelectItem v-for="loc in availableLocales" :key="loc" :value="loc">
                     {{ t(`settings.languageNames.${loc.replace('-', '')}`) }}
                   </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <!-- 主题选择器 -->
+            <div class="form-item">
+              <div class="flex items-center gap-1">
+                <Label for="theme">{{ t('settings.theme') }}</Label>
+                 <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <div class="cursor-help text-muted-foreground">
+                        <HelpCircleIcon class="h-4 w-4" />
+                      </div>
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p class="max-w-xs">{{ t('settings.themeTooltip') }}</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <Select v-model="selectedAppTheme">
+                <SelectTrigger id="theme" class="w-full">
+                  <SelectValue :placeholder="t('settings.selectThemePlaceholder')" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="light">{{ t('settings.themes.light') }}</SelectItem>
+                  <SelectItem value="dark">{{ t('settings.themes.dark') }}</SelectItem>
+                  <SelectItem value="system">{{ t('settings.themes.system') }}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -355,7 +384,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">执行粘贴操作前的等待时间，单位为毫秒。增加此值可提高在慢速应用中的兼容性。</p>
+                      <p class="max-w-xs">{{ t('settings.pasteSettings.prePasteDelayTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -374,7 +403,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">执行粘贴操作后的等待时间，单位为毫秒。增加此值可避免在某些应用中出现文本截断的问题。</p>
+                      <p class="max-w-xs">{{ t('settings.pasteSettings.postPasteDelayTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -389,7 +418,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="mac_use_applescript_backend" v-model="localConfig.mac_use_applescript_backend" />
-                  <Label for="mac_use_applescript_backend">使用 AppleScript 后端</Label>
+                  <Label for="mac_use_applescript_backend">{{ t('settings.macSettings.useAppleScriptBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -399,7 +428,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 AppleScript 执行文本替换，在某些 macOS 应用中兼容性更好，但可能较慢。</p>
+                      <p class="max-w-xs">{{ t('settings.macSettings.useAppleScriptBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -410,7 +439,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="mac_use_events_backend" v-model="localConfig.mac_use_events_backend" />
-                  <Label for="mac_use_events_backend">使用 Events 后端</Label>
+                  <Label for="mac_use_events_backend">{{ t('settings.macSettings.useEventsBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -420,7 +449,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 macOS 原生事件系统模拟键盘输入，速度较快但在某些安全应用中可能受限。</p>
+                      <p class="max-w-xs">{{ t('settings.macSettings.useEventsBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -431,7 +460,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="mac_experimental_accessibility" v-model="localConfig.mac_experimental_accessibility" />
-                  <Label for="mac_experimental_accessibility">实验性辅助功能</Label>
+                  <Label for="mac_experimental_accessibility">{{ t('settings.macSettings.experimentalAccessibility') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -441,7 +470,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 macOS 辅助功能 API 增强文本输入兼容性，可能需要额外的系统权限。试验功能，可能不稳定。</p>
+                      <p class="max-w-xs">{{ t('settings.macSettings.experimentalAccessibilityTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -455,7 +484,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="win_use_legacy_inject" v-model="localConfig.win_use_legacy_inject" />
-                  <Label for="win_use_legacy_inject">使用传统注入</Label>
+                  <Label for="win_use_legacy_inject">{{ t('settings.windowsSettings.useLegacyInject') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -465,7 +494,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用较旧的文本注入方法，在新版 Windows 上可能提高某些应用的兼容性。</p>
+                      <p class="max-w-xs">{{ t('settings.windowsSettings.useLegacyInjectTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -476,7 +505,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="win_use_send_input_backend" v-model="localConfig.win_use_send_input_backend" />
-                  <Label for="win_use_send_input_backend">使用 SendInput 后端</Label>
+                  <Label for="win_use_send_input_backend">{{ t('settings.windowsSettings.useSendInputBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -486,7 +515,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 Windows SendInput API 进行文本输入，通常更快且兼容性更好。</p>
+                      <p class="max-w-xs">{{ t('settings.windowsSettings.useSendInputBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -500,7 +529,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="x11_use_xdotool_backend" v-model="localConfig.x11_use_xdotool_backend" />
-                  <Label for="x11_use_xdotool_backend">使用 xdotool 后端 (X11)</Label>
+                  <Label for="x11_use_xdotool_backend">{{ t('settings.linuxSettings.useXdotoolBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -510,7 +539,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 xdotool 实用工具模拟键盘输入，通常在 X11 环境中有较好兼容性，但需要安装 xdotool。</p>
+                      <p class="max-w-xs">{{ t('settings.linuxSettings.useXdotoolBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -521,7 +550,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="x11_use_xsel_backend" v-model="localConfig.x11_use_xsel_backend" />
-                  <Label for="x11_use_xsel_backend">使用 xsel 后端 (X11)</Label>
+                  <Label for="x11_use_xsel_backend">{{ t('settings.linuxSettings.useXselBackend') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -531,7 +560,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">使用 xsel 工具管理剪贴板操作，有助于提高 X11 环境中的文本替换可靠性，但需要安装 xsel。</p>
+                      <p class="max-w-xs">{{ t('settings.linuxSettings.useXselBackendTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -540,7 +569,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="x11_key_delay">X11 按键延迟 (ms)</Label>
+                <Label for="x11_key_delay">{{ t('settings.linuxSettings.x11KeyDelay') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -549,7 +578,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">X11 环境中键盘按键之间的延迟时间，单位为毫秒。增加此值可提高在某些 Linux 应用中的稳定性。</p>
+                      <p class="max-w-xs">{{ t('settings.linuxSettings.x11KeyDelayTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -559,7 +588,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="wayland_paste_method">Wayland 粘贴方法</Label>
+                <Label for="wayland_paste_method">{{ t('settings.linuxSettings.waylandPasteMethod') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -568,18 +597,18 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">在 Wayland 环境中使用的粘贴方法。"剪贴板"使用系统剪贴板，"键盘"通过模拟键盘输入文本。</p>
+                      <p class="max-w-xs">{{ t('settings.linuxSettings.waylandPasteMethodTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Select v-model="localConfig.wayland_paste_method">
                 <SelectTrigger id="wayland_paste_method" class="w-full">
-                  <SelectValue placeholder="选择方法" />
+                  <SelectValue :placeholder="t('settings.selectLanguagePlaceholder')" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="clipboard">剪贴板</SelectItem>
-                  <SelectItem value="keyboard">键盘</SelectItem>
+                  <SelectItem value="clipboard">{{ t('settings.selectOptions.clipboard') }}</SelectItem>
+                  <SelectItem value="keyboard">{{ t('settings.selectOptions.keyboard') }}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -589,7 +618,7 @@
           <div v-if="activeCategory === 'advanced'" class="grid grid-cols-2 gap-4">
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="inject_delay">注入延迟 (ms)</Label>
+                <Label for="inject_delay">{{ t('settings.advancedSettings.injectDelay') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -598,7 +627,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">文本注入过程中每个字符之间的延迟时间，单位为毫秒。增加此值可提高在响应慢的应用中的稳定性。</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.injectDelayTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -608,7 +637,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="abort_key">中止键</Label>
+                <Label for="abort_key">{{ t('settings.advancedSettings.abortKey') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -617,14 +646,14 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">用于取消当前进行中的文本替换操作的快捷键。按下此键将停止替换并恢复原始输入。</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.abortKeyTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Select v-model="localConfig.abort_key">
                 <SelectTrigger id="abort_key" class="w-full">
-                  <SelectValue placeholder="选择中止键" />
+                  <SelectValue :placeholder="t('settings.advancedSettings.selectAbortKey')" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="ESC">ESC</SelectItem>
@@ -636,7 +665,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="filter_class">过滤窗口类</Label>
+                <Label for="filter_class">{{ t('settings.advancedSettings.filterClass') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -645,7 +674,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">指定禁用 Espanso 的窗口类名，使用正则表达式。多个值用逗号分隔。例如：".*password.*,.*secret.*"</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.filterClassTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -655,7 +684,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="filter_title">过滤窗口标题</Label>
+                <Label for="filter_title">{{ t('settings.advancedSettings.filterTitle') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -664,7 +693,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">指定禁用 Espanso 的窗口标题，使用正则表达式。多个值用逗号分隔。例如：".*敏感信息.*,.*密码.*"</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.filterTitleTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -674,7 +703,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="config_path">配置路径</Label>
+                <Label for="config_path">{{ t('settings.advancedSettings.configPath') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -683,7 +712,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">自定义 Espanso 配置文件的存储路径。留空使用默认路径。修改此项需重启 Espanso。</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.configPathTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -693,7 +722,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="packages_path">包路径</Label>
+                <Label for="packages_path">{{ t('settings.advancedSettings.packagesPath') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -702,7 +731,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">自定义 Espanso 包的存储路径。留空使用默认路径。修改此项需重启 Espanso。</p>
+                      <p class="max-w-xs">{{ t('settings.advancedSettings.packagesPathTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -717,7 +746,7 @@
               <div class="flex items-center gap-1">
                 <div class="flex items-center space-x-2">
                   <Checkbox id="verbose" v-model="localConfig.verbose" />
-                  <Label for="verbose">详细日志</Label>
+                  <Label for="verbose">{{ t('settings.loggingSettings.verbose') }}</Label>
                 </div>
                 <TooltipProvider>
                   <Tooltip>
@@ -727,7 +756,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">启用更详细的日志记录，包含更多调试信息。对排查问题很有帮助，但会增加日志文件大小。</p>
+                      <p class="max-w-xs">{{ t('settings.loggingSettings.verboseTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -736,7 +765,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="log_level">日志级别</Label>
+                <Label for="log_level">{{ t('settings.loggingSettings.logLevel') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -745,14 +774,14 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">日志记录的详细程度。Trace 最详细，Error 最简略。通常使用 Info 即可，排查问题时使用 Debug。</p>
+                      <p class="max-w-xs">{{ t('settings.loggingSettings.logLevelTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
               <Select v-model="localConfig.log_level">
                 <SelectTrigger id="log_level" class="w-full">
-                  <SelectValue placeholder="选择日志级别" />
+                  <SelectValue :placeholder="t('settings.loggingSettings.selectLogLevel')" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="trace">Trace</SelectItem>
@@ -766,7 +795,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="log_file">日志文件路径</Label>
+                <Label for="log_file">{{ t('settings.loggingSettings.logFile') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -775,7 +804,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">自定义日志文件的存储路径。留空使用默认路径。可使用绝对路径或相对于配置目录的路径。</p>
+                      <p class="max-w-xs">{{ t('settings.loggingSettings.logFileTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -785,7 +814,7 @@
             
             <div class="form-item">
               <div class="flex items-center gap-1">
-                <Label for="log_filter">日志过滤器</Label>
+                <Label for="log_filter">{{ t('settings.loggingSettings.logFilter') }}</Label>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -794,7 +823,7 @@
                       </div>
                     </TooltipTrigger>
                     <TooltipContent side="right">
-                      <p class="max-w-xs">用于过滤日志输出的规则，遵循 env_logger 语法。例如："espanso=debug,X11=info"表示显示espanso的调试日志和X11的信息日志。</p>
+                      <p class="max-w-xs">{{ t('settings.loggingSettings.logFilterTooltip') }}</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
@@ -814,6 +843,7 @@ import { useEspansoStore } from "@/store/useEspansoStore";
 import { cloneDeep, isEqual } from "lodash-es";
 import { toast } from "vue-sonner";
 import { useI18n } from 'vue-i18n';
+import { useTheme } from '../hooks/useTheme';
 import {
   Settings,
   Save,
@@ -850,6 +880,9 @@ import { Separator } from "../components/ui/separator";
 
 // 获取 i18n 函数和状态
 const { t, locale, availableLocales } = useI18n();
+
+// 获取主题设置
+const { theme: appTheme, setTheme: setAppTheme } = useTheme();
 
 // 获取store
 const store = useEspansoStore();
@@ -900,6 +933,7 @@ const localConfig = reactive<any>({
   search_shortcut: "",
   backend: "Auto",
   auto_restart: true,
+  language: "zh-CN",
 
   // 通知配置默认值
   enable_notifications: true,
@@ -972,6 +1006,8 @@ const getCategoryName = (categoryId: string) => {
 // 钩子函数和调试
 onMounted(() => {
   console.log('SettingsView 已挂载');
+  console.log(`[SettingsView] 初始语言: ${locale.value}, 可用语言: ${availableLocales.join(', ')}`);
+  console.log(`[SettingsView] localStorage中的语言设置: ${localStorage.getItem('espanso-language')}`);
   loadConfig();
 });
 
@@ -982,27 +1018,72 @@ onErrorCaptured((err, instance, info) => {
   return false; // 阻止错误继续传播
 });
 
-// 加载配置数据
+// 修改loadConfig函数
 const loadConfig = async () => {
   try {
     isConfigLoaded.value = false;
     loadError.value = null;
     console.log('开始加载全局配置');
     
-    // 如果store还没有准备好或globalConfig为null，使用默认配置
     if (!store.state.globalConfig) {
       console.log('全局配置不可用，使用默认值');
-      // 复制默认配置到原始配置引用
+      
+      // 尝试从localStorage读取语言设置
+      try {
+        const storedLanguage = localStorage.getItem('espanso-language');
+        if (storedLanguage && availableLocales.includes(storedLanguage)) {
+          localConfig.language = storedLanguage;
+          locale.value = storedLanguage;
+          console.log(`[SettingsView] 从localStorage加载语言设置: ${storedLanguage}`);
+        }
+      } catch (e) {
+        console.warn('[SettingsView] 读取localStorage语言设置失败:', e);
+      }
+      
       originalConfig.value = cloneDeep(localConfig);
       isConfigLoaded.value = true;
       return;
     }
     
-    // 按照store的API正确调用加载方法
-    // 成功加载后，复制配置到本地状态
     const config = store.state.globalConfig;
     if (config) {
       Object.assign(localConfig, config);
+      
+      // 优先级：
+      // 1. 配置文件中的language值
+      // 2. localStorage中的language值
+      // 3. 当前locale值
+      
+      // 先检查配置文件中是否有language设置
+      let languageSet = false;
+      if (config.language) {
+        locale.value = config.language;
+        localConfig.language = config.language;
+        languageSet = true;
+        console.log(`[SettingsView] 从配置文件加载语言设置: ${config.language}`);
+      }
+      
+      // 如果配置文件中没有language设置，尝试从localStorage读取
+      if (!languageSet) {
+        try {
+          const storedLanguage = localStorage.getItem('espanso-language');
+          if (storedLanguage && availableLocales.includes(storedLanguage)) {
+            localConfig.language = storedLanguage;
+            locale.value = storedLanguage;
+            languageSet = true;
+            console.log(`[SettingsView] 从localStorage加载语言设置: ${storedLanguage}`);
+          }
+        } catch (e) {
+          console.warn('[SettingsView] 读取localStorage语言设置失败:', e);
+        }
+      }
+      
+      // 如果都没有设置，使用当前locale
+      if (!languageSet) {
+        localConfig.language = locale.value;
+        console.log(`[SettingsView] 使用当前locale作为语言设置: ${locale.value}`);
+      }
+      
       console.log('全局配置加载成功:', localConfig);
       originalConfig.value = cloneDeep(localConfig);
     }
@@ -1038,13 +1119,41 @@ const saveSettings = async () => {
     // 使用store的正确方法保存全局配置
     await store.updateGlobalConfig(localConfig);
     
+    // 保存时应用语言设置
+    if (localConfig.language && localConfig.language !== locale.value) {
+      // 先更新localStorage中的语言设置，确保下次加载时能正确读取
+      localStorage.setItem('espanso-language', localConfig.language);
+      console.log(`[SettingsView] 语言设置已保存到localStorage: ${localConfig.language}`);
+      
+      // 然后更新当前的locale值
+      locale.value = localConfig.language;
+    }
+    
     // 更新原始配置，重置修改状态
     originalConfig.value = cloneDeep(localConfig);
     console.log('设置保存成功');
     toast.success(t('settings.settingsSaved'));
+
+    // 重新加载配置以确保所有更改都已正确应用
+    await loadConfig();
   } catch (error: any) {
     console.error('保存设置失败:', error);
-    toast.error(t('settings.settingsSaveFailed', { error: error.message || String(error) }));
+    
+    // 显示更详细的错误信息
+    let errorMessage = error.message || String(error);
+    if (error.cause) {
+      errorMessage += `\n原因: ${error.cause}`;
+    }
+    
+    // 如果是初始化错误，提供更具体的提示
+    if (errorMessage.includes('初始化全局配置失败')) {
+      toast.error(t('settings.initializationFailed', { error: errorMessage }));
+    } else {
+      toast.error(t('settings.settingsSaveFailed', { error: errorMessage }));
+    }
+    
+    // 如果保存失败，可能需要重新加载原始配置
+    await loadConfig();
   } finally {
     isSaving.value = false;
   }
@@ -1057,6 +1166,24 @@ const resetToDefault = () => {
     toast.info(t('settings.restoredToLastSave'));
   }
 };
+
+// 将主题状态同步到本地的 ref，以便 Select 组件可以双向绑定
+// 注意：这里我们不直接将 appTheme (来自 useTheme) 用于 v-model
+// 因为 appTheme 的更改是立即应用到 <html> 标签的
+// 我们希望用户的选择在 Select 中先被选中，但不立即应用，直到他们点击"保存"
+// 然而，对于主题切换，通常期望选择后立即生效，而不是等待保存按钮
+// 所以，这里我们直接使用 appTheme，并在选择时调用 setAppTheme
+// 为了简单起见，我们让主题选择立即生效。如果需要"保存后生效"，逻辑会更复杂。
+
+const selectedAppTheme = ref(appTheme.value); // 初始化 selectedAppTheme
+watch(appTheme, (newTheme) => { // 当通过其他方式改变主题时（例如系统切换），更新下拉框
+  selectedAppTheme.value = newTheme;
+});
+watch(selectedAppTheme, (newThemeChoice) => { // 当用户在下拉框中选择时，更新主题
+  if (newThemeChoice) {
+    setAppTheme(newThemeChoice);
+  }
+});
 </script>
 
 <style scoped>
@@ -1064,6 +1191,7 @@ const resetToDefault = () => {
   height: 100%;
   width: 100%;
   overflow: auto;
+  @apply bg-background text-foreground; /* 应用基础主题 */
 }
 
 .content-view, .loading-view, .error-view {
@@ -1071,7 +1199,8 @@ const resetToDefault = () => {
   width: 100%;
   margin: 0 auto;
   padding: 2rem;
-  background-color: white;
+  /* background-color: white; */ /* 改为使用 card 或 background */
+  @apply bg-card; /* 或根据需要使用 bg-background */
 }
 
 .loading-view, .error-view {
@@ -1081,6 +1210,7 @@ const resetToDefault = () => {
   align-items: center;
   justify-content: center;
   text-align: center;
+  @apply bg-card text-foreground; /* 确保背景和文本颜色正确 */
 }
 
 .settings-container {
@@ -1091,7 +1221,8 @@ const resetToDefault = () => {
 .settings-sidebar {
   width: 220px;
   flex-shrink: 0;
-  border-right: 1px solid #e0e0e0;
+  /* border-right: 1px solid #e0e0e0; */
+  @apply border-r border-border; /* 使用主题边框色 */
   padding-right: 1rem;
 }
 
@@ -1107,36 +1238,41 @@ const resetToDefault = () => {
   margin-bottom: 0.5rem;
   cursor: pointer;
   transition: all 0.2s;
+  @apply text-muted-foreground; /* 默认文字颜色 */
 }
 
 .category-item:hover {
-  background-color: #f5f5f5;
+  /* background-color: #f5f5f5; */
+  @apply bg-accent text-accent-foreground; /* 使用主题悬停色 */
 }
 
 .category-item.active {
-  background-color: #e0e0ff;
-  color: #4a4ae8;
-  font-weight: 500;
+  /* background-color: #e0e0ff; */
+  /* color: #4a4ae8; */
+  @apply bg-primary/10 text-primary font-medium; /* 使用主题激活色 */
 }
 
 .spinner {
   width: 40px;
   height: 40px;
-  border: 4px solid rgba(0, 0, 0, 0.1);
-  border-radius: 50%;
-  border-top-color: #3182ce;
-  animation: spin 1s linear infinite;
+  /* border: 4px solid rgba(0, 0, 0, 0.1); */
+  border: 4px solid;
+  @apply border-border rounded-full;
+  /* border-top-color: #3182ce; */
+  @apply border-t-primary animate-spin;
 }
 
 .alert-icon {
   font-size: 3rem;
   margin-bottom: 1rem;
-  color: #e53935;
+  /* color: #e53935; */
+  @apply text-destructive; /* 使用主题危险色 */
 }
 
 .error-message {
   margin-bottom: 1.5rem;
-  color: #e53935;
+  /* color: #e53935; */
+  @apply text-destructive; /* 使用主题危险色 */
 }
 
 .form-item {
@@ -1156,9 +1292,12 @@ const resetToDefault = () => {
 .loader {
   width: 1rem;
   height: 1rem;
-  border: 2px solid rgba(255, 255, 255, 0.3);
+  border: 2px solid;
+  /* border: 2px solid rgba(255, 255, 255, 0.3); */ /* 改为使用变量 */
+  @apply border-primary-foreground/30; /* 假设在主按钮上 */
   border-radius: 50%;
-  border-top-color: white;
+  /* border-top-color: white; */
+  @apply border-t-primary-foreground; /* 假设在主按钮上 */
   animation: spin 1s linear infinite;
 }
 </style>

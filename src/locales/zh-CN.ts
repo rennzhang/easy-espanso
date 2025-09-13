@@ -1,5 +1,25 @@
 export default {
   "greeting": "你好！",
+  "installation": {
+    "notDetected": "未检测到 Espanso",
+    "needInstall": "要使用此应用程序，您需要先安装 Espanso",
+    "needStart": "Espanso 已安装但未运行，需要启动服务",
+    "description": "Espanso 是一个跨平台的文本扩展工具，可以帮助您快速输入常用文本。",
+    "detectedOS": "检测到您的操作系统",
+    "viewInstallGuide": "查看安装指南",
+    "checkAgain": "重新检测",
+    "checking": "正在检测 Espanso 安装状态...",
+    "installed": "检测到 Espanso 已安装！",
+    "notInstalled": "未检测到 Espanso，请先安装。",
+    "checkFailed": "检测失败，请手动安装 Espanso。",
+    "espansoNotFound": "在系统路径中未找到 Espanso 命令。",
+    "espansoNotInstalled": "Espanso 未安装，请先安装。",
+    "serviceNotRunning": "Espanso 服务未运行，请启动服务。",
+    "startService": "启动 Espanso 服务",
+    "serviceStarted": "Espanso 服务已启动！",
+    "startFailed": "启动 Espanso 服务失败，请手动启动。",
+    "openLinkFailed": "无法打开链接，请手动访问："
+  },
   "common": {
     "save": "保存",
     "cancel": "取消",
@@ -22,7 +42,11 @@ export default {
     "yes": "是",
     "no": "否",
     "modified": "内容已修改",
-    "details": "详情"
+    "details": "详情",
+    "noSelection": "未选择项目",
+    "selectFromListDetails": "请从左侧列表选择文件或文件夹",
+    "unknownError": "未知错误",
+    "unknown": "未知"
   },
   "sidebar": {
     "snippets": "片段管理",
@@ -41,7 +65,6 @@ export default {
     "previewTitle": "预览 \"{trigger}\"",
     "imagePreview": "图片预览",
     "imagePreviewError": "图片预览加载失败，请检查路径是否正确。",
-    "noSelection": "未选择项目",
     "selectFromList": "请从左侧列表选择一个规则或分组进行编辑",
     "noTrigger": "[无触发词]",
     "confirmDelete": "确定要删除这个规则吗？此操作无法撤销。",
@@ -156,6 +179,19 @@ export default {
       "advancedButton": {
         "title": "高级设置"
       },
+      "playground": {
+        "title": "测试场地",
+        "description": "在这里测试您的片段触发词和替换内容的效果",
+        "inputLabel": "输入测试内容（包含触发词）:",
+        "inputPlaceholder": "输入测试内容",
+        "resultLabel": "处理结果:",
+        "matched": "已触发",
+        "notMatched": "未触发",
+        "noTrigger": "请先设置有效的触发词",
+        "noMatch": "未匹配任何触发词。当前有效的触发词:",
+        "currentTrigger": "当前触发词:",
+        "wordBoundary": "词边界: 启用"
+      },
       "autoSave": {
         "success": "自动保存成功！",
         "error": "自动保存失败: {error}",
@@ -177,12 +213,27 @@ export default {
     "loadingConfig": "加载配置中...",
     "retryLoad": "重试加载",
     "loadError": "加载配置失败: {error}",
+    "loadErrorGeneric": "加载设置出错: {error}",
     "settingsSaved": "设置已保存",
     "settingsSaveFailed": "保存设置失败: {error}",
+    "initializationFailed": "初始化配置失败: {error}",
     "restoredToLastSave": "已恢复到上次保存的设置",
+    "selectConfigFolder": "请选择 Espanso 配置文件夹",
+    "invalidPath": "未能获取有效的文件路径",
+    "configLoadSuccess": "配置加载成功！",
+    "operationFailed": "操作失败: {error}",
+    "configLoadFailed": "选择或加载配置失败: {error}",
     "language": "界面语言",
     "languageTooltip": "选择应用程序的显示语言。",
     "selectLanguagePlaceholder": "选择语言",
+    "theme": "应用主题",
+    "themeTooltip": "选择应用程序的显示主题。",
+    "selectThemePlaceholder": "选择主题",
+    "themes": {
+      "light": "亮色",
+      "dark": "暗色",
+      "system": "跟随系统"
+    },
     "sections": {
       "basic": "基本设置",
       "paste": "粘贴行为",
@@ -238,15 +289,67 @@ export default {
       "inject": "注入",
       "clipboard": "剪贴板",
       "keyboard": "键盘"
+    },
+    "macSettings": {
+      "useAppleScriptBackend": "使用 AppleScript 后端",
+      "useAppleScriptBackendTooltip": "使用 AppleScript 执行文本替换，在某些 macOS 应用中兼容性更好，但可能较慢。",
+      "useEventsBackend": "使用 Events 后端",
+      "useEventsBackendTooltip": "使用 macOS 原生事件系统模拟键盘输入，速度较快但在某些安全应用中可能受限。",
+      "experimentalAccessibility": "实验性辅助功能",
+      "experimentalAccessibilityTooltip": "使用 macOS 辅助功能 API 增强文本输入兼容性，可能需要额外的系统权限。试验功能，可能不稳定。"
+    },
+    "windowsSettings": {
+      "useLegacyInject": "使用传统注入",
+      "useLegacyInjectTooltip": "使用较旧的文本注入方法，在新版 Windows 上可能提高某些应用的兼容性。",
+      "useSendInputBackend": "使用 SendInput 后端",
+      "useSendInputBackendTooltip": "使用 Windows SendInput API 进行文本输入，通常更快且兼容性更好。"
+    },
+    "linuxSettings": {
+      "useXdotoolBackend": "使用 xdotool 后端 (X11)",
+      "useXdotoolBackendTooltip": "使用 xdotool 实用工具模拟键盘输入，通常在 X11 环境中有较好兼容性，但需要安装 xdotool。",
+      "useXselBackend": "使用 xsel 后端 (X11)",
+      "useXselBackendTooltip": "使用 xsel 工具管理剪贴板操作，有助于提高 X11 环境中的文本替换可靠性，但需要安装 xsel。",
+      "x11KeyDelay": "X11 按键延迟 (ms)",
+      "x11KeyDelayTooltip": "X11 环境中键盘按键之间的延迟时间，单位为毫秒。增加此值可提高在某些 Linux 应用中的稳定性。",
+      "waylandPasteMethod": "Wayland 粘贴方法",
+      "waylandPasteMethodTooltip": "在 Wayland 环境中使用的粘贴方法。剪贴板使用系统剪贴板，键盘通过模拟键盘输入文本。"
+    },
+    "advancedSettings": {
+      "injectDelay": "注入延迟 (ms)",
+      "injectDelayTooltip": "文本注入过程中每个字符之间的延迟时间，单位为毫秒。增加此值可提高在响应慢的应用中的稳定性。",
+      "abortKey": "中止键",
+      "abortKeyTooltip": "用于取消当前进行中的文本替换操作的快捷键。按下此键将停止替换并恢复原始输入。",
+      "selectAbortKey": "选择中止键",
+      "filterClass": "过滤窗口类",
+      "filterClassTooltip": "指定禁用 Espanso 的窗口类名，使用正则表达式。多个值用逗号分隔。例如：\".*password.*,.*secret.*\"",
+      "filterTitle": "过滤窗口标题",
+      "filterTitleTooltip": "指定禁用 Espanso 的窗口标题，使用正则表达式。多个值用逗号分隔。例如：\".*敏感信息.*,.*密码.*\"",
+      "configPath": "配置路径",
+      "configPathTooltip": "自定义 Espanso 配置文件的存储路径。留空使用默认路径。修改此项需重启 Espanso。",
+      "packagesPath": "包路径",
+      "packagesPathTooltip": "自定义 Espanso 包的存储路径。留空使用默认路径。修改此项需重启 Espanso。"
+    },
+    "loggingSettings": {
+      "verbose": "详细日志",
+      "verboseTooltip": "启用更详细的日志记录，包含更多调试信息。对排查问题很有帮助，但会增加日志文件大小。",
+      "logLevel": "日志级别",
+      "logLevelTooltip": "日志记录的详细程度。Trace 最详细，Error 最简略。通常使用 Info 即可，排查问题时使用 Debug。",
+      "selectLogLevel": "选择日志级别",
+      "logFile": "日志文件路径",
+      "logFileTooltip": "自定义日志文件的存储路径。留空使用默认路径。可使用绝对路径或相对于配置目录的路径。",
+      "logFilter": "日志过滤器",
+      "logFilterTooltip": "用于过滤日志输出的规则，遵循 env_logger 语法。例如：\"espanso=debug,X11=info\"表示显示espanso的调试日志和X11的信息日志。"
     }
   },
   "contextMenu": {
     "newSnippet": "新建片段",
     "newConfigFile": "新建配置文件",
+    "newFolder": "新建文件夹",
     "paste": "粘贴",
     "copyPath": "复制路径",
     "expandAll": "展开全部",
     "collapseAll": "收起全部",
+    "openInExplorer": "在文件管理器中打开",
     "browseOfficialPackages": "浏览官方包库",
     "renameFile": "重命名文件",
     "deleteFile": "删除文件",
@@ -263,5 +366,22 @@ export default {
       "remove": "移除",
       "screenReaderRemove": "移除标签"
     }
+  },
+  "fileDetails": {
+    "fileInfo": "文件信息",
+    "folderInfo": "文件夹信息",
+    "path": "路径",
+    "type": "类型",
+    "snippetsCount": "片段数量",
+    "lastUpdated": "最近更新",
+    "containsFiles": "包含文件",
+    "matchFile": "片段配置文件",
+    "configFile": "配置文件",
+    "packageFile": "Packages",
+    "folder": "文件夹",
+    "unknown": "未知类型",
+    "never": "从未",
+    "snippets": "个片段",
+    "files": "个文件"
   }
-} 
+}

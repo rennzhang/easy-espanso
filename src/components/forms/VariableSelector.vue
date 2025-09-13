@@ -5,19 +5,19 @@
       <div class="relative bg-background rounded-lg shadow-lg w-full max-w-md max-h-[80vh] overflow-hidden">
         <div class="flex items-center justify-between p-4 border-b">
           <h2 class="text-lg font-semibold">选择变量</h2>
-          <button @click="closeModal" class="text-gray-500 hover:text-gray-700">
+          <button @click="closeModal" class="text-muted-foreground hover:text-foreground">
             <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-x"><path d="M18 6 6 18"></path><path d="m6 6 12 12"></path></svg>
           </button>
         </div>
 
         <div class="p-4 overflow-auto max-h-[calc(80vh-120px)]">
           <!-- 开发中提示 -->
-          <div class="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+          <div class="mb-4 p-3 bg-yellow-100 border border-yellow-300 dark:bg-yellow-900/30 dark:border-yellow-700/50 rounded-md">
             <div class="flex items-center">
-              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-500 mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-              <div class="text-sm font-medium text-yellow-700">变量选择器功能正在开发中</div>
+              <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-yellow-600 dark:text-yellow-400 mr-2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+              <div class="text-sm font-medium text-yellow-700 dark:text-yellow-300">变量选择器功能正在开发中</div>
             </div>
-            <p class="text-xs text-yellow-600 mt-1 ml-6">更多变量类型和配置选项将在后续版本中提供</p>
+            <p class="text-xs text-yellow-600 dark:text-yellow-400 mt-1 ml-6">更多变量类型和配置选项将在后续版本中提供</p>
           </div>
 
           <div class="space-y-2 mb-4">
@@ -25,7 +25,7 @@
               type="text"
               v-model="searchQuery"
               placeholder="搜索变量..."
-              class="w-full p-2 border rounded-md"
+              class="w-full p-2 border rounded-md bg-background text-foreground placeholder:text-muted-foreground focus:ring-ring focus:border-primary"
               ref="searchInputRef"
               id="variable-search-input"
               autofocus
@@ -47,7 +47,7 @@
                     <div class="font-medium">{{ variable.name }}</div>
                     <div class="text-sm text-muted-foreground">{{ variable.description }}</div>
                   </div>
-                  <div class="text-xs bg-gray-100 rounded px-2 py-1">
+                  <div class="text-xs bg-muted/50 text-muted-foreground rounded px-2 py-1">
                     {{ variable.id }}
                   </div>
                 </div>

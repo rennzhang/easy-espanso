@@ -65,7 +65,7 @@ export async function directoryExists(dirPath: string): Promise<boolean> {
     const adapter: IPlatformAdapter = PlatformAdapterFactory.getInstance();
     console.log('[platformService] directoryExists 被调用，路径:', dirPath);
     console.log('[platformService] adapter 是否存在:', !!adapter);
-    
+
     try {
         // 适配器应该有directoryExists方法，因为它在IPlatformAdapter接口中已定义
         console.log('[platformService] 使用adapter.directoryExists方法');
@@ -274,3 +274,45 @@ export function onIpcHandlersReady(callback: () => void): void {
 
 // 注意: parseYaml 和 serializeYaml 现在应该在 yamlService.ts 中
 // 注意: getEspansoConfigDir 和 getDefaultConfigPath 的逻辑现在应该在 configService.ts 中
+
+/**
+ * 在用户默认浏览器中打开外部链接
+ * @param url 要打开的URL
+ * @returns 是否成功打开
+ */
+export async function openExternalLink(url: string): Promise<boolean> {
+  try {
+    const adapter = PlatformAdapterFactory.getInstance();
+    return await adapter.openExternal(url);
+  } catch (error) {
+    console.error('在用户浏览器中打开链接失败:', error);
+
+    // 作为备用方案，使用标准的 window.open
+    try {
+      window.open(url, '_blank', 'noopener,noreferrer');
+      return true;
+    } catch (fallbackError) {
+      console.error('备用打开链接方法也失败:', fallbackError);
+      return false;
+    }
+  }
+}
+
+/**
+ * 在文件管理器中打开文件或文件夹
+ * @param filePath 要在文件管理器中打开的文件或文件夹路径
+ * @returns 是否成功打开
+ */
+export async function openInExplorer(filePath: string): Promise<boolean> {
+  try {
+    const adapter = PlatformAdapterFactory.getInstance();
+    if (typeof adapter.openInExplorer !== 'function') {
+      console.warn('PlatformAdapter does not implement openInExplorer.');
+      return false;
+    }
+    return await adapter.openInExplorer(filePath);
+  } catch (error) {
+    console.error('在文件管理器中打开文件或文件夹失败:', error);
+    return false;
+  }
+}

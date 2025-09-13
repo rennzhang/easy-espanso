@@ -1,49 +1,51 @@
 <template>
   <div class="middle-pane flex flex-col h-full bg-card">
-    <div class="flex flex-col py-2 px-4 border-b">
-      <div class="flex items-center justify-between">
-        <div class="flex items-center">
-          <h3 class="text-lg font-semibold text-foreground m-0">{{ $t('snippets.listTitle') }}</h3>
-          <Badge variant="outline" class="ml-2">
-            {{ totalItemCount }} 项
-          </Badge>
+    <RootContextMenu>
+      <div class="flex flex-col py-2 px-4 border-b">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center">
+            <h3 class="text-lg font-semibold text-foreground m-0">{{ t('snippets.listTitle') }}</h3>
+            <Badge variant="outline" class="ml-2">
+              {{ totalItemCount }} 项
+            </Badge>
+          </div>
+          <div class="flex items-center gap-2">
+            <Button
+              @click="toggleSearchBar"
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
+              :class="showSearchBar ? 'bg-accent' : ''"
+            >
+              <SearchIcon class="h-4 w-4" />
+            </Button>
+            <Button
+              @click="toggleViewMode"
+              variant="ghost"
+              size="icon"
+              class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
+              :class="viewMode === 'list' ? 'bg-accent' : ''"
+              :title="viewMode === 'tree' ? '切换到列表视图' : '切换到树视图'"
+            >
+              <ListIcon v-if="viewMode === 'tree'" class="h-4 w-4" />
+              <FolderTreeIcon v-else class="h-4 w-4" />
+            </Button>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <Button
-            @click="toggleSearchBar"
-            variant="ghost"
-            size="icon"
-            class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
-            :class="showSearchBar ? 'bg-accent' : ''"
-          >
-            <SearchIcon class="h-4 w-4" />
-          </Button>
-          <Button
-            @click="toggleViewMode"
-            variant="ghost"
-            size="icon"
-            class="h-8 w-8 p-0 border-none focus:ring-0 focus:ring-offset-0"
-            :class="viewMode === 'list' ? 'bg-accent' : ''"
-            :title="viewMode === 'tree' ? '切换到列表视图' : '切换到树视图'"
-          >
-            <ListIcon v-if="viewMode === 'tree'" class="h-4 w-4" />
-            <FolderTreeIcon v-else class="h-4 w-4" />
-          </Button>
-        </div>
-      </div>
 
-      <div v-show="showSearchBar" class="mt-2">
-        <Input
-          v-model="searchQuery"
-          :placeholder="$t('snippets.searchPlaceholder')"
-          class="w-full h-8 text-sm"
-          ref="searchInputRef"
-          id="search-input"
-          autofocus
-          @keydown.esc="hideSearchBar"
-        />
+        <div v-show="showSearchBar" class="mt-2">
+          <Input
+            v-model="searchQuery"
+            :placeholder="t('snippets.searchPlaceholder')"
+            class="w-full h-8 text-sm"
+            ref="searchInputRef"
+            id="search-input"
+            autofocus
+            @keydown.esc="hideSearchBar"
+          />
+        </div>
       </div>
-    </div>
+    </RootContextMenu>
 
     <div class="p-3 bg-muted" v-if="filterTags && filterTags.length > 0">
       <div class="flex items-center flex-wrap gap-2">
@@ -76,139 +78,146 @@
       </div>
     </div>
 
-    <div class="flex-1 overflow-y-auto middle-pane-scrollbar">
-      <div
-        v-if="loading"
-        class="flex flex-col justify-center items-center h-full gap-4"
-      >
+    <RootContextMenu>
+      <div class="flex-1 overflow-y-auto middle-pane-scrollbar">
         <div
-          class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"
-        ></div>
-        <div class="text-primary font-medium">加载中...</div>
-      </div>
-      <div
-        v-else-if="!store.allMatches"
-        class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
-      >
-        <FolderIcon class="h-12 w-12 mb-4" />
-        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
-          未加载配置
-        </h4>
-        <p class="mb-6 text-muted-foreground max-w-md">
-          请点击顶部的"打开配置"按钮加载Espanso配置文件
-        </p>
-      </div>
-      <div
-        v-else-if="store.allMatches.length === 0"
-        class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
-      >
-        <FileTextIcon class="h-12 w-12 mb-4" />
-        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
-        <p class="mb-6 text-muted-foreground max-w-md">
-          请在右侧面板添加新规则
-        </p>
-      </div>
-      <div
-        v-else-if="filteredItems.length === 0"
-        class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
-      >
-        <SearchIcon class="h-12 w-12 mb-4" />
-        <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
-          未找到匹配项
-        </h4>
-        <p class="mb-6 text-muted-foreground max-w-md">
-          尝试使用不同的搜索词或标签过滤器
-        </p>
-        <Button
-          variant="ghost"
-          class="border-none focus:ring-0 focus:ring-offset-0"
-          @click="clearFilters"
-          >清除过滤器</Button
+          v-if="loading"
+          class="flex flex-col justify-center items-center h-full gap-4"
         >
-      </div>
-      <div v-else class="h-full">
-        <!-- 树视图 -->
-        <div v-if="viewMode === 'tree'" class="h-full flex-1">
-          <!-- Log: Rendering ConfigTree -->
-          {{
-            console.log(
-              "[MiddlePane] Rendering ConfigTree component because viewMode is tree"
-            )
-          }}
-          <ConfigTree
-            ref="configTreeRef"
-            :selected-id="selectedItemId"
-            :searchQuery="searchQuery.trim()"
-            @select="handleTreeItemSelect"
-          />
+          <div
+            class="w-12 h-12 rounded-full border-4 border-primary/20 border-t-primary animate-spin"
+          ></div>
+          <div class="text-primary font-medium">加载中...</div>
         </div>
-
-        <!-- 列表视图 -->
-        <div v-else class="p-0">
-          <Card
-            v-for="item in filteredItems"
-            :key="item.id"
-            :class="{
-              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground':
-                selectedItemId === item.id,
-            }"
-            class="cursor-pointer transition-all hover:translate-y-[-2px] hover:shadow-md rounded-none mb-2"
-            @click="selectItem(item.id, item.type)"
+        <div
+          v-else-if="!store.allMatches"
+          class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
+        >
+          <FolderIcon class="h-12 w-12 mb-4" />
+          <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
+            未加载配置
+          </h4>
+          <p class="mb-6 text-muted-foreground max-w-md">
+            请点击顶部的"打开配置"按钮加载Espanso配置文件
+          </p>
+        </div>
+        <div
+          v-else-if="store.allMatches.length === 0"
+          class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
+        >
+          <FileTextIcon class="h-12 w-12 mb-4" />
+          <h4 class="text-xl font-semibold text-foreground m-0 mb-2">没有规则</h4>
+          <p class="mb-6 text-muted-foreground max-w-md">
+            请在右侧面板添加新规则
+          </p>
+        </div>
+        <div
+          v-else-if="filteredItems.length === 0"
+          class="flex flex-col justify-center items-center h-full text-muted-foreground text-center p-8"
+        >
+          <SearchIcon class="h-12 w-12 mb-4" />
+          <h4 class="text-xl font-semibold text-foreground m-0 mb-2">
+            未找到匹配项
+          </h4>
+          <p class="mb-6 text-muted-foreground max-w-md">
+            尝试使用不同的搜索词或标签过滤器
+          </p>
+          <Button
+            variant="ghost"
+            class="border-none focus:ring-0 focus:ring-offset-0"
+            @click="clearFilters"
+            >清除过滤器</Button
           >
-            <CardContent class="p-4 flex items-start gap-2">
-              <div class="flex-1">
-                <div v-if="item.type === 'match'">
-                  <div class="flex justify-between items-start">
-                    <span class="font-semibold text-foreground">
-                      <HighlightText
-                        v-if="searchQuery.trim()"
-                        :text="(item as Match).trigger || ''"
-                        :searchQuery="searchQuery.trim()"
-                      />
-                      <template v-else>{{ (item as Match).trigger }}</template>
-                    </span>
-                    <div
-                      class="flex flex-wrap gap-1"
-                      v-if="(item as Match).tags && ((item as Match)?.tags?.length||0) > 0"
-                    >
-                      <Badge
-                        v-for="tag in (item as Match).tags"
-                        :key="tag"
-                        @click.stop="addTagFilter(tag)"
+        </div>
+        <div v-else class="h-full">
+          <!-- 树视图 -->
+          <div v-if="viewMode === 'tree'" class="h-full flex-1">
+            <!-- Log: Rendering ConfigTree -->
+            {{
+              console.log(
+                "[MiddlePane] Rendering ConfigTree component because viewMode is tree"
+              )
+            }}
+            <ConfigTree
+              ref="configTreeRef"
+              :selected-id="selectedItemId"
+              :searchQuery="searchQuery.trim()"
+              @select="handleTreeItemSelect"
+            />
+          </div>
+
+          <!-- 列表视图 -->
+          <div v-else class="p-3">
+            <div
+              v-for="item in filteredItems"
+              :key="item.id"
+              :class="[
+                'group cursor-pointer border-l-2 rounded-md mb-2.5 transition-all bg-card shadow-xs border border-border/30',
+                selectedItemId === item.id
+                  ? 'border-l-primary shadow-sm bg-accent/10 border-primary/20'
+                  : 'border-l-transparent hover:border-l-primary/40 hover:shadow-sm hover:bg-accent/5 hover:border-border/60'
+              ]"
+              @click="selectItem(item.id, item.type)"
+            >
+              <div class="py-2.5 px-3">
+                <div class="flex items-center gap-2">
+                  <!-- 触发词和标签 -->
+                  <div class="flex-1 min-w-0">
+                    <div v-if="item.type === 'match'" class="flex flex-col gap-1">
+                      <!-- 触发词和标签 -->
+                      <div class="flex items-center gap-2 flex-wrap">
+                        <h3 class="text-sm font-medium" :class="selectedItemId === item.id ? 'text-primary' : 'text-foreground'">
+                          <HighlightText
+                            v-if="searchQuery.trim()"
+                            :text="(item as Match).trigger || ''"
+                            :searchQuery="searchQuery.trim()"
+                          />
+                          <template v-else>{{ (item as Match).trigger }}</template>
+                        </h3>
+
+                        <div
+                          v-if="(item as Match).label"
+                          class="text-xs px-1.5 rounded truncate max-w-[120px]"
+                          :class="selectedItemId === item.id
+                            ? 'bg-primary/10 text-primary'
+                            : 'bg-muted text-muted-foreground'"
+                        >
+                          {{ (item as Match).label }}
+                        </div>
+                      </div>
+
+                      <!-- 简短描述或内容预览 -->
+                      <div
+                        class="text-xs"
+                        :class="selectedItemId === item.id ? 'text-foreground/90' : 'text-muted-foreground'"
                       >
-                        {{ tag }}
-                      </Badge>
+                        {{ (item as Match).description || getContentPreview(item as Match) }}
+                      </div>
                     </div>
                   </div>
+
+                  <!-- 右侧标签 -->
                   <div
-                    class="text-sm text-muted-foreground my-1 whitespace-pre-line"
+                    class="flex gap-1 flex-wrap justify-end flex-shrink-0"
+                    v-if="(item as Match).tags && ((item as Match)?.tags?.length||0) > 0"
                   >
-                    <HighlightText
-                      v-if="searchQuery.trim()"
-                      :text="getContentPreview(item as Match)"
-                      :searchQuery="searchQuery.trim()"
-                    />
-                    <template v-else>{{
-                      getContentPreview(item as Match)
-                    }}</template>
-                  </div>
-                  <div
-                    class="flex justify-between text-xs text-muted-foreground mt-1"
-                  >
-                    <Badge variant="outline" class="bg-muted">{{
-                      getContentTypeLabel((item as Match).contentType)
-                    }}</Badge>
-                    <span v-if="(item as Match).updatedAt">{{
-                      formatDate((item as Match).updatedAt!)
-                    }}</span>
+                    <Badge
+                      v-for="tag in (item as Match).tags"
+                      :key="tag"
+                      variant="outline"
+                      class="text-xs border-0 bg-muted/50 px-1.5 py-0 whitespace-nowrap"
+                      @click.stop="addTagFilter(tag)"
+                    >
+                      {{ tag }}
+                    </Badge>
                   </div>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
+    </RootContextMenu>
   </div>
 </template>
 
@@ -218,9 +227,10 @@ import { EspansoState, useEspansoStore } from "../../store/useEspansoStore";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
 import { Badge } from "../ui/badge";
-import { Card, CardContent } from "../ui/card";
+
 import ConfigTree from "@/components/ConfigTree.vue";
 import HighlightText from "@/components/common/HighlightText.vue";
+import RootContextMenu from "@/components/RootContextMenu.vue";
 import {
   SearchIcon,
   FolderIcon,
@@ -228,8 +238,12 @@ import {
   XIcon,
   ListIcon,
   FolderTreeIcon,
+
 } from "lucide-vue-next";
 import { Match } from "@/types/core/espanso.types";
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
 
 const store = useEspansoStore();
 const searchQuery = ref("");
@@ -396,9 +410,18 @@ const filteredItems = computed(() => {
   // Handle no query/tags case
   if (!query && tags.length === 0) {
     allItems.sort((a, b) => {
+      // 首先按日期排序（最新的在前）
       const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
       const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-      return dateB - dateA; // Newest first
+
+      if (dateA !== dateB) {
+        return dateB - dateA; // 最新的在前
+      }
+
+      // 仅当日期相同时才考虑guiOrder
+      const orderA = a.guiOrder ?? Infinity;
+      const orderB = b.guiOrder ?? Infinity;
+      return orderA - orderB;
     });
     return allItems;
   }
@@ -459,19 +482,20 @@ const filteredItems = computed(() => {
   // 4. Convert Map back to Array and Sort
   let finalItems = Array.from(finalItemMap.values());
 
-  // Sort: guiOrder first, then date
+  // 修改排序优先级：始终优先按修改日期排序（最新的在前）
   finalItems.sort((a, b) => {
-    const orderA = a.guiOrder ?? Infinity; // Treat undefined as lowest order
-    const orderB = b.guiOrder ?? Infinity;
-
-    if (orderA !== orderB) {
-      return orderA - orderB; // Lower guiOrder number comes first
-    }
-
-    // If guiOrders are the same or both undefined, sort by date
+    // 首先按日期排序（最新的在前）
     const dateA = a.updatedAt ? new Date(a.updatedAt).getTime() : 0;
     const dateB = b.updatedAt ? new Date(b.updatedAt).getTime() : 0;
-    return dateB - dateA; // Newest date first
+
+    if (dateA !== dateB) {
+      return dateB - dateA; // 最新的在前
+    }
+
+    // 仅当日期相同时才考虑guiOrder
+    const orderA = a.guiOrder ?? Infinity;
+    const orderB = b.guiOrder ?? Infinity;
+    return orderA - orderB;
   });
 
   return finalItems;
@@ -519,6 +543,22 @@ const formatDate = (dateString: string) => {
     month: "2-digit",
     day: "2-digit",
   });
+};
+
+// 获取简化的文件路径显示
+const getFilePathDisplay = (filePath?: string) => {
+  if (!filePath) return '';
+
+  // 从路径中提取文件名
+  const parts = filePath.split('/');
+  const fileName = parts[parts.length - 1];
+
+  // 如果路径很长，显示简化版本
+  if (parts.length > 2) {
+    return `${parts[0]}/.../${fileName}`;
+  }
+
+  return filePath;
 };
 
 // 选择项目 (列表视图点击)

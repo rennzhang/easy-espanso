@@ -41,6 +41,9 @@ export interface IPlatformAdapter {
   getPlatform(): Promise<string>; // 返回 'win32', 'darwin', 'linux', 'web', 'unknown' 等
   showNotification(title: string, body: string): Promise<void>;
   getEnvironmentVariable(name: string): Promise<string | null>; // 获取环境变量
+  executeCommand(command: string): Promise<string>; // 执行命令行命令
+  openExternal(url: string): Promise<boolean>; // 在默认浏览器中打开外部链接
+  openInExplorer(filePath: string): Promise<boolean>; // 在文件管理器中打开文件或文件夹
 
   // --- YAML 操作 ---
   parseYaml(content: string): Promise<YamlData>;

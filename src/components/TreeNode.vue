@@ -23,10 +23,10 @@
           <div
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
-              'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-primary-foreground selected':
+              'bg-[linear-gradient(135deg,#4a6c6f,#377f85)] text-white selected':
                 (node.type === 'file' || node.type === 'folder') && isSelected,
-              'hover:text-accent-foreground': !isSelected,
-              'bg-gray-50':
+              'hover:bg-accent hover:text-accent-foreground': !isSelected,
+              'bg-card':
                 (node.type === 'file' || node.type === 'folder') && !isSelected,
             }"
             :style="{
@@ -34,16 +34,11 @@
               '--node-level': nodeLevel,
             }"
           >
-            <!-- 添加左侧空白区域点击处理 -->
-            <div
-              class="absolute left-0 h-full"
-              :style="{ width: nodeLevel * 12 + 'px' }"
-              @click.stop="toggleFolder"
-            ></div>
+
 
             <span
-              class="mr-1 ml-4 text-muted-foreground cursor-pointer"
-              :class="{ 'text-white': isSelected }"
+              class="mr-1 ml-3 text-muted-foreground cursor-pointer"
+              :class="{ 'text-primary-gradient-text': isSelected }"
               @click.stop="toggleFolder"
             >
               <ChevronRightIcon v-if="hasChildren && !isOpen" class="h-4 w-4" />
@@ -51,16 +46,16 @@
                 v-else-if="hasChildren && isOpen"
                 class="h-4 w-4"
               />
-              <span v-else class="inline-block"></span>
+              <span v-else class="inline-block" :class="{ 'h-4 w-4': node.type === 'folder' }"></span>
             </span>
             <!-- 文件夹图标放在名称前面 -->
             <span v-if="node.type === 'folder'" class="mr-1.5">
-              <VSCodeFolderIcon v-if="!isOpen" class="h-5 w-5" />
-              <VSCodeFolderOpenIcon v-else class="h-5 w-5" />
+              <VSCodeFolderIcon v-if="!isOpen" class="h-5 w-5 text-primary" />
+              <VSCodeFolderOpenIcon v-else class="h-5 w-5 text-primary" />
             </span>
             <!-- 文件图标放在名称前面 -->
             <span v-if="node.type === 'file'" class="mr-1.5">
-              <VSCodeYmlIcon class="h-5 w-5" />
+              <VSCodeYmlIcon class="h-5 w-5 text-muted-foreground" />
             </span>
             <span
               v-if="
@@ -72,7 +67,7 @@
               <input
                 ref="editNameInput"
                 v-model="editingName"
-                class="w-full px-1 py-0.5 border border-primary rounded focus:outline-none focus:ring-1 focus:ring-primary text-foreground"
+                class="w-full px-1 py-0.5 border border-primary rounded focus:outline-none focus:ring-1 focus:ring-primary text-foreground bg-background"
                 @keydown.enter="saveNodeName"
                 @blur="saveNodeName"
                 @click.stop
@@ -80,7 +75,8 @@
             </span>
             <span
               v-else
-              class="text-sm font-medium flex-grow cursor-pointer"
+              class="text-sm font-medium flex-grow cursor-pointer text-foreground"
+              :class="{ 'text-white': isSelected }"
               @click.stop="selectNode"
               @dblclick.stop="startEditing"
             >
@@ -91,17 +87,17 @@
               />
               <template v-else>{{ displayName }}</template>
             </span>
-            <span
+            <!-- <span
               v-if="visibleChildCount > 0 && shouldShowCount"
               class="mx-2 text-xs px-1.5 py-0.5 rounded-full"
               :class="
                 isSelected
-                  ? 'bg-white/20 text-white'
+                  ? 'bg-primary-gradient-text/20 text-primary-gradient-text'
                   : 'bg-muted text-muted-foreground'
               "
             >
               {{ visibleChildCount }}
-            </span>
+            </span> -->
           </div>
         </div>
       </div>
@@ -112,31 +108,38 @@
           <div
             class="flex items-center w-full py-1.5 group node-row"
             :class="{
-              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-primary-foreground selected':
+              'bg-[linear-gradient(135deg,#2b5876,#4e4376)] text-white selected':
                 isSelected,
-              'hover:text-accent-foreground bg-gray-50': !isSelected,
+              'hover:bg-accent hover:text-accent-foreground bg-card': !isSelected,
             }"
             :style="{
-              paddingLeft: nodeLevel * 12 + 8 + 'px',
               '--node-level': nodeLevel,
             }"
           >
-            <!-- 添加左侧空白区域点击处理 -->
-            <div
-              class="absolute left-0 h-full"
-              :style="{ width: nodeLevel * 12 + 'px' }"
-              @click.stop="toggleParentFolder"
-            ></div>
 
-            <span class="w-4 inline-block"></span>
+
+            <span class="inline-block"
+            :style="{
+              width: nodeLevel * 20 + 16 + 'px',
+              '--node-level': nodeLevel,
+            }"
+            ></span>
             <!-- Indent space -->
+            <!-- 未保存状态指示器 -->
+            <div v-if="isNodeModified" class="h-3 w-3 rounded-full bg-red-500 animate-pulse-slow mr-1" :title="t('common.modified')"></div>
+
+            <!-- 刚保存状态指示器 -->
+            <div v-else-if="isNodeJustSaved" class="h-3 w-3 rounded-full bg-green-500 animate-fade-out mr-1" :title="t('common.saved')"></div>
+
+            <!-- 默认图标 -->
             <ZapIcon
+              v-else
               :class="[
                 'h-4 w-4 mr-1',
-                isSelected ? 'text-white' : 'text-blue-500',
+                isSelected ? 'text-white' : 'text-primary',
               ]"
             />
-            <span class="text-sm cursor-grab flex-grow">
+            <span class="text-sm cursor-grab flex-grow text-foreground" :class="{ 'text-white': isSelected }">
               <HighlightText
                 v-if="searchQuery"
                 :text="node.name"
@@ -149,7 +152,8 @@
               class="ml-auto flex-1 text-right"
             >
               <span
-                class="text-xs text-muted-foreground truncate max-w-[200px] inline-block"
+                class="text-xs truncate max-w-[200px] inline-block"
+                :class="{ 'text-white/80': isSelected, 'text-muted-foreground': !isSelected }"
                 :title="node.match.description"
               >
                 <HighlightText
@@ -159,6 +163,27 @@
                 />
                 <template v-else>{{ node.match.description }}</template>
               </span>
+            </div>
+            <div
+              v-if="node.match?.label"
+              class="mr-2 flex-shrink-0"
+            >
+              <div
+                class="text-xs px-1.5 min-w-[20px] h-[18px] overflow-hidden whitespace-nowrap text-ellipsis max-w-[120px]"
+                :class="{
+                  'bg-white/15 text-white border-white/10 border': isSelected,
+                  'bg-accent/50 text-muted-foreground border-0': !isSelected
+                }"
+                style="border-radius: 4px;"
+                :title="node.match.label"
+              >
+                <HighlightText
+                  v-if="searchQuery"
+                  :text="node.match.label"
+                  :searchQuery="selfMatchesSearch ? searchQuery : ''"
+                />
+                <template v-else>{{ node.match.label }}</template>
+              </div>
             </div>
           </div>
         </div>
@@ -172,7 +197,7 @@
         v-model="node.children"
         class="children w-full drop-zone"
         :class="{
-          'shadow-[inset_0_6px_6px_-6px_rgba(0,0,0,0.21),_inset_0_-6px_6px_-6px_rgba(0,0,0,0.21)]':
+          'shadow-[inset_0_6px_6px_-6px_hsl(var(--shadow)/0.21),_inset_0_-6px_6px_-6px_hsl(var(--shadow)/0.21)]':
             node.type === 'file',
         }"
         :group="{ name: 'configTreeGroup', pull: true, put: true }"
@@ -234,7 +259,7 @@ import NodeContextMenu from "@/components/NodeContextMenu.vue";
 import { useEspansoStore } from "@/store/useEspansoStore";
 import TreeNodeRegistry from "@/utils/TreeNodeRegistry";
 import { toast } from "vue-sonner";
-import { isFileNode, isFolderNode } from "@/utils/configTreeUtils";
+import { useI18n } from "vue-i18n";
 
 const props = defineProps<{
   node: TreeNodeItem;
@@ -267,29 +292,41 @@ const emit = defineEmits<{
 }>();
 
 const store = useEspansoStore();
+const { t } = useI18n();
 
-// 默认展开状态：Packages 文件夹默认收起，其他节点默认展开
-const isOpen = ref(props.node.name === "Packages" ? false : true);
+// 节点状态计算属性
+const isNodeModified = computed(() => {
+  return store.isNodeModified(props.node.id);
+});
+
+const isNodeJustSaved = computed(() => {
+  return store.isNodeJustSaved(props.node.id);
+});
 
 // 编辑相关的状态
 const isEditing = ref(false);
 const editingName = ref("");
 const editNameInput = ref<HTMLInputElement | null>(null);
 
+// Use store's expansion state instead of local state
+const isOpen = computed(() => store.isNodeExpanded(props.node.id));
+
 watch(
   () => props.searchQuery,
   (newQuery) => {
-    if (newQuery && newQuery.trim() !== "") {
-      isOpen.value = true;
+    if (newQuery && newQuery.trim() !== "" && !isOpen.value) {
+      // If search query is not empty and node is not already open, toggle it
+      store.toggleNodeExpansion(props.node.id);
     }
   },
   { immediate: true }
 );
 
-const toggleFolder = (event?: MouseEvent) => {
+const toggleFolder = () => {
   if (props.node.type !== "match" && hasChildren.value) {
-    isOpen.value = !isOpen.value;
-    // Emit event for parent component to handle state changes if needed
+    // Use store action instead of local state
+    store.toggleNodeExpansion(props.node.id);
+    // Still emit event for backward compatibility
     emit("toggle-node", props.node.id);
   }
 };
@@ -428,8 +465,9 @@ const isVisible = computed(() => {
 
 // Auto-expand node if it becomes visible due to search results
 watch(isVisible, (newValue, oldValue) => {
-  if (newValue && !oldValue && props.searchQuery?.trim()) {
-    isOpen.value = true;
+  if (newValue && !oldValue && props.searchQuery?.trim() && !isOpen.value) {
+    // Use store action instead of directly modifying computed property
+    store.toggleNodeExpansion(props.node.id);
   }
 });
 
@@ -543,8 +581,9 @@ const visibleChildCount = computed(() => {
 watch(
   () => props.parentMatches,
   (newValue) => {
-    if (newValue && props.searchQuery?.trim()) {
-      isOpen.value = true;
+    if (newValue && props.searchQuery?.trim() && !isOpen.value) {
+      // Use store action instead of directly modifying computed property
+      store.toggleNodeExpansion(props.node.id);
     }
   },
   { immediate: true }
@@ -688,15 +727,15 @@ const handleDragMove = (event: any): boolean => {
 };
 
 onMounted(() => {
+  // Register node metadata but not isOpen (now managed by store)
   TreeNodeRegistry.register(
     props.node.id,
-    {
-      isOpen: isOpen,
-    },
+    {}, // No longer need to register isOpen ref
     {
       type: props.node.type,
       id: props.node.id,
       parentId: props.parentId,
+      filePath: props.node.path,
       // Add other relevant info if needed
     }
   );
@@ -708,8 +747,9 @@ onUnmounted(() => {
 
 // 折叠当前节点 (can be called programmatically if needed)
 const collapseNode = () => {
-  if (hasChildren.value) {
-    isOpen.value = false;
+  if (hasChildren.value && isOpen.value) {
+    // Use store action instead of directly modifying computed property
+    store.toggleNodeExpansion(props.node.id);
     emit("toggle-node", props.node.id); // Notify parent if state needs to be synced
   }
 };
@@ -854,6 +894,9 @@ const shouldShowCount = computed(() => {
   // Alternative simpler logic: Always show for non-match nodes with children?
   // return props.node.type !== 'match' && hasChildren.value;
 });
+
+// No longer need to watch isOpen as it's now a computed property
+// and changes are handled by the store
 </script>
 
 <style scoped>
@@ -869,6 +912,7 @@ const shouldShowCount = computed(() => {
   margin-top: 0; /* 移除顶部间距，使节点更紧凑 */
   width: 100%;
   padding-left: 0; /* 移除整体缩进 */
+  background-color: hsl(var(--accent)/5); /* 使用主题强调色，非常淡的背景用于文件子项 */
 }
 
 .folder-node,
@@ -879,11 +923,11 @@ const shouldShowCount = computed(() => {
 
 /* 为文件和文件夹节点添加区分背景色 */
 .file-folder-node {
-  background-color: rgba(0, 0, 0, 0.03);
+  background-color: hsl(var(--background)/3); /* 使用主题背景色，带轻微透明度 */
 }
 
 .match-node {
-  background-color: rgba(79, 79, 79, 0.03);
+  background-color: hsl(var(--secondary)/3); /* 使用主题次要颜色，带轻微透明度 */
 }
 
 .node-row {
@@ -891,7 +935,44 @@ const shouldShowCount = computed(() => {
   box-sizing: border-box;
   width: 100%;
   position: relative; /* 确保绝对定位的子元素相对于此元素定位 */
+  transition: background-color 0.1s ease-out, transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); /* 统一过渡效果，添加transform过渡 */
 }
+
+/* 选中节点的动态效果 */
+.node-row.selected {
+  transform: translateX(-4px); /* 选中时向左移动5像素 */
+  box-shadow: 4px 0 0 0 hsl(var(--primary)/60%); /* 右侧添加主题色阴影指示 */
+  position: relative;
+}
+
+/* 添加一个微妙的呼吸效果，让选中状态更加动态 */
+.node-row.selected::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none; /* 确保不影响点击事件 */
+  border-radius: 2px;
+  animation: select-pulse 2s infinite ease-in-out;
+  opacity: 0.2;
+  z-index: 0;
+}
+
+@keyframes select-pulse {
+  0% {
+    box-shadow: inset 0 0 0 1px hsla(var(--primary)/25%);
+  }
+  50% {
+    box-shadow: inset 0 0 0 1px hsla(var(--primary)/5%);
+  }
+  100% {
+    box-shadow: inset 0 0 0 1px hsla(var(--primary)/25%);
+  }
+}
+
+
 
 /* 新增样式：确保左侧点击区域在最上层 */
 .node-row .absolute {
@@ -911,7 +992,7 @@ const shouldShowCount = computed(() => {
 }
 
 .drag-handle:hover {
-  background-color: rgba(0, 0, 0, 0.05);
+  background-color: hsl(var(--muted)/5); /* 使用主题静音色，带轻微透明度 */
   border-radius: 3px;
 }
 
@@ -940,8 +1021,8 @@ const shouldShowCount = computed(() => {
 
 /* Hover effect when context menu is active */
 .node-row.context-menu-active:hover {
-  background-color: hsl(var(--muted));
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+  background-color: hsl(var(--muted)); /* 使用主题静音颜色 */
+  box-shadow: inset 0 0 0 1px hsl(var(--border)/20); /* 使用主题边框色，带透明度 */
 }
 
 /* Ensure node content (icons, text) is above the absolute positioned click area */
@@ -986,9 +1067,9 @@ const shouldShowCount = computed(() => {
   height: 3px; /* Make the line thicker */
   background-image: linear-gradient(
     to right,
-    #5aceff,
-    #ee38ff
-  ); /* Example gradient */
+    hsl(var(--primary)), /* 使用主题主色 */
+    hsl(var(--secondary)) /* 使用主题次要颜色 */
+  );
   /* position: absolute; */
   /* top: 0; */
   /* left: 0; */

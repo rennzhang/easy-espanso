@@ -147,7 +147,7 @@ export class WebAdapter implements IPlatformAdapter {
 
     async showSaveDialog(options: SaveDialogOptions): Promise<SaveDialogResult> {
         console.warn(`[WebAdapter] showSaveDialog is not directly possible in web environment.`);
-        // 浏览器无法直接触发“另存为”到任意路径
+        // 浏览器无法直接触发"另存为"到任意路径
         // 可以模拟下载：创建一个包含内容的 Blob URL 并触发下载
         // 但这不会返回用户选择的 filePath
         return Promise.resolve({ canceled: true, filePath: undefined });
@@ -222,6 +222,31 @@ export class WebAdapter implements IPlatformAdapter {
         }
 
         return null;
+    }
+
+    async executeCommand(command: string): Promise<string> {
+        console.warn(`[WebAdapter] executeCommand('${command}') is not available in web environment. Returning empty string.`);
+
+        // Web 环境下无法执行系统命令
+        // 可以考虑为特定命令提供模拟结果
+        if (command.includes('which espanso') || command.includes('where espanso')) {
+            // 模拟未安装 espanso
+            return '';
+        }
+
+        return '';
+    }
+
+    async openExternal(url: string): Promise<boolean> {
+        console.log(`[WebAdapter] Opening URL in new tab: ${url}`);
+        try {
+            // 在新标签页中打开链接，并设置安全相关属性
+            window.open(url, '_blank', 'noopener,noreferrer');
+            return true;
+        } catch (error) {
+            console.error(`[WebAdapter] Failed to open URL: ${url}`, error);
+            return false;
+        }
     }
 
     // --- YAML 操作 ---
