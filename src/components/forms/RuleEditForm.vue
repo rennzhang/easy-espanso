@@ -1870,19 +1870,20 @@ const applyThemeToCodeMirror = () => {
   console.log(
     `[RuleEditForm] 应用主题到CodeMirror: ${isDarkMode.value ? "暗色" : "亮色"}`
   );
-
   // 获取当前CodeMirror实例
   const editor = cmRef.value?.cminstance;
   if (!editor) return;
-
   // 根据isDarkMode切换CodeMirror主题
   if (isDarkMode.value) {
     editor.setOption("theme", "dracula");
     document.body.classList.remove("light-theme");
   } else {
     editor.setOption("theme", "elegant"); // 使用elegant浅色主题
+
     document.body.classList.add("light-theme"); // 为光标样式添加类
   }
+  cmRef.value?.refresh();
+
 };
 
 // 监听主题变化并更新CodeMirror主题
